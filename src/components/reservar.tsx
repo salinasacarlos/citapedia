@@ -41,7 +41,7 @@ export function Reservar({
         </p>
       </div>
 
-      <DeclararDatos citaId={estado.confirmada.citaId} medico={estado.confirmada.medico} />
+      <DeclararDatos citaId={estado.confirmada.token} medico={estado.confirmada.medico} />
       </>
     )
   }

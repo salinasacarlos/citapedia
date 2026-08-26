@@ -165,6 +165,8 @@ export type Appointment = {
   notes: string | null
   /** Cuándo se le escribió al paciente para confirmar. */
   confirmation_sent_at: string | null
+  /** Credencial de la liga que el paciente recibe por WhatsApp. */
+  access_token: string
   /** Cuándo el paciente dijo que sí viene. */
   patient_confirmed_at: string | null
   created_at: string | null
@@ -245,9 +247,28 @@ export type Database = {
         Args: { p_token: string }
         Returns: string
       }
+      ver_cita: {
+        Args: { p_token: string }
+        Returns: {
+          cita_id: string
+          consultorio: string
+          slug: string
+          direccion: string | null
+          telefono: string | null
+          zona: string
+          paciente: string | null
+          inicio: string
+          fin: string
+          estado: AppointmentStatus
+          confirmada_por_paciente: boolean
+          ya_declaro: boolean
+        }[]
+      }
+      confirmar_asistencia: { Args: { p_token: string }; Returns: undefined }
+      cancelar_cita_paciente: { Args: { p_token: string }; Returns: undefined }
       declarar_datos_medicos: {
         Args: {
-          p_cita: string
+          p_token: string
           p_consentimiento: boolean
           p_alergias?: string | null
           p_padecimientos?: string | null

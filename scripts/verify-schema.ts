@@ -270,7 +270,7 @@ async function main() {
   check('un paciente puede solicitar cita', Boolean(cita1.rows[0].solicitar_cita))
 
   const estado = await db.query<{ status: string; ends_at: Date }>(
-    `select status::text, ends_at from appointments where id = $1`,
+    `select status::text, ends_at from appointments where access_token = $1`,
     [cita1.rows[0].solicitar_cita],
   )
   check('la cita nace solicitada', estado.rows[0].status === 'requested')
@@ -284,7 +284,7 @@ async function main() {
   check('otro paciente puede pedir el mismo hueco', Boolean(cita2.rows[0].solicitar_cita))
 
   // Pero si ya hay una confirmada, ese hueco se cierra.
-  await db.query(`update appointments set status = 'confirmed' where id = $1`, [
+  await db.query(`update appointments set status = 'confirmed' where access_token = $1`, [
     cita1.rows[0].solicitar_cita,
   ])
   let cerrado = false
@@ -368,11 +368,11 @@ async function main() {
   console.log('\nDatos declarados por el paciente')
 
   const citaDec = await pedir(`${y}-${m}-${d}T17:30:00Z`, 'Niña Declara', 'declara@example.com', null)
-  const idCitaDec = citaDec.rows[0].solicitar_cita
+  const tokenDec = citaDec.rows[0].solicitar_cita
 
   let sinConsentimiento = false
   try {
-    await db.query(`select declarar_datos_medicos($1, false, 'Penicilina')`, [idCitaDec])
+    await db.query(`select declarar_datos_medicos($1, false, 'Penicilina')`, [tokenDec])
   } catch (err) {
     sinConsentimiento = String(err).includes('permiso para guardar datos de salud')
   }
@@ -380,7 +380,7 @@ async function main() {
 
   await db.query(
     `select declarar_datos_medicos($1, true, 'Penicilina', 'Asma', 'Salbutamol', 'O+')`,
-    [idCitaDec],
+    [tokenDec],
   )
   const declarado = await db.query<{ allergies: string; reviewed_at: string | null }>(
     `select allergies, reviewed_at from declared_records`,
@@ -392,23 +392,90 @@ async function main() {
 
   const enExpediente = await db.query<{ n: number }>(
     `select count(*)::int as n from clinical_records
-      where patient_id = (select patient_id from appointments where id = $1)`,
-    [idCitaDec],
+      where patient_id = (select patient_id from appointments where access_token = $1)`,
+    [tokenDec],
   )
   check('NO entra solo al expediente clínico', Number(enExpediente.rows[0].n) === 0)
 
-  // Una liga vieja ya no sirve para escribir.
+  // La ventana ya no es de 24 horas: la liga sirve hasta el día de la cita.
   await db.query(
-    `update appointments set created_at = now() - interval '2 days' where id = $1`,
-    [idCitaDec],
+    `update appointments set starts_at = now() - interval '2 days',
+                             ends_at = now() - interval '2 days' + interval '30 minutes'
+      where access_token = $1`,
+    [tokenDec],
   )
-  let ligaVencida = false
+  let citaPasada = false
   try {
-    await db.query(`select declarar_datos_medicos($1, true, 'otra cosa')`, [idCitaDec])
+    await db.query(`select declarar_datos_medicos($1, true, 'otra cosa')`, [tokenDec])
   } catch (err) {
-    ligaVencida = String(err).includes('venció')
+    citaPasada = String(err).includes('ya pasó')
   }
-  check('pasadas 24 horas la liga ya no escribe', ligaVencida)
+  check('después de la cita la liga ya no escribe', citaPasada)
+
+  console.log('\nLa liga de la cita')
+
+  const tokenLiga = (
+    await pedir(`${y}-${m}-${d}T16:30:00Z`, 'Niño Liga', 'liga@example.com', null)
+  ).rows[0].solicitar_cita
+
+  const vistaLiga = await db.query<{
+    consultorio: string
+    paciente: string
+    estado: string
+    confirmada_por_paciente: boolean
+  }>(`select consultorio, paciente, estado::text, confirmada_por_paciente from ver_cita($1)`, [
+    tokenLiga,
+  ])
+  check(
+    'con la liga se ve la cita sin estar en sesión',
+    vistaLiga.rows[0]?.consultorio === 'Dra. Reserva' && vistaLiga.rows[0].paciente === 'Niño Liga',
+  )
+  check('y no viene confirmada por el paciente', vistaLiga.rows[0].confirmada_por_paciente === false)
+
+  const inventada = await db.query(`select * from ver_cita('token-que-no-existe')`)
+  check('un token inventado no devuelve nada', inventada.rows.length === 0)
+
+  // Todavía es una solicitud: no se puede confirmar ni cancelar.
+  let ligaSinAceptar = false
+  try {
+    await db.query(`select confirmar_asistencia($1)`, [tokenLiga])
+  } catch (err) {
+    ligaSinAceptar = String(err).includes('todavía no está confirmada')
+  }
+  check('no se confirma una cita que el consultorio no ha aceptado', ligaSinAceptar)
+
+  await db.query(`update appointments set status = 'confirmed' where access_token = $1`, [
+    tokenLiga,
+  ])
+
+  await db.query(`select confirmar_asistencia($1)`, [tokenLiga])
+  const confirmada = await db.query<{ n: number }>(
+    `select count(*)::int as n from appointments
+      where access_token = $1 and patient_confirmed_at is not null`,
+    [tokenLiga],
+  )
+  check('el paciente confirma su asistencia desde la liga', confirmada.rows[0].n === 1)
+
+  // El último estado que no tenía camino.
+  await db.query(`select cancelar_cita_paciente($1)`, [tokenLiga])
+  const cancelada = await db.query<{ status: string; confirmada: boolean }>(
+    `select status::text, patient_confirmed_at is not null as confirmada
+       from appointments where access_token = $1`,
+    [tokenLiga],
+  )
+  check(
+    'el paciente puede cancelar: cancelled_by_patient por fin tiene camino',
+    cancelada.rows[0].status === 'cancelled_by_patient',
+  )
+  check('y su confirmación se deshace', cancelada.rows[0].confirmada === false)
+
+  let dosVeces = false
+  try {
+    await db.query(`select cancelar_cita_paciente($1)`, [tokenLiga])
+  } catch (err) {
+    dosVeces = String(err).includes('confirmada')
+  }
+  check('cancelar dos veces no hace nada raro', dosVeces)
 
   await db.query(`delete from professionals where id = $1`, [rsv])
 
