@@ -89,10 +89,14 @@ Vercel construye por su cuenta cada push a cualquier rama como Preview, y
 `main` como Production. Con el flujo de rama → PR → merge, eso son dos builds
 por cambio: el Preview de la rama y el Production del merge, del mismo código.
 
-`vercel.json` deja pasar solo Production. Ojo con la semántica al tocarlo: en
-`ignoreCommand`, **salir con 0 cancela** el build y salir con 1 lo deja correr,
-al revés de lo que se espera de un código de salida. Por eso la condición está
-negada.
+`vercel.json` cancela los Preview. Dos trampas al tocarlo, las dos ya cobradas:
+
+- En `ignoreCommand`, **salir con 0 cancela** el build y salir con 1 lo deja
+  correr, al revés de lo que se espera de un código de salida.
+- La condición pregunta si el entorno **es** preview, no si **no es**
+  producción. Con la forma negada, un `VERCEL_ENV` vacío cancelaba producción
+  y el sitio se quedó servido en el build anterior sin que nada marcara error.
+  Así, lo peor que puede pasar es que se construya de más.
 
 El día que la revisión de PRs pida ver la rama corriendo, se quita y se paga
 el build de más — pero mientras la verificación sea en localhost, no compra
