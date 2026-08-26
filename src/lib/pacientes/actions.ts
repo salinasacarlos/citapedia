@@ -46,6 +46,7 @@ function datosDePaciente(datos: FormData) {
     is_minor: datos.get('is_minor') === 'on',
     tutor_name: texto(datos, 'tutor_name'),
     tutor_phone: texto(datos, 'tutor_phone'),
+    tutor_email: texto(datos, 'tutor_email'),
     tutor_relationship: texto(datos, 'tutor_relationship'),
     emergency_contact_name: texto(datos, 'emergency_contact_name'),
     emergency_contact_phone: texto(datos, 'emergency_contact_phone'),
@@ -167,4 +168,22 @@ export async function guardarConsulta(
 
   revalidatePath(`/admin/pacientes/${patient_id}`)
   return { ok: 'Nota guardada.' }
+}
+
+/**
+ * El médico pasa al expediente lo que declaró el paciente.
+ *
+ * La función de la base solo llena lo que está vacío: si el médico ya escribió
+ * algo, lo suyo manda. Y lo declarado no se borra, queda marcado como
+ * revisado, para que después se pueda saber de dónde salió cada cosa.
+ */
+export async function aceptarDeclarados(datos: FormData) {
+  const { esDueño } = await exigirConsultorio()
+  if (!esDueño) return
+
+  const patient_id = String(datos.get('patient_id') ?? '')
+  const supabase = await createClient()
+  await supabase.rpc('aceptar_datos_declarados', { p_paciente: patient_id })
+
+  revalidatePath(`/admin/pacientes/${patient_id}`)
 }

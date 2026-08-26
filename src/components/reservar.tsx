@@ -3,6 +3,7 @@
 import { useActionState, useState } from 'react'
 import { solicitarCita, type EstadoReserva } from '@/lib/publico/actions'
 import { SelectorHueco, etiquetaDia, etiquetaHora } from '@/components/selector-hueco'
+import { DeclararDatos } from '@/components/declarar-datos'
 import type { DiaConHuecos } from '@/lib/slots'
 
 export function Reservar({
@@ -28,6 +29,7 @@ export function Reservar({
 
   if (estado.confirmada) {
     return (
+      <>
       <div className="tarjeta p-6 text-center sm:p-8">
         <p className="text-2xl">🎉</p>
         <h2 className="mt-3 text-xl font-bold text-ink">Solicitud enviada</h2>
@@ -37,6 +39,9 @@ export function Reservar({
           {' '}— todavía no está confirmada: el consultorio la revisa y te avisa.
         </p>
       </div>
+
+      <DeclararDatos citaId={estado.confirmada.citaId} medico={estado.confirmada.medico} />
+      </>
     )
   }
 

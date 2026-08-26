@@ -81,6 +81,7 @@ export type Patient = {
   sex: 'femenino' | 'masculino' | 'otro' | null
   tutor_name: string | null
   tutor_phone: string | null
+  tutor_email: string | null
   tutor_relationship: string | null
   /** La cita la agendó alguien más para este paciente. */
   is_minor: boolean | null
@@ -106,6 +107,23 @@ export type ClinicalRecord = {
   immunizations: string | null
   habits: string | null
   updated_at: string | null
+}
+
+/**
+ * Lo que el paciente declaró al agendar. Deliberadamente separado del
+ * expediente: no está verificado por nadie.
+ */
+export type DeclaredRecord = {
+  patient_id: string
+  professional_id: string
+  allergies: string | null
+  conditions: string | null
+  medications: string | null
+  blood_type: string | null
+  consent_at: string
+  declared_at: string
+  reviewed_at: string | null
+  reviewed_by: string | null
 }
 
 /** Una nota por consulta, con lo que el médico midió y encontró. */
@@ -177,6 +195,7 @@ export type Database = {
       time_blocks: Table<TimeBlock>
       patients: Table<Patient>
       clinical_records: Table<ClinicalRecord>
+      declared_records: Table<DeclaredRecord>
       consultation_notes: Table<ConsultationNote>
       appointments: Table<Appointment>
       reminder_settings: Table<ReminderSettings>
@@ -221,6 +240,21 @@ export type Database = {
       aceptar_invitacion: {
         Args: { p_token: string }
         Returns: string
+      }
+      declarar_datos_medicos: {
+        Args: {
+          p_cita: string
+          p_consentimiento: boolean
+          p_alergias?: string | null
+          p_padecimientos?: string | null
+          p_medicamentos?: string | null
+          p_tipo_sangre?: string | null
+        }
+        Returns: undefined
+      }
+      aceptar_datos_declarados: {
+        Args: { p_paciente: string }
+        Returns: undefined
       }
       reagendar_cita: {
         Args: { p_cita: string; p_inicio: string }

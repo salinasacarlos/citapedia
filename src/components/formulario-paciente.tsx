@@ -176,14 +176,18 @@ export function FormularioPaciente({ paciente }: { paciente?: Patient }) {
                 ))}
               </datalist>
             </Campo>
-            <div className="sm:col-span-2">
-              <Campo
-                name="tutor_phone"
-                label="Teléfono"
-                type="tel"
-                defaultValue={paciente?.tutor_phone ?? ''}
-              />
-            </div>
+            <Campo
+              name="tutor_phone"
+              label="Teléfono"
+              type="tel"
+              defaultValue={paciente?.tutor_phone ?? ''}
+            />
+            <Campo
+              name="tutor_email"
+              label="Correo"
+              type="email"
+              defaultValue={paciente?.tutor_email ?? ''}
+            />
           </div>
         </section>
       )}
