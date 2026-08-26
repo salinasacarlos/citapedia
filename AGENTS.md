@@ -348,6 +348,47 @@ la ficha las muestra por separado.
 `patients_resumen` es una vista con `security_invoker = true` —al revés que
 las vistas públicas— para que el RLS de `patients` siga aplicando.
 
+## El workspace de la consulta
+
+`/admin/consulta/[citaId]` es donde el médico trabaja mientras tiene al paciente
+enfrente. Se entra desde la agenda (que es donde está cuando el paciente llega)
+o desde la bitácora de la ficha.
+
+- **Una sola puerta para escribir**: el formulario plegado que vivía dentro de
+  la bitácora desapareció. El mismo expediente en dos pantallas distintas es
+  cómo se terminan escribiendo dos versiones de lo mismo. `FormularioConsulta`
+  se extrajo del componente plegable justamente para que solo existan unos
+  campos clínicos.
+- La columna de contexto responde lo que se pregunta en consulta: por qué vino,
+  qué declaró y no se ha verificado, qué se le encontró la vez pasada, a quién
+  se le avisa. Las alergias y padecimientos van arriba, en rojo, fuera de las
+  columnas.
+- Cerrar la cita ("Se atendió" / "No asistió") solo aparece si ya ocurrió, la
+  misma regla que en la agenda.
+- El asistente que abra la liga ve un aviso, no un error: la agenda sigue
+  siendo suya.
+
+## Estudios y documentos
+
+Bucket `expedientes`, en `{professional_id}/{patient_id}/{timestamp}-{archivo}`,
+con la tabla `consultation_files` al lado. Storage guarda el archivo; la tabla
+guarda de quién es y qué es — si no, habría que leerlo del nombre del archivo,
+que lo pone quien sube.
+
+- El bucket es **privado**, al revés que `fotos-perfil`. Aquella foto se
+  publica en la página del médico; esto es el estudio de una persona
+  identificada, y una URL pública adivinable sería una filtración. Se abren con
+  ligas firmadas que se generan en el servidor y vencen a los 15 minutos.
+- **Solo dueño**, con `is_owner` y no `is_member`: un laboratorio es tan clínico
+  como una alergia. Esto significa que el asistente no puede adjuntar lo que
+  llega por WhatsApp, y es a propósito — cambiarlo es abrirle el expediente.
+- El nombre del archivo llega como lo puso el celular de alguien: acentos,
+  espacios y a veces `../`. La ruta se arma con uno saneado y el original se
+  guarda aparte, que es el que el médico reconoce.
+- Al fallar se limpia en las dos direcciones: si la fila no se puede insertar,
+  el archivo se borra; al borrar, la fila se va primero, para no dejar un
+  renglón apuntando a algo que ya no existe.
+
 ## Exportar a Excel
 
 `.xlsx` de verdad, con `write-excel-file`. CSV parece suficiente hasta que

@@ -12,35 +12,29 @@ const VITALES = [
   { name: 'oxygen_saturation', label: 'Sat. O₂', unidad: '%', step: '1' },
 ] as const
 
-export function NotaConsulta({
+/**
+ * El mismo formulario en dos lugares: plegado dentro de la bitácora, y abierto
+ * de par en par en el workspace de la consulta. Se extrae para que no haya dos
+ * versiones de los campos clínicos que se puedan ir separando.
+ */
+export function FormularioConsulta({
   citaId,
   pacienteId,
   nota,
+  onCerrar,
 }: {
   citaId: string
   pacienteId: string
   nota: ConsultationNote | undefined
+  onCerrar?: () => void
 }) {
   const [estado, formAction, pendiente] = useActionState<ResultadoPaciente, FormData>(
     guardarConsulta,
     {},
   )
-  const [abierto, setAbierto] = useState(false)
-
-  if (!abierto) {
-    return (
-      <button
-        type="button"
-        onClick={() => setAbierto(true)}
-        className="mt-2 text-sm font-semibold text-brand hover:underline"
-      >
-        {nota ? 'Editar nota de consulta' : '+ Agregar nota de consulta'}
-      </button>
-    )
-  }
 
   return (
-    <form action={formAction} className="mt-3 rounded-marca border border-border p-3">
+    <form action={formAction} className="rounded-marca border border-border p-3">
       <input type="hidden" name="appointment_id" value={citaId} />
       <input type="hidden" name="patient_id" value={pacienteId} />
 
@@ -133,14 +127,51 @@ export function NotaConsulta({
         <button disabled={pendiente} className="boton boton-primario px-3 py-1.5 text-xs">
           {pendiente ? 'Guardando…' : 'Guardar nota'}
         </button>
-        <button
-          type="button"
-          onClick={() => setAbierto(false)}
-          className="boton boton-suave px-3 py-1.5 text-xs"
-        >
-          Cerrar
-        </button>
+        {onCerrar && (
+          <button
+            type="button"
+            onClick={onCerrar}
+            className="boton boton-suave px-3 py-1.5 text-xs"
+          >
+            Cerrar
+          </button>
+        )}
       </div>
     </form>
+  )
+}
+
+export function NotaConsulta({
+  citaId,
+  pacienteId,
+  nota,
+}: {
+  citaId: string
+  pacienteId: string
+  nota: ConsultationNote | undefined
+}) {
+  const [abierto, setAbierto] = useState(false)
+
+  if (!abierto) {
+    return (
+      <button
+        type="button"
+        onClick={() => setAbierto(true)}
+        className="mt-2 text-sm font-semibold text-brand hover:underline"
+      >
+        {nota ? 'Editar nota de consulta' : '+ Agregar nota de consulta'}
+      </button>
+    )
+  }
+
+  return (
+    <div className="mt-3">
+      <FormularioConsulta
+        citaId={citaId}
+        pacienteId={pacienteId}
+        nota={nota}
+        onCerrar={() => setAbierto(false)}
+      />
+    </div>
   )
 }

@@ -3,13 +3,14 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { exigirConsultorio } from '@/lib/consultorio'
 import { EstadoVacio } from '@/components/estado-vacio'
-import { NotaConsulta } from '@/components/nota-consulta'
+import { Estudios, type EstudioVisible } from '@/components/estudios'
 import { aceptarDeclarados } from '@/lib/pacientes/actions'
 import { edad, fechaCorta, fechaSuelta, hora } from '@/lib/fechas'
 import type {
   AppointmentStatus,
   ClinicalRecord,
   ConsultationNote,
+  ConsultationFile,
   DeclaredRecord,
   Patient,
 } from '@/lib/database.types'
@@ -88,8 +89,13 @@ export default async function FichaPaciente({
 
   if (!paciente) notFound()
 
-  const [{ data: citas }, { data: expediente }, { data: consultas }, { data: declarado }] =
-    await Promise.all([
+  const [
+    { data: citas },
+    { data: expediente },
+    { data: consultas },
+    { data: declarado },
+    { data: archivos },
+  ] = await Promise.all([
     supabase
       .from('appointments')
       .select('id, starts_at, ends_at, status, notes')
@@ -118,7 +124,33 @@ export default async function FichaPaciente({
           .eq('patient_id', id)
           .maybeSingle<DeclaredRecord>()
       : Promise.resolve({ data: null }),
+    esDueño
+      ? supabase
+          .from('consultation_files')
+          .select('*')
+          .eq('patient_id', id)
+          .order('created_at', { ascending: false })
+          .returns<ConsultationFile[]>()
+      : Promise.resolve({ data: [] as ConsultationFile[] }),
   ])
+
+  // El bucket es privado: cada archivo se abre con una liga firmada que vence.
+  const estudios: EstudioVisible[] = await Promise.all(
+    (archivos ?? []).map(async (a) => {
+      const { data } = await supabase.storage
+        .from('expedientes')
+        .createSignedUrl(a.path, 60 * 15)
+      return {
+        id: a.id,
+        filename: a.filename,
+        kind: a.kind,
+        mime: a.mime,
+        size_bytes: a.size_bytes,
+        created_at: a.created_at,
+        url: data?.signedUrl ?? null,
+      }
+    }),
+  )
 
   const bitacora = citas ?? []
   const notas = consultas ?? []
@@ -318,6 +350,16 @@ export default async function FichaPaciente({
           )}
         </div>
 
+        {esDueño && (
+          <section className="mb-8">
+            <h2 className="font-semibold text-ink">Estudios y documentos</h2>
+            <p className="mb-3 text-sm text-muted">
+              Laboratorios, imágenes o recetas. Llegan en consulta o entre una y otra.
+            </p>
+            <Estudios pacienteId={paciente.id} estudios={estudios} zona={zona} />
+          </section>
+        )}
+
         <section>
           {/*
             "Historial de citas" no describía lo que hay aquí: cada renglón junta
@@ -393,8 +435,16 @@ export default async function FichaPaciente({
                       </div>
                     )}
 
+                    {/* Escribir la consulta se hace en un solo lugar: el
+                        workspace. Un formulario plegado aquí sería el mismo
+                        expediente en dos pantallas distintas. */}
                     {esDueño && (
-                      <NotaConsulta citaId={cita.id} pacienteId={paciente.id} nota={nota} />
+                      <Link
+                        href={`/admin/consulta/${cita.id}`}
+                        className="mt-2 inline-block text-sm font-semibold text-brand hover:underline"
+                      >
+                        {nota ? 'Abrir consulta' : 'Escribir la consulta'} →
+                      </Link>
                     )}
                   </li>
                 )

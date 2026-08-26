@@ -38,6 +38,22 @@ function agruparPorDia(citas: Cita[], zona: string) {
   return [...porDia.entries()]
 }
 
+/**
+ * La puerta al workspace de la consulta. Va en la agenda porque es donde el
+ * médico está cuando entra el paciente: no debería tener que ir a buscarlo a
+ * la lista para poder escribir.
+ */
+function AbrirConsulta({ id }: { id: string }) {
+  return (
+    <Link
+      href={`/admin/consulta/${id}`}
+      className="boton boton-primario px-3 py-1.5 text-xs"
+    >
+      Abrir consulta
+    </Link>
+  )
+}
+
 function FilaCita({
   cita,
   zona,
@@ -92,7 +108,7 @@ export default async function AgendaPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const filtros = leerFiltros(await searchParams)
-  const { profesional } = await exigirConsultorio()
+  const { profesional, esDueño } = await exigirConsultorio()
   const supabase = await createClient()
   const zona = profesional.timezone
   const ahora = new Date().toISOString()
@@ -221,13 +237,16 @@ export default async function AgendaPage({
                 zona={zona}
                 conFecha
                 acciones={
-                  <AccionesCita
-                    id={cita.id}
-                    acciones={[
-                      { accion: marcarCompletada, etiqueta: 'Se atendió', tono: 'primario' },
-                      { accion: marcarNoAsistio, etiqueta: 'No asistió' },
-                    ]}
-                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    {esDueño && <AbrirConsulta id={cita.id} />}
+                    <AccionesCita
+                      id={cita.id}
+                      acciones={[
+                        { accion: marcarCompletada, etiqueta: 'Se atendió', tono: 'primario' },
+                        { accion: marcarNoAsistio, etiqueta: 'No asistió' },
+                      ]}
+                    />
+                  </div>
                 }
               />
             ))}
@@ -268,6 +287,7 @@ export default async function AgendaPage({
                       <div className="flex flex-col gap-3">
                         <ConfirmarAsistencia datos={datosConfirmacion(cita)} />
                         <div className="flex flex-wrap items-center gap-2">
+                          {esDueño && <AbrirConsulta id={cita.id} />}
                           <Link
                             href={`/admin/reagendar/${cita.id}`}
                             className="boton boton-suave px-3 py-1.5 text-xs"
