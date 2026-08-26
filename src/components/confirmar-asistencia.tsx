@@ -7,6 +7,7 @@ import {
   marcarContactado,
 } from '@/lib/admin/actions'
 import { armarMensaje, ligaWhatsApp, numeroParaWhatsApp } from '@/lib/whatsapp'
+import { CopiarLiga } from '@/components/copiar-liga'
 
 export type DatosConfirmacion = {
   citaId: string
@@ -37,6 +38,8 @@ export function ConfirmarAsistencia({ datos }: { datos: DatosConfirmacion }) {
           <input type="hidden" name="id" value={datos.citaId} />
           <button className="text-xs text-muted hover:underline">Deshacer</button>
         </form>
+        {/* Sigue sirviendo después de confirmar: por ahí adelanta sus datos y mueve la cita. */}
+        <CopiarLiga liga={datos.liga} />
       </div>
     )
   }
@@ -73,9 +76,11 @@ export function ConfirmarAsistencia({ datos }: { datos: DatosConfirmacion }) {
         </form>
       ) : (
         <span className="text-xs text-muted">
-          Sin teléfono para escribir
+          Sin teléfono para escribir — copia la liga y mándasela por donde puedas
         </span>
       )}
+
+      <CopiarLiga liga={datos.liga} />
 
       {contactado && (
         <>

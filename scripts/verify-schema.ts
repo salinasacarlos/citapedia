@@ -477,6 +477,70 @@ async function main() {
   }
   check('cancelar dos veces no hace nada raro', dosVeces)
 
+  // ---------------------------------------- el paciente mueve su cita
+  const tokenMover = (
+    await pedir(`${y}-${m}-${d}T17:00:00Z`, 'Niña Mueve', 'mueve@example.com', null)
+  ).rows[0].solicitar_cita
+  await db.query(`update appointments set status = 'confirmed' where access_token = $1`, [
+    tokenMover,
+  ])
+
+  const puede = await db.query<{ puede_reagendar: boolean; duracion_min: number }>(
+    `select puede_reagendar, duracion_min from ver_cita($1)`,
+    [tokenMover],
+  )
+  check('la liga dice si todavía se puede mover', puede.rows[0].puede_reagendar === true)
+  check('y cuánto dura la cita', puede.rows[0].duracion_min === 30)
+
+  const tokenNuevo = (
+    await db.query<{ reagendar_cita_paciente: string }>(
+      `select reagendar_cita_paciente($1, $2::timestamptz)`,
+      // 15:00 UTC son las 09:00 en el consultorio: dentro del horario y sin
+      // el bloqueo que puso una prueba anterior a las 18:00.
+      [tokenMover, `${y}-${m}-${d}T15:00:00Z`],
+    )
+  ).rows[0].reagendar_cita_paciente
+  check('el paciente puede mover su cita', Boolean(tokenNuevo) && tokenNuevo !== tokenMover)
+
+  const enlazadas = await db.query<{ vieja: string; nueva: string }>(
+    `select v.status::text as vieja, n.status::text as nueva
+       from appointments v join appointments n on n.id = v.rescheduled_to
+      where v.access_token = $1`,
+    [tokenMover],
+  )
+  check(
+    'la vieja queda reagendada y la nueva confirmada',
+    enlazadas.rows[0]?.vieja === 'rescheduled' && enlazadas.rows[0].nueva === 'confirmed',
+  )
+
+  // Con la cita encima, ya no se puede mover.
+  const tokenPegado = (
+    await pedir(`${y}-${m}-${d}T16:30:00Z`, 'Niño Tarde', 'tarde@example.com', null)
+  ).rows[0].solicitar_cita
+  await db.query(
+    `update appointments set status = 'confirmed',
+            starts_at = now() + interval '3 hours',
+            ends_at = now() + interval '3 hours 30 minutes'
+      where access_token = $1`,
+    [tokenPegado],
+  )
+  const yaNo = await db.query<{ puede_reagendar: boolean }>(
+    `select puede_reagendar from ver_cita($1)`,
+    [tokenPegado],
+  )
+  check('faltando 3 horas ya no se ofrece mover', yaNo.rows[0].puede_reagendar === false)
+
+  let muyTarde = false
+  try {
+    await db.query(`select reagendar_cita_paciente($1, $2::timestamptz)`, [
+      tokenPegado,
+      `${y}-${m}-${d}T18:00:00Z`,
+    ])
+  } catch (err) {
+    muyTarde = String(err).includes('falta muy poco')
+  }
+  check('y la base lo rechaza aunque se llame directo', muyTarde)
+
   await db.query(`delete from professionals where id = $1`, [rsv])
 
   console.log('\nReagendar')

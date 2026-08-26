@@ -49,12 +49,16 @@ export async function cargarPaginaPublica(slug: string) {
   return { perfil, disponibilidad: disponibilidad ?? [], bloqueos: bloqueos ?? [], ocupados: ocupados ?? [] }
 }
 
-export function huecosDe(datos: NonNullable<Awaited<ReturnType<typeof cargarPaginaPublica>>>) {
+export function huecosDe(
+  datos: NonNullable<Awaited<ReturnType<typeof cargarPaginaPublica>>>,
+  /** Al mover una cita conserva su duración, que puede no ser la del slot. */
+  duracionMin?: number,
+) {
   return calcularHuecos({
     disponibilidad: datos.disponibilidad,
     bloqueos: datos.bloqueos,
     ocupados: datos.ocupados,
-    duracionMin: datos.perfil.slot_duration ?? 30,
+    duracionMin: duracionMin ?? datos.perfil.slot_duration ?? 30,
     zona: datos.perfil.timezone,
     // Dos meses: suficiente para que el calendario tenga a dónde avanzar.
     dias: 60,

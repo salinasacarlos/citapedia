@@ -262,7 +262,13 @@ export type Database = {
           estado: AppointmentStatus
           confirmada_por_paciente: boolean
           ya_declaro: boolean
+          puede_reagendar: boolean
+          duracion_min: number
         }[]
+      }
+      reagendar_cita_paciente: {
+        Args: { p_token: string; p_inicio: string }
+        Returns: string
       }
       confirmar_asistencia: { Args: { p_token: string }; Returns: undefined }
       cancelar_cita_paciente: { Args: { p_token: string }; Returns: undefined }
