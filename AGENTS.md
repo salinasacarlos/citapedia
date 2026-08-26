@@ -163,3 +163,27 @@ semana de siete columnas es ilegible en 375 px. Escritorio pinta la semana
   atención — al revés se pierde el contraste. Los bloqueos van con trama
   diagonal para no confundirse con el fuera de horario.
 - La semana se navega por URL (`?semana=`), el día de móvil también (`?dia=`).
+
+## Invitaciones
+
+Quien recibe una invitación todavía no es miembro, así que RLS le impide ver
+la fila o crearse la membresía. Las dos operaciones pasan por funciones
+SECURITY DEFINER: `ver_invitacion` (devuelve solo el nombre del consultorio,
+el correo y el estado — nunca el token ni datos del equipo) y
+`aceptar_invitacion`.
+
+La invitación queda **atada al correo**: aceptar exige que el usuario en sesión
+tenga ese mismo correo. Reenviar la liga a un tercero no le da acceso al
+expediente de un consultorio ajeno. Es la razón de que exista la validación,
+no un detalle.
+
+El token se genera con `randomBytes(32)`: la liga es la credencial.
+
+`miembros_del_consultorio()` expone los correos de `auth.users`, pero solo de
+los consultorios de los que quien pregunta ya es miembro.
+
+## Redirecciones
+
+`next` solo acepta rutas internas (`/…`, y nunca `//…`). Sin ese filtro, el
+login y la confirmación de correo se vuelven un trampolín para mandar gente a
+dominios de terceros.

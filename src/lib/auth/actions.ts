@@ -4,6 +4,15 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 
+/**
+ * Solo rutas internas: un `next` con dominio ajeno convertiría el login en un
+ * trampolín para mandar gente a sitios de terceros.
+ */
+function destinoSeguro(valor: FormDataEntryValue | null): string {
+  const destino = String(valor ?? '')
+  return destino.startsWith('/') && !destino.startsWith('//') ? destino : '/admin'
+}
+
 export type EstadoFormulario = {
   error?: string
   aviso?: string
@@ -39,6 +48,10 @@ export async function registrar(
 ): Promise<EstadoFormulario> {
   const name = String(datos.get('name') ?? '').trim()
   const specialty = String(datos.get('specialty') ?? '').trim()
+  const destino = destinoSeguro(datos.get('next'))
+  // Quien llega por invitación se engancha a un consultorio existente; el
+  // trigger de alta no debe crearle uno propio.
+  const esAsistente = datos.get('asistente') === '1'
   const email = String(datos.get('email') ?? '').trim()
   const password = String(datos.get('password') ?? '')
 
@@ -60,8 +73,12 @@ export async function registrar(
     password,
     options: {
       // El trigger on_auth_user_created lee esto para armar el consultorio.
-      data: { name, specialty, signup_kind: 'professional' },
-      emailRedirectTo: `${sitio}/auth/confirm`,
+      data: {
+        name,
+        specialty,
+        signup_kind: esAsistente ? 'assistant' : 'professional',
+      },
+      emailRedirectTo: `${sitio}/auth/confirm?next=${encodeURIComponent(destino)}`,
     },
   })
 
@@ -73,7 +90,7 @@ export async function registrar(
   }
 
   revalidatePath('/', 'layout')
-  redirect('/admin')
+  redirect(destino)
 }
 
 export async function entrar(
@@ -81,6 +98,7 @@ export async function entrar(
   datos: FormData,
 ): Promise<EstadoFormulario> {
   const email = String(datos.get('email') ?? '').trim()
+  const destino = destinoSeguro(datos.get('next'))
   const supabase = await createClient()
   const { error } = await supabase.auth.signInWithPassword({
     email,
@@ -90,7 +108,7 @@ export async function entrar(
   if (error) return { error: traducir(error.message), valores: { email } }
 
   revalidatePath('/', 'layout')
-  redirect('/admin')
+  redirect(destino)
 }
 
 export async function salir() {

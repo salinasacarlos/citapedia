@@ -13,6 +13,9 @@ type Campo = {
   autoComplete?: string
   placeholder?: string
   ayuda?: string
+  valorInicial?: string
+  /** El correo de una invitación no se puede cambiar: la ata. */
+  fijo?: boolean
 }
 
 export function FormularioAuth({
@@ -22,6 +25,7 @@ export function FormularioAuth({
   campos,
   cta,
   pie,
+  ocultos,
 }: {
   accion: (estado: EstadoFormulario, datos: FormData) => Promise<EstadoFormulario>
   titulo: string
@@ -29,6 +33,8 @@ export function FormularioAuth({
   campos: Campo[]
   cta: string
   pie: { texto: string; enlace: string; href: string }
+  /** Campos que viajan con el formulario sin que el usuario los vea. */
+  ocultos?: Record<string, string>
 }) {
   const [estado, formAction, pendiente] = useActionState(accion, {})
 
@@ -39,6 +45,9 @@ export function FormularioAuth({
       <p className="mt-2 text-sm text-muted">{descripcion}</p>
 
       <form action={formAction} className="mt-8 space-y-4">
+        {Object.entries(ocultos ?? {}).map(([nombre, valor]) => (
+          <input key={nombre} type="hidden" name={nombre} value={valor} />
+        ))}
         {campos.map((campo) => (
           <div key={campo.name}>
             <label htmlFor={campo.name} className="block text-sm font-medium text-ink">
@@ -49,9 +58,10 @@ export function FormularioAuth({
               name={campo.name}
               type={campo.type ?? 'text'}
               required={campo.required ?? true}
+              readOnly={campo.fijo}
               autoComplete={campo.autoComplete}
               placeholder={campo.placeholder}
-              defaultValue={estado.valores?.[campo.name]}
+              defaultValue={estado.valores?.[campo.name] ?? campo.valorInicial}
               className="campo mt-1.5"
             />
             {campo.ayuda && <p className="mt-1 text-xs text-muted">{campo.ayuda}</p>}

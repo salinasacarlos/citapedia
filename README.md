@@ -120,5 +120,5 @@ automática apagada. Un consultorio nuevo arranca vacío, como debe ser.
 2. ✅ Auth y RLS: al registrarse un médico se crea su `professional` + `membership` owner.
 3. ✅ Admin: perfil con foto, horario, bloqueos, solicitudes, agenda (lista y calendario) e historial con filtros.
 4. ✅ Página pública `/{slug}` con slots calculados y formulario de reserva.
-5. Invitación de asistente.
+5. ✅ Invitación de asistente: liga con token atada al correo, vigencia de 7 días.
 6. Recordatorios por email (Resend) vía cron + Edge Function. SMS después.

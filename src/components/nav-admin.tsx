@@ -9,6 +9,7 @@ const SECCIONES = [
   { href: '/admin/horario', etiqueta: 'Horario' },
   { href: '/admin/historial', etiqueta: 'Historial' },
   { href: '/admin/perfil', etiqueta: 'Mi página' },
+  { href: '/admin/equipo', etiqueta: 'Equipo' },
 ]
 
 export function NavAdmin() {
