@@ -82,6 +82,13 @@ export type Patient = {
   tutor_name: string | null
   tutor_phone: string | null
   tutor_relationship: string | null
+  /** La cita la agendó alguien más para este paciente. */
+  is_minor: boolean | null
+  emergency_contact_name: string | null
+  emergency_contact_phone: string | null
+  emergency_contact_relationship: string | null
+  insurance: string | null
+  notes: string | null
   created_at: string | null
 }
 
@@ -94,6 +101,10 @@ export type ClinicalRecord = {
   medications: string | null
   blood_type: string | null
   notes: string | null
+  family_history: string | null
+  surgical_history: string | null
+  immunizations: string | null
+  habits: string | null
   updated_at: string | null
 }
 
@@ -107,6 +118,12 @@ export type ConsultationNote = {
   note: string | null
   weight_kg: number | null
   height_cm: number | null
+  temperature_c: number | null
+  blood_pressure: string | null
+  heart_rate: number | null
+  oxygen_saturation: number | null
+  diagnosis: string | null
+  treatment: string | null
   created_at: string | null
   updated_at: string | null
 }
@@ -217,6 +234,8 @@ export type Database = {
           p_telefono?: string | null
           p_email?: string | null
           p_notas?: string | null
+          p_tutor?: string | null
+          p_parentesco?: string | null
         }
         Returns: string
       }

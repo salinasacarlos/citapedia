@@ -230,10 +230,36 @@ async function main() {
 
   async function pedir(cuando: string, nombre: string, email: string | null, tel: string | null) {
     return db.query<{ solicitar_cita: string }>(
-      `select public.solicitar_cita('dra-reserva', $1::timestamptz, $2, $3, $4, 'Prueba')`,
+      `select public.solicitar_cita('dra-reserva', $1::timestamptz, $2, $3, $4, 'Prueba', null, null)`,
       [cuando, nombre, tel, email],
     )
   }
+
+  // Agendar para otra persona: el teléfono es de quien agenda, no del paciente.
+  const paraOtro = await db.query<{ solicitar_cita: string }>(
+    `select public.solicitar_cita('dra-reserva', $1::timestamptz, 'Sofía Chica',
+       '+52 55 7777 0000', null, null, 'Marta Chica', 'Madre')`,
+    [`${y}-${m}-${d}T15:00:00Z`],
+  )
+  check('se puede agendar para otra persona', Boolean(paraOtro.rows[0].solicitar_cita))
+
+  const quienEsQuien = await db.query<{
+    name: string
+    phone: string | null
+    is_minor: boolean
+    tutor_name: string
+    tutor_phone: string
+  }>(
+    `select name, phone, is_minor, tutor_name, tutor_phone
+       from patients where name = 'Sofía Chica'`,
+  )
+  const p = quienEsQuien.rows[0]
+  check('el paciente queda marcado como dependiente', p?.is_minor === true)
+  check('el tutor queda con nombre y parentesco', p?.tutor_name === 'Marta Chica')
+  check(
+    'el teléfono de quien agenda se guarda como del tutor',
+    p?.tutor_phone === '+52 55 7777 0000',
+  )
 
   const cita1 = await pedir(slot, 'Niña Uno', 'uno@example.com', null)
   check('un paciente puede solicitar cita', Boolean(cita1.rows[0].solicitar_cita))

@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { exigirConsultorio } from '@/lib/consultorio'
 import { EstadoVacio } from '@/components/estado-vacio'
+import { NotaConsulta } from '@/components/nota-consulta'
 import { edad, fechaCorta, fechaSuelta, hora } from '@/lib/fechas'
 import type {
   AppointmentStatus,
@@ -31,6 +32,18 @@ type Cita = {
   ends_at: string
   status: AppointmentStatus
   notes: string | null
+}
+
+/** Los signos que sí se midieron, en una línea. */
+function vitales(n: ConsultationNote): string[] {
+  const partes: string[] = []
+  if (n.weight_kg) partes.push(`${n.weight_kg} kg`)
+  if (n.height_cm) partes.push(`${n.height_cm} cm`)
+  if (n.temperature_c) partes.push(`${n.temperature_c} °C`)
+  if (n.blood_pressure) partes.push(`PA ${n.blood_pressure}`)
+  if (n.heart_rate) partes.push(`${n.heart_rate} lpm`)
+  if (n.oxygen_saturation) partes.push(`SatO₂ ${n.oxygen_saturation}%`)
+  return partes
 }
 
 function Dato({ etiqueta, valor }: { etiqueta: string; valor: string | null | undefined }) {
@@ -127,14 +140,33 @@ export default async function FichaPaciente({
               </>
             )}
           </p>
+          {paciente.is_minor && (
+            <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-acento-suave px-2.5 py-1 text-xs font-medium text-acento">
+              Depende de {paciente.tutor_name ?? 'un responsable'}
+              {paciente.tutor_relationship && ` · ${paciente.tutor_relationship}`}
+            </p>
+          )}
         </div>
-        <a
-          href={`/admin/pacientes/${paciente.id}/exportar`}
-          className="boton boton-suave"
-          download
-        >
-          Descargar Excel
-        </a>
+        <div className="flex flex-wrap gap-2">
+          <a
+            href={`/admin/pacientes/${paciente.id}/exportar`}
+            className="boton boton-suave"
+            download
+          >
+            Excel
+          </a>
+          <Link href={`/admin/pacientes/${paciente.id}/editar`} className="boton boton-suave">
+            Editar datos
+          </Link>
+          {esDueño && (
+            <Link
+              href={`/admin/pacientes/${paciente.id}/expediente`}
+              className="boton boton-primario"
+            >
+              Editar expediente
+            </Link>
+          )}
+        </div>
       </header>
 
       {/* Las alertas van arriba y en rojo: enterrarlas en una lista es donde
@@ -159,20 +191,52 @@ export default async function FichaPaciente({
       <div className="grid gap-5 lg:grid-cols-[1fr_1.4fr]">
         <div className="space-y-5">
           <section className="tarjeta p-4 sm:p-5">
-            <h2 className="mb-3 font-semibold text-ink">Contacto</h2>
+            <h2 className="mb-1 font-semibold text-ink">Contacto</h2>
+            {/* Decir de quién es cada dato: el enredo de antes venía de que un
+                teléfono suelto no dice si es del paciente o de quien agenda. */}
+            <p className="mb-3 text-xs text-muted">
+              {paciente.is_minor
+                ? 'Se avisa a quien responde por el paciente.'
+                : 'Se avisa al paciente directamente.'}
+            </p>
             <dl className="space-y-3">
-              <Dato etiqueta="Teléfono" valor={paciente.phone} />
-              <Dato etiqueta="Correo" valor={paciente.email} />
+              {paciente.is_minor && (
+                <>
+                  <Dato
+                    etiqueta={`${paciente.tutor_relationship ?? 'Responsable'} — se le avisa a`}
+                    valor={paciente.tutor_name}
+                  />
+                  <Dato etiqueta="Su teléfono" valor={paciente.tutor_phone} />
+                </>
+              )}
               <Dato
-                etiqueta={paciente.tutor_relationship ?? 'Tutor'}
-                valor={paciente.tutor_name}
+                etiqueta={paciente.is_minor ? 'Teléfono del paciente' : 'Teléfono'}
+                valor={paciente.phone}
               />
-              <Dato etiqueta="Teléfono del tutor" valor={paciente.tutor_phone} />
+              <Dato
+                etiqueta={paciente.is_minor ? 'Correo del paciente' : 'Correo'}
+                valor={paciente.email}
+              />
+              <Dato etiqueta="Seguro" valor={paciente.insurance} />
+              <Dato etiqueta="Notas de recepción" valor={paciente.notes} />
             </dl>
-            {!paciente.phone && !paciente.email && (
+            {!paciente.phone && !paciente.email && !paciente.tutor_phone && (
               <p className="text-sm text-muted">Sin datos de contacto.</p>
             )}
           </section>
+
+          {paciente.emergency_contact_name && (
+            <section className="tarjeta p-4 sm:p-5">
+              <h2 className="mb-3 font-semibold text-ink">En caso de emergencia</h2>
+              <dl className="space-y-3">
+                <Dato
+                  etiqueta={paciente.emergency_contact_relationship ?? 'Contacto'}
+                  valor={paciente.emergency_contact_name}
+                />
+                <Dato etiqueta="Teléfono" valor={paciente.emergency_contact_phone} />
+              </dl>
+            </section>
+          )}
 
           {esDueño && (
             <section className="tarjeta p-4 sm:p-5">
@@ -181,12 +245,11 @@ export default async function FichaPaciente({
                 <dl className="space-y-3">
                   <Dato etiqueta="Medicamentos" valor={expediente.medications} />
                   <Dato etiqueta="Tipo de sangre" valor={expediente.blood_type} />
+                  <Dato etiqueta="Vacunas" valor={expediente.immunizations} />
+                  <Dato etiqueta="Cirugías y hospitalizaciones" valor={expediente.surgical_history} />
+                  <Dato etiqueta="Antecedentes familiares" valor={expediente.family_history} />
+                  <Dato etiqueta="Hábitos" valor={expediente.habits} />
                   <Dato etiqueta="Notas" valor={expediente.notes} />
-                  {!expediente.medications && !expediente.blood_type && !expediente.notes && (
-                    <p className="text-sm text-muted">
-                      Sin datos más allá de las alertas de arriba.
-                    </p>
-                  )}
                 </dl>
               ) : (
                 <p className="text-sm text-muted">
@@ -248,19 +311,35 @@ export default async function FichaPaciente({
                       </p>
                     )}
 
-                    {esDueño && nota && (nota.note || nota.weight_kg || nota.height_cm) && (
+                    {esDueño && nota && (
                       <div className="mt-2 rounded-lg border border-brand/20 bg-brand-suave/40 px-3 py-2">
-                        {(nota.weight_kg || nota.height_cm) && (
-                          <p className="text-xs tabular-nums text-brand">
-                            {nota.weight_kg && `${nota.weight_kg} kg`}
-                            {nota.weight_kg && nota.height_cm && ' · '}
-                            {nota.height_cm && `${nota.height_cm} cm`}
+                        {vitales(nota).length > 0 && (
+                          <p className="flex flex-wrap gap-x-3 text-xs tabular-nums text-brand">
+                            {vitales(nota).map((v) => (
+                              <span key={v}>{v}</span>
+                            ))}
+                          </p>
+                        )}
+                        {nota.diagnosis && (
+                          <p className="mt-1 text-sm">
+                            <span className="text-xs text-muted">Diagnóstico: </span>
+                            {nota.diagnosis}
+                          </p>
+                        )}
+                        {nota.treatment && (
+                          <p className="mt-1 text-sm">
+                            <span className="text-xs text-muted">Tratamiento: </span>
+                            {nota.treatment}
                           </p>
                         )}
                         {nota.note && (
                           <p className="mt-1 text-sm whitespace-pre-line">{nota.note}</p>
                         )}
                       </div>
+                    )}
+
+                    {esDueño && (
+                      <NotaConsulta citaId={cita.id} pacienteId={paciente.id} nota={nota} />
                     )}
                   </li>
                 )
