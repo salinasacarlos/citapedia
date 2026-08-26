@@ -5,7 +5,7 @@ import { AccionesCitaPaciente } from '@/components/acciones-cita-paciente'
 import { DeclararDatos } from '@/components/declarar-datos'
 import { ReagendarPaciente } from '@/components/reagendar-paciente'
 import { cargarPaginaPublica, huecosDe } from '@/lib/publico/datos'
-import { duracion, fechaLarga, hora } from '@/lib/fechas'
+import { duracion, fechaLarga, hora, nombreDePila } from '@/lib/fechas'
 import type { AppointmentStatus } from '@/lib/database.types'
 
 export const dynamic = 'force-dynamic'
@@ -19,6 +19,8 @@ type Vista = {
   telefono: string | null
   zona: string
   paciente: string | null
+  es_menor: boolean
+  tutor: string | null
   inicio: string
   fin: string
   estado: AppointmentStatus
@@ -97,10 +99,25 @@ export default async function CitaPage({
       ? huecosDe(datosPublicos, cita.duracion_min)
       : []
 
+  // A un menor se le escribe a su tutor; a un adulto, a él mismo.
+  const quienLee = cita.es_menor ? cita.tutor : cita.paciente
+  const deQuien =
+    cita.es_menor && cita.paciente
+      ? `La cita de ${cita.paciente} con`
+      : 'Tu cita con'
+
   return (
     <Marco>
       <div className="text-center">
-        <p className="text-sm text-muted">Tu cita con</p>
+        {/*
+          Quien abre la liga no siempre es el paciente: si es un menor, es su
+          tutor. Se saluda a quien lee y se dice de quién es la cita — son dos
+          datos distintos y juntarlos es justo el enredo que `is_minor` evita.
+        */}
+        {quienLee && (
+          <p className="text-sm font-semibold text-brand">Hola, {nombreDePila(quienLee)}</p>
+        )}
+        <p className={`text-sm text-muted${quienLee ? ' mt-1' : ''}`}>{deQuien}</p>
         <h1 className="mt-1 text-xl font-bold text-ink">{cita.consultorio}</h1>
       </div>
 
@@ -113,7 +130,8 @@ export default async function CitaPage({
         </p>
         <p className="mt-1 text-xs text-muted">
           {duracion(cita.inicio, cita.fin)}
-          {cita.paciente && ` · para ${cita.paciente}`}
+          {/* De quién es la cita ya lo dice el encabezado; aquí sobraría. */}
+          {cita.paciente && !quienLee && ` · para ${cita.paciente}`}
         </p>
       </div>
 

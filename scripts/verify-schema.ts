@@ -269,6 +269,23 @@ async function main() {
   const cita1 = await pedir(slot, 'Niña Uno', 'uno@example.com', null)
   check('un paciente puede solicitar cita', Boolean(cita1.rows[0].solicitar_cita))
 
+  // La liga saluda por su nombre a quien la abre, que no siempre es el paciente.
+  const ligaDeOtro = await db.query<{
+    paciente: string
+    es_menor: boolean
+    tutor: string | null
+  }>(`select paciente, es_menor, tutor from ver_cita($1)`, [paraOtro.rows[0].solicitar_cita])
+  check('la liga trae el nombre del paciente', ligaDeOtro.rows[0].paciente === 'Sofía Chica')
+  check('y dice que depende de alguien', ligaDeOtro.rows[0].es_menor === true)
+  check('y trae a quién saludar', ligaDeOtro.rows[0].tutor === 'Marta Chica')
+
+  const ligaPropia = await db.query<{ es_menor: boolean; tutor: string | null }>(
+    `select es_menor, tutor from ver_cita($1)`,
+    [cita1.rows[0].solicitar_cita],
+  )
+  check('un adulto no arrastra tutor', ligaPropia.rows[0].tutor === null)
+  check('ni queda marcado como dependiente', ligaPropia.rows[0].es_menor === false)
+
   const estado = await db.query<{ status: string; ends_at: Date }>(
     `select status::text, ends_at from appointments where access_token = $1`,
     [cita1.rows[0].solicitar_cita],

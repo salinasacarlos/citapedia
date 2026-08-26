@@ -257,6 +257,8 @@ export type Database = {
           telefono: string | null
           zona: string
           paciente: string | null
+          es_menor: boolean
+          tutor: string | null
           inicio: string
           fin: string
           estado: AppointmentStatus
