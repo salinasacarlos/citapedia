@@ -371,3 +371,43 @@ export async function marcarVencidas(): Promise<void> {
 
   revalidatePath('/admin', 'layout')
 }
+
+// ------------------------------------------- confirmación con el paciente
+
+/**
+ * `confirmed` significa que el consultorio aceptó la cita. Que el paciente
+ * diga que viene es otra cosa, y es la que baja las inasistencias.
+ *
+ * Se marca a mano porque WhatsApp se abre en otra ventana: el sistema no puede
+ * saber si contestaron.
+ */
+export async function marcarContactado(datos: FormData) {
+  await exigirConsultorio()
+  const supabase = await createClient()
+  await supabase
+    .from('appointments')
+    .update({ confirmation_sent_at: new Date().toISOString() })
+    .eq('id', String(datos.get('id')))
+  revalidatePath('/admin', 'layout')
+}
+
+export async function marcarConfirmadaPorPaciente(datos: FormData) {
+  await exigirConsultorio()
+  const supabase = await createClient()
+  await supabase
+    .from('appointments')
+    .update({ patient_confirmed_at: new Date().toISOString() })
+    .eq('id', String(datos.get('id')))
+  revalidatePath('/admin', 'layout')
+}
+
+/** Si el paciente después dice que no puede, se deshace. */
+export async function deshacerConfirmacion(datos: FormData) {
+  await exigirConsultorio()
+  const supabase = await createClient()
+  await supabase
+    .from('appointments')
+    .update({ patient_confirmed_at: null })
+    .eq('id', String(datos.get('id')))
+  revalidatePath('/admin', 'layout')
+}

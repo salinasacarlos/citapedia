@@ -324,3 +324,28 @@ mostraba el mismo teléfono en dos renglones que dicen cosas distintas.
 
 El reconocimiento de un paciente que vuelve busca en los dos lados, porque el
 contacto puede estar de cualquiera de ellos.
+
+## Confirmación de asistencia
+
+`status = 'confirmed'` significa que el **consultorio** aceptó la cita. Que el
+**paciente** diga que viene es otra cosa, y es la que baja las inasistencias.
+
+Va como marcas de tiempo (`confirmation_sent_at`, `patient_confirmed_at`), no
+como valor del enum, a propósito: la restricción de solape filtra por
+`status = 'confirmed'` y un estado nuevo quedaría fuera —el hueco se volvería
+a ofrecer al público—. Ocho consultas más filtran por ese mismo valor. Como
+columna, la interfaz muestra la distinción y la lógica de agenda no se entera.
+
+## WhatsApp
+
+Manual: `wa.me` abre la app o WhatsApp Web según el dispositivo, y la
+recepcionista presiona enviar. Sin API de Meta, sin costo, sin aprobaciones.
+
+El número se arma **al construir la liga**, no al guardarlo: los teléfonos
+entran como cada quien los escribe y reescribirlos en la base sería destruir
+lo que el consultorio capturó. `numeroParaWhatsApp` interpreta los formatos
+comunes (con y sin lada, el "1" viejo de México, paréntesis, 00 internacional)
+y devuelve `null` si no entiende — entonces no se ofrece el botón, en vez de
+abrir un chat con un número equivocado.
+
+A un paciente que depende de alguien se le escribe **a su tutor**.
