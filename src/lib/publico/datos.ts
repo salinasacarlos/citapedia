@@ -56,7 +56,8 @@ export function huecosDe(datos: NonNullable<Awaited<ReturnType<typeof cargarPagi
     ocupados: datos.ocupados,
     duracionMin: datos.perfil.slot_duration ?? 30,
     zona: datos.perfil.timezone,
-    dias: 21,
+    // Dos meses: suficiente para que el calendario tenga a dónde avanzar.
+    dias: 60,
     // Nadie quiere una solicitud para dentro de veinte minutos.
     anticipacionMin: 120,
   })
