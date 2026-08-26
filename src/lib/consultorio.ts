@@ -38,9 +38,16 @@ export const obtenerConsultorio = cache(async (): Promise<Consultorio | null> =>
   }
 })
 
-/** Para páginas de admin: sin consultorio no hay nada que mostrar. */
+/**
+ * Para páginas de admin.
+ *
+ * Sin sesión, el proxy ya redirigió a /login. Con sesión pero sin consultorio
+ * —a un asistente le quitaron el acceso, por ejemplo— mandarlo a /login lo
+ * dejaría rebotando: su sesión sigue siendo válida y volvería aquí. Va a una
+ * pantalla que le explica qué pasó.
+ */
 export async function exigirConsultorio(): Promise<Consultorio> {
   const consultorio = await obtenerConsultorio()
-  if (!consultorio) redirect('/login')
+  if (!consultorio) redirect('/sin-acceso')
   return consultorio
 }

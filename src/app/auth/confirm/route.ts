@@ -11,7 +11,10 @@ export async function GET(request: NextRequest) {
   const tokenHash = searchParams.get('token_hash')
   const type = searchParams.get('type') as EmailOtpType | null
   const code = searchParams.get('code')
-  const destino = searchParams.get('next') ?? '/admin'
+  const solicitado = searchParams.get('next') ?? '/admin'
+  // Solo rutas internas: evita convertir la confirmación en un trampolín.
+  const destino =
+    solicitado.startsWith('/') && !solicitado.startsWith('//') ? solicitado : '/admin'
 
   const supabase = await createClient()
 

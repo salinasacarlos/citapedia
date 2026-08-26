@@ -138,6 +138,30 @@ export type Database = {
       }
     }
     Functions: {
+      miembros_del_consultorio: {
+        Args: Record<string, never>
+        Returns: {
+          membership_id: string
+          user_id: string
+          email: string
+          rol: MemberRole
+          desde: string
+        }[]
+      }
+      ver_invitacion: {
+        Args: { p_token: string }
+        Returns: {
+          consultorio: string
+          email: string
+          rol: MemberRole
+          estado: string
+          vencida: boolean
+        }[]
+      }
+      aceptar_invitacion: {
+        Args: { p_token: string }
+        Returns: string
+      }
       solicitar_cita: {
         Args: {
           p_slug: string

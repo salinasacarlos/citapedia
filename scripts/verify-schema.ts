@@ -560,6 +560,169 @@ async function main() {
   }
   check('la vista pública de bloqueos no dice el motivo', razonOculta)
 
+  console.log('\nInvitación de asistente')
+
+  const proA2 = (
+    await db.query<{ id: string }>(`select id from professionals where slug = 'dra-ana-rios'`)
+  ).rows[0].id
+
+  async function invitar(correo: string, vence: string) {
+    return (
+      await db.query<{ token: string }>(
+        `insert into invitations (professional_id, email, role, token, expires_at)
+         values ($1, $2, 'assistant', $3, now() + $4::interval) returning token`,
+        [proA2, correo, `tok-${correo}-${vence}`, vence],
+      )
+    ).rows[0].token
+  }
+
+  const tokenBueno = await invitar('asistente@clinica.com', '7 days')
+
+  const vista = await db.query<{ consultorio: string; rol: string; vencida: boolean }>(
+    `select consultorio, rol::text, vencida from ver_invitacion($1)`,
+    [tokenBueno],
+  )
+  check(
+    'el invitado ve de quién es la invitación sin ser miembro',
+    vista.rows[0]?.consultorio === 'Dra. Ana Ríos' && vista.rows[0].vencida === false,
+  )
+
+  // El asistente que ya existía en auth (creado más arriba) la acepta.
+  await db.exec(`set role authenticated`)
+  await db.query(`select set_config('request.jwt.claims', $1, false)`, [
+    JSON.stringify({ sub: invitado }),
+  ])
+  const aceptada = await db.query<{ aceptar_invitacion: string }>(
+    `select aceptar_invitacion($1)`,
+    [tokenBueno],
+  )
+  await db.exec(`reset role`)
+  check('aceptar la invitación crea la membresía', aceptada.rows[0].aceptar_invitacion === proA2)
+
+  const rolNuevo = await db.query<{ role: string }>(
+    `select role::text from memberships where user_id = $1 and professional_id = $2`,
+    [invitado, proA2],
+  )
+  check('entra como assistant, no como owner', rolNuevo.rows[0]?.role === 'assistant')
+
+  const yaUsada = await db.query<{ status: string }>(
+    `select status from invitations where token = $1`,
+    [tokenBueno],
+  )
+  check('la invitación queda marcada como aceptada', yaUsada.rows[0].status === 'accepted')
+
+  // Reusar la misma liga no debe dar acceso otra vez.
+  let reusoBloqueado = false
+  try {
+    await como(drB, `select aceptar_invitacion($1)`, [tokenBueno])
+  } catch (err) {
+    reusoBloqueado = String(err).includes('ya se usó')
+  }
+  check('una invitación usada no sirve dos veces', reusoBloqueado)
+
+  // Reenviar la liga a otra persona no le da acceso.
+  const tokenAjeno = await invitar('otra.persona@clinica.com', '7 days')
+  let correoDistinto = false
+  try {
+    await como(drB, `select aceptar_invitacion($1)`, [tokenAjeno])
+  } catch (err) {
+    correoDistinto = String(err).includes('Esta invitación es para')
+  }
+  check('reenviar la liga a otro correo no da acceso', correoDistinto)
+
+  // Vencida.
+  const tokenViejo = await invitar('tarde@clinica.com', '-1 days')
+  let vencidaBloqueada = false
+  try {
+    await como(drB, `select aceptar_invitacion($1)`, [tokenViejo])
+  } catch (err) {
+    vencidaBloqueada = String(err).includes('venció')
+  }
+  check('una invitación vencida se rechaza', vencidaBloqueada)
+
+  // Sin sesión.
+  let anonBloqueado = false
+  try {
+    const t = await invitar('anon@clinica.com', '7 days')
+    await como(null, `select aceptar_invitacion($1)`, [t])
+  } catch (err) {
+    anonBloqueado = String(err).includes('iniciar sesión')
+  }
+  check('sin sesión no se puede aceptar', anonBloqueado)
+
+  // Dos invitaciones vivas al mismo correo, no.
+  let duplicadaBloqueada = false
+  try {
+    await invitar('asistente2@clinica.com', '7 days')
+    await db.query(
+      `insert into invitations (professional_id, email, role, token, expires_at)
+       values ($1, 'asistente2@clinica.com', 'assistant', 'otro-token', now() + interval '7 days')`,
+      [proA2],
+    )
+  } catch (err) {
+    duplicadaBloqueada = String(err).includes('invitations_pendiente_unica')
+  }
+  check('no se puede invitar dos veces al mismo correo', duplicadaBloqueada)
+
+
+  // La UI le esconde los botones al asistente, pero eso no es seguridad:
+  // lo que manda son las políticas.
+  const citasAsistente = await como<{ n: number }>(
+    invitado,
+    `select count(*)::int as n from appointments`,
+  )
+  check(
+    'el asistente sí ve la agenda del consultorio',
+    Number(citasAsistente.rows[0].n) >= 0,
+  )
+
+  let invitarBloqueado = false
+  try {
+    await como(
+      invitado,
+      `insert into invitations (professional_id, email, role, token, expires_at)
+       values ($1, 'colado@clinica.com', 'assistant', 'token-colado', now() + interval '7 days')`,
+      [proA2],
+    )
+  } catch (err) {
+    invitarBloqueado = String(err).includes('row-level security')
+  }
+  check('un asistente no puede invitar a nadie', invitarBloqueado)
+
+  const borrado = await como<{ n: number }>(
+    invitado,
+    `with borradas as (delete from professionals where id = $1 returning 1)
+     select count(*)::int as n from borradas`,
+    [proA2],
+  )
+  check('un asistente no puede borrar el consultorio', Number(borrado.rows[0].n) === 0)
+
+  const sacarDueño = await como<{ n: number }>(
+    invitado,
+    `with quitadas as (delete from memberships where professional_id = $1 and role = 'owner' returning 1)
+     select count(*)::int as n from quitadas`,
+    [proA2],
+  )
+  check('un asistente no puede sacar al dueño', Number(sacarDueño.rows[0].n) === 0)
+
+  const equipoA = await como<{ email: string; rol: string }>(
+    drA,
+    `select email, rol::text from miembros_del_consultorio()`,
+  )
+  check(
+    'el dueño ve a su equipo con correos',
+    equipoA.rows.length === 2 &&
+      equipoA.rows.some((r) => r.rol === 'owner') &&
+      equipoA.rows.some((r) => r.rol === 'assistant'),
+    equipoA.rows.map((r) => `${r.rol}:${r.email}`).join(', '),
+  )
+
+  const equipoB = await como<{ email: string }>(
+    drB,
+    `select email from miembros_del_consultorio()`,
+  )
+  check('un médico no ve el equipo de otro consultorio', equipoB.rows.length === 1)
+
   const pacientesPrevios = (
     await db.query<{ n: number }>(`select count(*)::int as n from patients`)
   ).rows[0].n
