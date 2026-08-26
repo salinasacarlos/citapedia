@@ -162,6 +162,10 @@ export type Database = {
         Args: { p_token: string }
         Returns: string
       }
+      reagendar_cita: {
+        Args: { p_cita: string; p_inicio: string }
+        Returns: string
+      }
       solicitar_cita: {
         Args: {
           p_slug: string

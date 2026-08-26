@@ -336,6 +336,111 @@ async function main() {
 
   await db.query(`delete from professionals where id = $1`, [rsv])
 
+  console.log('\nReagendar')
+
+  const rag = (
+    await db.query<{ id: string }>(
+      `insert into professionals (name, email, slug, slot_duration, timezone)
+       values ('Dra. Reagenda', 'reagenda@clinica.com', 'dra-reagenda', 30, 'America/Mexico_City')
+       returning id`,
+    )
+  ).rows[0].id
+  await db.query(
+    `insert into availability (professional_id, weekday, start_time, end_time)
+     select $1, d, '09:00', '13:00' from generate_series(0, 6) d`,
+    [rag],
+  )
+  const pacienteRag = (
+    await db.query<{ id: string }>(
+      `insert into patients (name) values ('Niña Reagenda') returning id`,
+    )
+  ).rows[0].id
+
+  const mañana = new Date(Date.now() + 86_400_000)
+  const yr = mañana.getUTCFullYear()
+  const mr = String(mañana.getUTCMonth() + 1).padStart(2, '0')
+  const dr = String(mañana.getUTCDate()).padStart(2, '0')
+  const alas = (h: string) => `${yr}-${mr}-${dr}T${h}:00Z`
+
+  async function citaConfirmada(hora: string) {
+    return (
+      await db.query<{ id: string }>(
+        `insert into appointments (professional_id, patient_id, starts_at, ends_at, status)
+         values ($1, $2, $3::timestamptz, $3::timestamptz + interval '30 minutes', 'confirmed')
+         returning id`,
+        [rag, pacienteRag, alas(hora)],
+      )
+    ).rows[0].id
+  }
+
+  const cita = await citaConfirmada('16:00')
+
+  // Mover unos minutos: vieja y nueva se enciman dentro de la transacción.
+  const movida = await db.query<{ reagendar_cita: string }>(
+    `select reagendar_cita($1, $2::timestamptz)`,
+    [cita, alas('16:15')],
+  )
+  check('mover una cita unos minutos no choca consigo misma', Boolean(movida.rows[0].reagendar_cita))
+
+  const enlace = await db.query<{ status: string; rescheduled_to: string | null }>(
+    `select status::text, rescheduled_to from appointments where id = $1`,
+    [cita],
+  )
+  check(
+    'la vieja queda reagendada y apunta a la nueva',
+    enlace.rows[0].status === 'rescheduled' &&
+      enlace.rows[0].rescheduled_to === movida.rows[0].reagendar_cita,
+  )
+
+  const heredada = await db.query<{ patient_id: string; minutos: number }>(
+    `select patient_id, extract(epoch from (ends_at - starts_at))/60 as minutos
+       from appointments where id = $1`,
+    [movida.rows[0].reagendar_cita],
+  )
+  check(
+    'la nueva conserva paciente y duración',
+    heredada.rows[0].patient_id === pacienteRag && Number(heredada.rows[0].minutos) === 30,
+  )
+
+  // Encimarse con OTRA confirmada sigue prohibido.
+  const otra = await citaConfirmada('18:00')
+  let choqueBloqueado = false
+  try {
+    await db.query(`select reagendar_cita($1, $2::timestamptz)`, [otra, alas('16:15')])
+  } catch (err) {
+    choqueBloqueado = String(err).includes('otra cita confirmada')
+  }
+  check('no se puede reagendar encima de otra cita confirmada', choqueBloqueado)
+
+  // Fuera del horario publicado.
+  let fueraBloqueado = false
+  try {
+    await db.query(`select reagendar_cita($1, $2::timestamptz)`, [otra, alas('05:00')])
+  } catch (err) {
+    fueraBloqueado = String(err).includes('fuera de tu horario')
+  }
+  check('no se puede reagendar fuera del horario de atención', fueraBloqueado)
+
+  // Una cita ya cerrada no se mueve.
+  let cerradaBloqueada = false
+  try {
+    await db.query(`select reagendar_cita($1, $2::timestamptz)`, [cita, alas('17:00')])
+  } catch (err) {
+    cerradaBloqueada = String(err).includes('confirmada')
+  }
+  check('una cita ya reagendada no se puede volver a mover', cerradaBloqueada)
+
+  // Al mismo horario que ya tenía.
+  let mismaBloqueada = false
+  try {
+    await db.query(`select reagendar_cita($1, $2::timestamptz)`, [otra, alas('18:00')])
+  } catch (err) {
+    mismaBloqueada = String(err).includes('misma hora')
+  }
+  check('reagendar a la misma hora se rechaza', mismaBloqueada)
+
+  await db.query(`delete from professionals where id = $1`, [rag])
+
   console.log('\nMáquina de estados')
 
   async function transicion(desde: string, hacia: string) {

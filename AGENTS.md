@@ -122,7 +122,7 @@ Cada estado necesita un camino real en la UI, o es dato muerto. Estado actual:
 | `no_show` | No asistió, en Agenda → Por cerrar |
 | `cancelled_by_professional` | Cancelar, en Agenda |
 | `cancelled_by_patient` | **sin camino todavía** |
-| `rescheduled` | **sin camino todavía** |
+| `rescheduled` | Reagendar, en Agenda (`reagendar_cita`) |
 
 Regla de la agenda: una cita `confirmed` que ya terminó NO desaparece — cae en
 "Por cerrar" hasta que el consultorio dice qué pasó. Y cerrar o marcar
@@ -221,3 +221,25 @@ Cambiar el correo de acceso está pendiente a propósito: exige confirmar el
 nuevo por mensaje, y sin SMTP el médico se quedaría fuera de su propia cuenta.
 Ojo además con que `professionals.email` y el correo de `auth.users` son campos
 distintos: al habilitarlo hay que mover los dos.
+
+## Reagendar
+
+Mover una cita son dos escrituras que no pueden quedar a medias: si se crea la
+nueva y falla el cierre de la vieja, el paciente termina con dos citas. Todo
+vive en `reagendar_cita`, una sola transacción.
+
+Va con **SECURITY INVOKER** a propósito, al revés que `solicitar_cita`: quien
+reagenda ya es miembro, así que RLS decide qué citas puede tocar y no hace
+falta elevarse.
+
+La restricción de solape es **DEFERRABLE**: al mover una cita quince minutos,
+la vieja y la nueva se enciman por un instante dentro de la transacción. Se
+aplaza para que se revise al final, cuando la vieja ya dejó de estar
+confirmada. Encimarse con **otra** cita confirmada sigue prohibido.
+
+La cita conserva su duración y su paciente: reagendar es moverla, no
+reconfigurarla.
+
+`SelectorHueco` es el mismo componente que usa la página pública. Un solo
+calendario que mantener, y el médico ve exactamente los huecos que verían sus
+pacientes.
