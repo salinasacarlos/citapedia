@@ -10,6 +10,7 @@ import type { MemberRole } from '@/lib/database.types'
 const SECCIONES = [
   { href: '/admin', etiqueta: 'Agenda' },
   { href: '/admin/solicitudes', etiqueta: 'Solicitudes' },
+  { href: '/admin/pacientes', etiqueta: 'Pacientes' },
   { href: '/admin/horario', etiqueta: 'Horario' },
   { href: '/admin/historial', etiqueta: 'Historial' },
   { href: '/admin/perfil', etiqueta: 'Mi página' },

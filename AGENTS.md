@@ -243,3 +243,30 @@ reconfigurarla.
 `SelectorHueco` es el mismo componente que usa la página pública. Un solo
 calendario que mantener, y el médico ve exactamente los huecos que verían sus
 pacientes.
+
+## Pacientes y expediente
+
+`patients` tiene dueño (`professional_id`) y las políticas se apoyan en eso,
+no en rodear por la tabla de citas.
+
+Lo clínico vive aparte porque **RLS filtra filas, no columnas**: no existe una
+política que deje al asistente ver el teléfono pero no las alergias.
+`clinical_records` y `consultation_notes` son de solo dueño.
+
+`appointments.notes` es lo que escribió el paciente al pedir cita.
+`consultation_notes.note` es lo que encontró el médico. Son cosas distintas y
+la ficha las muestra por separado.
+
+`patients_resumen` es una vista con `security_invoker = true` —al revés que
+las vistas públicas— para que el RLS de `patients` siga aplicando.
+
+## Exportar a Excel
+
+`.xlsx` de verdad, con `write-excel-file`. CSV parece suficiente hasta que
+Excel se come el `+` de un teléfono, convierte `5550506060` a notación
+científica y rompe los acentos; con datos mexicanos eso pasa siempre. Los
+teléfonos van forzados a texto.
+
+Las hojas clínicas **no se arman** si quien exporta es asistente, y las
+consultas ni siquiera se lanzan. Confiar en que RLS las devuelva vacías sería
+apoyarse en un efecto secundario.

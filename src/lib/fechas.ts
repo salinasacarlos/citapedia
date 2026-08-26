@@ -136,3 +136,34 @@ export function describirBloqueo(desdeISO: string, hastaISO: string, zona: strin
     ? `${dia(inicio)}, ${hora(desdeISO, zona)} – ${hora(hastaISO, zona)}`
     : `${dia(inicio)} ${hora(desdeISO, zona)} – ${dia(fin)} ${hora(hastaISO, zona)}`
 }
+
+/**
+ * '2021-06-18' → '5 años'. En bebés los meses importan más que los años, y
+ * en pediatría esa diferencia cambia dosis y percentiles.
+ */
+export function edad(fechaNacimiento: string | null): string | null {
+  if (!fechaNacimiento) return null
+
+  const nace = new Date(`${fechaNacimiento}T12:00:00Z`)
+  const hoy = new Date()
+  let meses =
+    (hoy.getUTCFullYear() - nace.getUTCFullYear()) * 12 +
+    (hoy.getUTCMonth() - nace.getUTCMonth())
+  if (hoy.getUTCDate() < nace.getUTCDate()) meses--
+  if (meses < 0) return null
+
+  if (meses < 24) return `${meses} ${meses === 1 ? 'mes' : 'meses'}`
+  const años = Math.floor(meses / 12)
+  return `${años} ${años === 1 ? 'año' : 'años'}`
+}
+
+/** '2021-06-18' → '18 de junio de 2021'. */
+export function fechaSuelta(fecha: string | null): string | null {
+  if (!fecha) return null
+  return new Intl.DateTimeFormat('es-MX', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(`${fecha}T12:00:00Z`))
+}

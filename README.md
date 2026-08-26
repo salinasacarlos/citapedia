@@ -74,7 +74,8 @@ Ocho tablas en `supabase/migrations/`:
 - `invitations` — invitación por token para sumar un asistente.
 - `availability` — horario semanal recurrente (`weekday` 0=domingo … 6=sábado).
 - `time_blocks` — huecos tapados puntualmente (juntas, vacaciones), editables desde el admin.
-- `patients` — paciente simple, sin distinción tutor/niño por ahora.
+- `patients` — el paciente y su tutor opcional; sirve para adultos y menores.
+- `clinical_records` / `consultation_notes` — el expediente, solo para el médico.
 - `appointments` — la cita y su estado.
 - `reminder_settings` — canal y horas de anticipación por médico.
 
