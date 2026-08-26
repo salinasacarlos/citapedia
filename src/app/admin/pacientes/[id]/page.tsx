@@ -4,11 +4,13 @@ import { createClient } from '@/lib/supabase/server'
 import { exigirConsultorio } from '@/lib/consultorio'
 import { EstadoVacio } from '@/components/estado-vacio'
 import { NotaConsulta } from '@/components/nota-consulta'
+import { aceptarDeclarados } from '@/lib/pacientes/actions'
 import { edad, fechaCorta, fechaSuelta, hora } from '@/lib/fechas'
 import type {
   AppointmentStatus,
   ClinicalRecord,
   ConsultationNote,
+  DeclaredRecord,
   Patient,
 } from '@/lib/database.types'
 
@@ -86,7 +88,8 @@ export default async function FichaPaciente({
 
   if (!paciente) notFound()
 
-  const [{ data: citas }, { data: expediente }, { data: consultas }] = await Promise.all([
+  const [{ data: citas }, { data: expediente }, { data: consultas }, { data: declarado }] =
+    await Promise.all([
     supabase
       .from('appointments')
       .select('id, starts_at, ends_at, status, notes')
@@ -108,6 +111,13 @@ export default async function FichaPaciente({
           .order('created_at', { ascending: false })
           .returns<ConsultationNote[]>()
       : Promise.resolve({ data: [] as ConsultationNote[] }),
+    esDueño
+      ? supabase
+          .from('declared_records')
+          .select('*')
+          .eq('patient_id', id)
+          .maybeSingle<DeclaredRecord>()
+      : Promise.resolve({ data: null }),
   ])
 
   const historial = citas ?? []
@@ -188,6 +198,42 @@ export default async function FichaPaciente({
         </div>
       )}
 
+      {/* Lo que dijo el paciente se muestra aparte y se ve distinto: si se
+          viera igual que el expediente, alguien recetaría sobre un dato que
+          nadie verificó. */}
+      {esDueño && declarado && !declarado.reviewed_at && (
+        <section className="mb-5 rounded-marca border border-acento/40 bg-acento-suave/50 p-4 sm:p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="font-semibold text-acento">
+                Lo que declaró el paciente · sin verificar
+              </h2>
+              <p className="mt-1 text-xs text-muted">
+                Lo escribió al agendar, el {fechaCorta(declarado.declared_at, zona)}.
+                Confírmalo en consulta antes de darlo por bueno.
+              </p>
+            </div>
+            <form action={aceptarDeclarados}>
+              <input type="hidden" name="patient_id" value={paciente.id} />
+              <button className="boton boton-suave px-3 py-1.5 text-xs">
+                Pasar al expediente
+              </button>
+            </form>
+          </div>
+
+          <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+            <Dato etiqueta="Alergias" valor={declarado.allergies} />
+            <Dato etiqueta="Padecimientos" valor={declarado.conditions} />
+            <Dato etiqueta="Medicamentos" valor={declarado.medications} />
+            <Dato etiqueta="Tipo de sangre" valor={declarado.blood_type} />
+          </dl>
+          <p className="mt-3 text-xs text-muted">
+            Al pasarlo solo se llena lo que tengas vacío: lo que ya escribiste no
+            se toca.
+          </p>
+        </section>
+      )}
+
       <div className="grid gap-5 lg:grid-cols-[1fr_1.4fr]">
         <div className="space-y-5">
           <section className="tarjeta p-4 sm:p-5">
@@ -207,6 +253,7 @@ export default async function FichaPaciente({
                     valor={paciente.tutor_name}
                   />
                   <Dato etiqueta="Su teléfono" valor={paciente.tutor_phone} />
+                  <Dato etiqueta="Su correo" valor={paciente.tutor_email} />
                 </>
               )}
               <Dato

@@ -296,3 +296,31 @@ para operar la agenda?**
 
 La presión arterial va como **texto** en el Excel: '100/65' como número Excel
 lo convierte en fecha.
+
+## Datos declarados por el paciente
+
+`declared_records` es lo que el paciente escribió al agendar. **No es el
+expediente.** Lo que teclea alguien a las once de la noche y lo que el médico
+verificó en consulta no son el mismo dato, y si se vieran iguales alguien
+recetaría sobre el equivocado.
+
+- Se guarda por `declarar_datos_medicos`, que exige consentimiento explícito
+  (los datos de salud son sensibles) y solo acepta escrituras dentro de las 24
+  horas siguientes a la cita: si el id se filtrara, la ventana ya cerró.
+- La ficha lo muestra en su propio bloque azul, marcado "sin verificar", nunca
+  en la alerta roja de alergias confirmadas.
+- `aceptar_datos_declarados` lo pasa al expediente **solo donde está vacío**:
+  lo que el médico escribió manda. Lo declarado no se borra, queda marcado como
+  revisado.
+
+Si el paciente lo vuelve a cambiar, `reviewed_at` se limpia y hay que revisarlo
+otra vez.
+
+## Contacto: de quién es cada dato
+
+Al agendar para otra persona, el contacto es de quien agenda. Va a
+`tutor_phone` / `tutor_email` y **no** se copia a `phone` / `email`: hacerlo
+mostraba el mismo teléfono en dos renglones que dicen cosas distintas.
+
+El reconocimiento de un paciente que vuelve busca en los dos lados, porque el
+contacto puede estar de cualquiera de ellos.

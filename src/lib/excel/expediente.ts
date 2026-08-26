@@ -99,7 +99,7 @@ export async function construirExpediente(datos: Datos) {
 
   const hojaPacientes = {
     sheet: 'Pacientes',
-    columns: columnas([26, 10, 18, 12, 14, 18, 28, 24, 14, 18, 22, 16, 18, 18, 30]),
+    columns: columnas([26, 10, 18, 12, 14, 18, 28, 24, 14, 18, 26, 22, 16, 18, 18, 30]),
     data: [
       encabezados([
         'Nombre', 'Edad', 'Fecha de nacimiento', 'Sexo', 'Depende de alguien',
@@ -118,6 +118,7 @@ export async function construirExpediente(datos: Datos) {
         texto(p.tutor_name),
         texto(p.tutor_relationship),
         comoTexto(p.tutor_phone),
+        texto(p.tutor_email),
         texto(p.emergency_contact_name),
         texto(p.emergency_contact_relationship),
         comoTexto(p.emergency_contact_phone),

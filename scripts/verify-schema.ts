@@ -260,6 +260,11 @@ async function main() {
     'el teléfono de quien agenda se guarda como del tutor',
     p?.tutor_phone === '+52 55 7777 0000',
   )
+  check(
+    'y NO se le atribuye también al paciente',
+    p?.phone === null,
+    `phone=${p?.phone}`,
+  )
 
   const cita1 = await pedir(slot, 'Niña Uno', 'uno@example.com', null)
   check('un paciente puede solicitar cita', Boolean(cita1.rows[0].solicitar_cita))
@@ -359,6 +364,51 @@ async function main() {
     await db.query<{ n: number }>(`select count(*)::int as n from patients where email = 'dos@example.com'`)
   ).rows[0].n
   check('un paciente que regresa no se duplica', pacientesAntes === 1 && pacientesDespues === 1)
+
+  console.log('\nDatos declarados por el paciente')
+
+  const citaDec = await pedir(`${y}-${m}-${d}T17:30:00Z`, 'Niña Declara', 'declara@example.com', null)
+  const idCitaDec = citaDec.rows[0].solicitar_cita
+
+  let sinConsentimiento = false
+  try {
+    await db.query(`select declarar_datos_medicos($1, false, 'Penicilina')`, [idCitaDec])
+  } catch (err) {
+    sinConsentimiento = String(err).includes('permiso para guardar datos de salud')
+  }
+  check('sin consentimiento no se guarda nada', sinConsentimiento)
+
+  await db.query(
+    `select declarar_datos_medicos($1, true, 'Penicilina', 'Asma', 'Salbutamol', 'O+')`,
+    [idCitaDec],
+  )
+  const declarado = await db.query<{ allergies: string; reviewed_at: string | null }>(
+    `select allergies, reviewed_at from declared_records`,
+  )
+  check(
+    'lo declarado se guarda sin verificar',
+    declarado.rows[0]?.allergies === 'Penicilina' && declarado.rows[0].reviewed_at === null,
+  )
+
+  const enExpediente = await db.query<{ n: number }>(
+    `select count(*)::int as n from clinical_records
+      where patient_id = (select patient_id from appointments where id = $1)`,
+    [idCitaDec],
+  )
+  check('NO entra solo al expediente clínico', Number(enExpediente.rows[0].n) === 0)
+
+  // Una liga vieja ya no sirve para escribir.
+  await db.query(
+    `update appointments set created_at = now() - interval '2 days' where id = $1`,
+    [idCitaDec],
+  )
+  let ligaVencida = false
+  try {
+    await db.query(`select declarar_datos_medicos($1, true, 'otra cosa')`, [idCitaDec])
+  } catch (err) {
+    ligaVencida = String(err).includes('venció')
+  }
+  check('pasadas 24 horas la liga ya no escribe', ligaVencida)
 
   await db.query(`delete from professionals where id = $1`, [rsv])
 
