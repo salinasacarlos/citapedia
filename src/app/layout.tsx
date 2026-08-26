@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     template: '%s · CitaPedia',
   },
   description:
-    'Agenda para pediatras. Tu página pública, tus horarios y tus citas, con cada solicitud aprobada por ti.',
+    'Agenda para consultorios. Tu página pública, tus horarios y tus citas, con cada solicitud aprobada por ti.',
 }
 
 export default function RootLayout({

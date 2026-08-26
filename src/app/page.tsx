@@ -8,7 +8,7 @@ const PASOS = [
   {
     titulo: 'Tu página, tu cara',
     texto:
-      'Una liga propia con tu foto, tu formación y cómo es tu consulta. Se la mandas a una mamá y ya sabe quién eres.',
+      'Una liga propia con tu foto, tu formación y cómo es tu consulta. La mandas por WhatsApp y quien agenda ya sabe quién eres.',
   },
   {
     titulo: 'Tú decides cada cita',
@@ -59,9 +59,9 @@ export default async function Home() {
             La agenda de tu consultorio, sin llamadas ni libreta
           </h1>
           <p className="mt-5 max-w-xl text-lg text-muted">
-            CitaPedia le da a cada pediatra una página propia donde los papás ven sus
-            horarios y solicitan cita. Tú apruebas cada una, desde el celular, entre
-            paciente y paciente.
+            CitaPedia le da a tu consultorio una página propia donde tus pacientes
+            —o quien los acompaña— ven tus horarios y solicitan cita. Tú apruebas
+            cada una, desde el celular, entre paciente y paciente.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Link href="/registro" className="boton boton-primario px-5 py-3">
@@ -89,7 +89,7 @@ export default async function Home() {
       <footer className="border-t border-border">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-4 py-8 text-sm text-muted sm:px-6">
           <Marca href={null} />
-          <p>Hecho para pediatras.</p>
+          <p>Hecho para consultorios.</p>
         </div>
       </footer>
     </div>

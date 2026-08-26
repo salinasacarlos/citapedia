@@ -120,7 +120,7 @@ export default async function FichaPaciente({
       : Promise.resolve({ data: null }),
   ])
 
-  const historial = citas ?? []
+  const bitacora = citas ?? []
   const notas = consultas ?? []
   const notaPorCita = new Map(notas.map((n) => [n.appointment_id, n]))
   const años = edad(paciente.birth_date)
@@ -319,15 +319,23 @@ export default async function FichaPaciente({
         </div>
 
         <section>
-          <h2 className="mb-3 font-semibold text-ink">
-            Historial de citas ({historial.length})
+          {/*
+            "Historial de citas" no describía lo que hay aquí: cada renglón junta
+            la cita con lo que el médico anotó ese día. Es la línea de tiempo del
+            paciente, y así la nombra quien la usa.
+          */}
+          <h2 className="font-semibold text-ink">
+            Bitácora del paciente ({bitacora.length})
           </h2>
+          <p className="mb-3 text-sm text-muted">
+            Cada visita, en orden, con lo que se anotó ese día.
+          </p>
 
-          {historial.length === 0 ? (
+          {bitacora.length === 0 ? (
             <EstadoVacio titulo="Sin citas todavía" />
           ) : (
             <ul className="space-y-2">
-              {historial.map((cita) => {
+              {bitacora.map((cita) => {
                 const desenlace = DESENLACE[cita.status]
                 const nota = notaPorCita.get(cita.id)
                 return (
