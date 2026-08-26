@@ -433,6 +433,19 @@ inalcanzable cuando el paciente no tiene teléfono capturado o pide que se la
 manden por otro lado. Sigue visible después de que el paciente confirmó: por
 ahí adelanta sus datos y mueve la cita.
 
+La liga saluda por su nombre a quien la abre, que no siempre es el paciente: si
+la cita es de un menor, quien la abre es su tutor. `ver_cita` devuelve `paciente`
+y `tutor` por separado en vez de que la página adivine con un solo nombre —
+saludar y decir de quién es la cita son dos datos distintos, el mismo enredo que
+`is_minor` vino a resolver.
+
+- Adulto: "Hola, Carlos" / "Tu cita con".
+- Menor: "Hola, Adriana" / "La cita de Ximena Robles con".
+- `tutor` sale null si el paciente no es menor: un `tutor_name` viejo colgando
+  de un adulto no convierte a nadie en su encargado.
+- El renglón de la duración ya no repite "para X" cuando el encabezado nombró a
+  esa persona.
+
 Si la plantilla del recordatorio no trae `{liga}`, se agrega al final. Es lo
 que deja al paciente confirmar solo, sin que la recepcionista tenga que
 preguntarle.
