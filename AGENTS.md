@@ -412,6 +412,12 @@ nunca el resto de la agenda.
 `solicitar_cita` devuelve el token, no el id: es lo que el paciente necesita
 para volver a su cita.
 
+La liga se ve en la Agenda, junto a cada cita: "Copiar liga", al lado del botón
+de WhatsApp. Vivía solo dentro del mensaje de WhatsApp, y eso la volvía
+inalcanzable cuando el paciente no tiene teléfono capturado o pide que se la
+manden por otro lado. Sigue visible después de que el paciente confirmó: por
+ahí adelanta sus datos y mueve la cita.
+
 Si la plantilla del recordatorio no trae `{liga}`, se agrega al final. Es lo
 que deja al paciente confirmar solo, sin que la recepcionista tenga que
 preguntarle.
