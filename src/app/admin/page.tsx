@@ -218,14 +218,22 @@ export default async function AgendaPage({
                     cita={cita}
                     zona={zona}
                     acciones={
-                      /* Todavía no ocurre: lo único honesto que se puede hacer
-                         es cancelarla. Cerrarla se habilita cuando ya pasó. */
-                      <AccionesCita
-                        id={cita.id}
-                        acciones={[
-                          { accion: cancelarCita, etiqueta: 'Cancelar', tono: 'peligro' },
-                        ]}
-                      />
+                      /* Todavía no ocurre: moverla o cancelarla. Cerrarla se
+                         habilita cuando ya pasó. */
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Link
+                          href={`/admin/reagendar/${cita.id}`}
+                          className="boton boton-suave px-3 py-1.5 text-xs"
+                        >
+                          Reagendar
+                        </Link>
+                        <AccionesCita
+                          id={cita.id}
+                          acciones={[
+                            { accion: cancelarCita, etiqueta: 'Cancelar', tono: 'peligro' },
+                          ]}
+                        />
+                      </div>
                     }
                   />
                 ))}
