@@ -341,11 +341,17 @@ columna, la interfaz muestra la distinción y la lógica de agenda no se entera.
 Manual: `wa.me` abre la app o WhatsApp Web según el dispositivo, y la
 recepcionista presiona enviar. Sin API de Meta, sin costo, sin aprobaciones.
 
-El número se arma **al construir la liga**, no al guardarlo: los teléfonos
-entran como cada quien los escribe y reescribirlos en la base sería destruir
-lo que el consultorio capturó. `numeroParaWhatsApp` interpreta los formatos
-comunes (con y sin lada, el "1" viejo de México, paréntesis, 00 internacional)
-y devuelve `null` si no entiende — entonces no se ofrece el botón, en vez de
-abrir un chat con un número equivocado.
+El número se captura con **lada explícita** (`CampoTelefono`): un selector de
+país más el número nacional. Adivinar el país por el largo funciona hasta el
+primer número de Estados Unidos —también diez dígitos— y entonces el
+recordatorio se va a un desconocido en Guadalajara.
+
+Se guarda como `+52 5570708080`. `numeroParaWhatsApp` respeta el `+`: si ya
+trae lada, no adivina nada. Los teléfonos viejos sin `+` siguen cayendo al
+comportamiento anterior (diez dígitos = México), para no romper lo capturado.
+
+El largo se **exige** solo en los países de `LADAS_FRECUENTES`, donde estoy
+seguro del formato; en el resto se avisa pero se deja pasar. Equivocarse sobre
+el largo de un país lejano no puede dejar a alguien sin poder agendar.
 
 A un paciente que depende de alguien se le escribe **a su tutor**.

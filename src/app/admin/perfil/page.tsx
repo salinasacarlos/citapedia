@@ -1,6 +1,7 @@
 import { exigirConsultorio } from '@/lib/consultorio'
 import { guardarPerfil } from '@/lib/admin/actions'
 import { Campo, Formulario } from '@/components/formulario'
+import { CampoTelefono } from '@/components/campo-telefono'
 import { FotoPerfil } from '@/components/foto-perfil'
 
 export const dynamic = 'force-dynamic'
@@ -76,7 +77,12 @@ export default async function PerfilPage() {
             </p>
           </div>
 
-          <Campo name="phone" label="Teléfono" defaultValue={p.phone ?? ''} required={false} />
+          <CampoTelefono
+            name="phone"
+            label="Teléfono"
+            valorInicial={p.phone}
+            ayuda="El que ven tus pacientes en tu página pública."
+          />
           <Campo
             name="clinic_address"
             label="Dirección del consultorio"
