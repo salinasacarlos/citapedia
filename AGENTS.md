@@ -222,6 +222,23 @@ nuevo por mensaje, y sin SMTP el médico se quedaría fuera de su propia cuenta.
 Ojo además con que `professionals.email` y el correo de `auth.users` son campos
 distintos: al habilitarlo hay que mover los dos.
 
+## Agendar desde el consultorio
+
+Hasta la migración `agendar_desde_admin`, toda cita nacía en la página
+pública. La realidad es que la gente llama o escribe por WhatsApp, y la
+recepcionista necesita agendar mientras tiene a la persona en la línea.
+
+`agendar_cita` valida lo mismo que `solicitar_cita` pero crea la cita ya
+`confirmed`: no tiene sentido que el consultorio se mande una solicitud a sí
+mismo para después aceptarla. Va con SECURITY INVOKER, como `reagendar_cita`.
+
+Acepta duración: una primera consulta no dura lo mismo que un seguimiento. Al
+cambiarla, los huecos se recalculan —va por URL, así que lo hace el servidor.
+
+Dar de alta al paciente y crear la cita son dos pasos separados a propósito: si
+el hueco se ocupa mientras la recepcionista escribe, el paciente ya quedó
+capturado y no hay que teclearlo otra vez.
+
 ## Reagendar
 
 Mover una cita son dos escrituras que no pueden quedar a medias: si se crea la

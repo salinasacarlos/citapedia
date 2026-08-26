@@ -995,6 +995,72 @@ async function main() {
   )
   check('un médico no ve los pacientes de otro consultorio', Number(ajeno.rows[0].n) === 0)
 
+  console.log('\nAgendar desde el consultorio')
+
+  const pacAgenda = (
+    await db.query<{ id: string }>(
+      `insert into patients (professional_id, name, phone)
+       values ($1, 'Paciente Mostrador', '+52 55 1234 5678') returning id`,
+      [proA2],
+    )
+  ).rows[0].id
+
+  const lunesQueViene = (() => {
+    const d = new Date()
+    d.setUTCDate(d.getUTCDate() + ((8 - d.getUTCDay()) % 7 || 7))
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(
+      d.getUTCDate(),
+    ).padStart(2, '0')}`
+  })()
+
+  // Dra. Ana atiende de 9 a 13 los días entre semana (fixture de arriba).
+  await db.query(
+    `insert into availability (professional_id, weekday, start_time, end_time)
+     select $1, d, '09:00', '13:00' from generate_series(0, 6) d
+      where not exists (select 1 from availability where professional_id = $1)`,
+    [proA2],
+  )
+
+  const nueva = await como<{ agendar_cita: string }>(
+    drA,
+    `select agendar_cita($1, $2::timestamptz, 45, 'Primera consulta')`,
+    [pacAgenda, `${lunesQueViene}T16:00:00Z`],
+  )
+  check('el consultorio puede agendar directo', Boolean(nueva.rows[0].agendar_cita))
+
+  const nace = await db.query<{ status: string; minutos: number }>(
+    `select status::text, extract(epoch from (ends_at - starts_at))/60 as minutos
+       from appointments where id = $1`,
+    [nueva.rows[0].agendar_cita],
+  )
+  check('nace confirmada, sin pasar por solicitud', nace.rows[0].status === 'confirmed')
+  check('respeta la duración que se le pide', Number(nace.rows[0].minutos) === 45)
+
+  let encimada = false
+  try {
+    await como(drA, `select agendar_cita($1, $2::timestamptz)`, [
+      pacAgenda,
+      `${lunesQueViene}T16:15:00Z`,
+    ])
+  } catch (err) {
+    encimada = String(err).includes('otra cita confirmada')
+  }
+  check('no se puede encimar sobre otra confirmada', encimada)
+
+  let ajena = false
+  try {
+    await como(drB, `select agendar_cita($1, $2::timestamptz)`, [
+      pacAgenda,
+      `${lunesQueViene}T17:00:00Z`,
+    ])
+  } catch (err) {
+    ajena = String(err).includes('No encontramos ese paciente')
+  }
+  check('no se puede agendar a un paciente de otro consultorio', ajena)
+
+  await db.query(`delete from appointments where patient_id = $1`, [pacAgenda])
+  await db.query(`delete from patients where id = $1`, [pacAgenda])
+
   const equipoA = await como<{ email: string; rol: string }>(
     drA,
     `select email, rol::text from miembros_del_consultorio()`,
