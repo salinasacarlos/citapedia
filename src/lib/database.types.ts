@@ -260,6 +260,15 @@ export type Database = {
         Args: { p_paciente: string }
         Returns: undefined
       }
+      agendar_cita: {
+        Args: {
+          p_paciente: string
+          p_inicio: string
+          p_duracion?: number | null
+          p_notas?: string | null
+        }
+        Returns: string
+      }
       reagendar_cita: {
         Args: { p_cita: string; p_inicio: string }
         Returns: string

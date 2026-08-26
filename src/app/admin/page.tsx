@@ -168,8 +168,11 @@ export default async function AgendaPage({
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <VistaAgenda actual="lista" />
+          <Link href="/admin/agendar" className="boton boton-primario">
+            Nueva cita
+          </Link>
           {(porRevisar ?? 0) > 0 && (
-            <Link href="/admin/solicitudes" className="boton boton-primario">
+            <Link href="/admin/solicitudes" className="boton boton-suave">
               {porRevisar} {porRevisar === 1 ? 'solicitud' : 'solicitudes'} por revisar
             </Link>
           )}
