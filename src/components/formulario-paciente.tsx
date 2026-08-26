@@ -6,6 +6,7 @@ import {
   guardarPaciente,
   type ResultadoPaciente,
 } from '@/lib/pacientes/actions'
+import { CampoTelefono } from '@/components/campo-telefono'
 import type { Patient } from '@/lib/database.types'
 
 const PARENTESCOS = ['Madre', 'Padre', 'Tutor', 'Hijo', 'Hija', 'Cónyuge', 'Cuidador']
@@ -134,11 +135,10 @@ export function FormularioPaciente({ paciente }: { paciente?: Patient }) {
               <option value="otro">Otro</option>
             </select>
           </Campo>
-          <Campo
+          <CampoTelefono
             name="phone"
-            label={dependiente ? 'Teléfono propio (si tiene)' : 'Teléfono'}
-            type="tel"
-            defaultValue={paciente?.phone ?? ''}
+            label={dependiente ? 'Teléfono propio (si tiene)' : 'Teléfono de WhatsApp'}
+            valorInicial={paciente?.phone}
           />
           <Campo
             name="email"
@@ -176,11 +176,11 @@ export function FormularioPaciente({ paciente }: { paciente?: Patient }) {
                 ))}
               </datalist>
             </Campo>
-            <Campo
+            <CampoTelefono
               name="tutor_phone"
-              label="Teléfono"
-              type="tel"
-              defaultValue={paciente?.tutor_phone ?? ''}
+              label="Teléfono de WhatsApp"
+              valorInicial={paciente?.tutor_phone}
+              ayuda="A este número se le mandan los recordatorios."
             />
             <Campo
               name="tutor_email"
@@ -205,11 +205,10 @@ export function FormularioPaciente({ paciente }: { paciente?: Patient }) {
             label="Parentesco"
             defaultValue={paciente?.emergency_contact_relationship ?? ''}
           />
-          <Campo
+          <CampoTelefono
             name="emergency_contact_phone"
             label="Teléfono"
-            type="tel"
-            defaultValue={paciente?.emergency_contact_phone ?? ''}
+            valorInicial={paciente?.emergency_contact_phone}
           />
         </div>
       </section>

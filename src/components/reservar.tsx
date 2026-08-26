@@ -4,6 +4,7 @@ import { useActionState, useState } from 'react'
 import { solicitarCita, type EstadoReserva } from '@/lib/publico/actions'
 import { SelectorHueco, etiquetaDia, etiquetaHora } from '@/components/selector-hueco'
 import { DeclararDatos } from '@/components/declarar-datos'
+import { CampoTelefono } from '@/components/campo-telefono'
 import type { DiaConHuecos } from '@/lib/slots'
 
 export function Reservar({
@@ -164,19 +165,11 @@ export function Reservar({
                 </div>
               </>
             )}
-            <div>
-              <label htmlFor="telefono" className="block text-sm font-medium text-ink">
-                Teléfono
-              </label>
-              <input
-                id="telefono"
-                name="telefono"
-                type="tel"
-                inputMode="tel"
-                defaultValue={estado.valores?.telefono}
-                className="campo mt-1.5"
-              />
-            </div>
+            <CampoTelefono
+              name="telefono"
+              label="Teléfono de WhatsApp"
+              valorInicial={estado.valores?.telefono}
+            />
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-ink">
                 Correo

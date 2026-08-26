@@ -17,8 +17,16 @@ export function numeroParaWhatsApp(
 ): string | null {
   if (!telefono) return null
 
+  // Un '+' al inicio significa que la lada ya viene en el número: no hay nada
+  // que adivinar, y adivinar de todos modos mandaría el mensaje a otro país.
+  const yaInternacional = telefono.trim().startsWith('+')
+
   const soloDigitos = telefono.replace(/\D/g, '')
   if (soloDigitos.length === 0) return null
+
+  if (yaInternacional) {
+    return soloDigitos.length >= 8 && soloDigitos.length <= 15 ? soloDigitos : null
+  }
 
   // Prefijo internacional escrito como 00.
   const sinCeros = soloDigitos.replace(/^00/, '')
