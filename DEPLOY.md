@@ -52,10 +52,13 @@ para los recordatorios) sirve la misma cuenta:
 - Host `smtp.resend.com`, puerto `465`, usuario `resend`, contraseña: tu API key.
 - Requiere verificar tu dominio en Resend.
 
-Mientras tanto, en desarrollo se puede apagar la confirmación por correo
-(Authentication → Providers → Email → *Confirm email* en off).
+**Estado actual: la confirmación por correo está APAGADA.** Se apagó con
+`supabase config push` para poder registrar cuentas sin toparse con el límite.
+Eso significa que hoy cualquiera puede registrarse con un correo que no es
+suyo. Es aceptable mientras solo entras tú; hay que volver a encenderla —con
+SMTP propio ya conectado— antes de abrir a médicos reales.
 
-## 4. Limpiar los datos de prueba
+## 4. Cuentas y datos de prueba
 
 La base tiene datos que se sembraron para probar las pantallas:
 
@@ -63,8 +66,16 @@ La base tiene datos que se sembraron para probar las pantallas:
 supabase db query --linked "delete from appointments; delete from patients; delete from time_blocks;"
 ```
 
-El consultorio de prueba (`dr-ernesto-pena`) puedes renombrarlo desde
-*Mi página* y volverlo tu cuenta real, o borrarlo y registrarte de nuevo.
+Hay dos cuentas de prueba, ambas con `salinasacarlos1+…@gmail.com`:
+`dr-ernesto-pena` (con datos) y `dra-lucia-ferrer` (vacía, del registro de
+prueba). Puedes renombrar una desde *Mi página* y volverla tu cuenta real, o
+borrarlas y registrarte de nuevo:
+
+```bash
+supabase db query --linked "delete from auth.users where email like 'salinasacarlos1+%';"
+```
+
+Borrar el usuario se lleva su consultorio en cascada.
 
 ## 5. Migraciones
 
