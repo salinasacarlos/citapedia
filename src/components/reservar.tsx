@@ -22,6 +22,9 @@ export function Reservar({
   )
 
   const [elegido, setElegido] = useState<{ inicio: string; fecha: string } | null>(null)
+  // Preguntar para quién es la cita evita el enredo de después: si no, el
+  // nombre es de una persona y el teléfono de otra, sin que nada lo diga.
+  const [paraOtro, setParaOtro] = useState(false)
 
   if (estado.confirmada) {
     return (
@@ -80,9 +83,34 @@ export function Reservar({
           <h2 className="font-bold text-ink">Tus datos</h2>
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <fieldset className="sm:col-span-2">
+              <legend className="text-sm font-medium text-ink">¿Para quién es la cita?</legend>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                {[
+                  { valor: false, etiqueta: 'Para mí' },
+                  { valor: true, etiqueta: 'Para alguien más' },
+                ].map((opcion) => (
+                  <button
+                    key={String(opcion.valor)}
+                    type="button"
+                    aria-pressed={paraOtro === opcion.valor}
+                    onClick={() => setParaOtro(opcion.valor)}
+                    className={`rounded-lg border py-2.5 text-sm font-medium transition ${
+                      paraOtro === opcion.valor
+                        ? 'border-brand bg-brand-suave text-brand'
+                        : 'border-border bg-surface hover:border-brand'
+                    }`}
+                  >
+                    {opcion.etiqueta}
+                  </button>
+                ))}
+              </div>
+              <input type="hidden" name="para_otro" value={paraOtro ? '1' : '0'} />
+            </fieldset>
+
             <div className="sm:col-span-2">
               <label htmlFor="nombre" className="block text-sm font-medium text-ink">
-                Nombre del paciente
+                {paraOtro ? 'Nombre de quien va a la consulta' : 'Tu nombre'}
               </label>
               <input
                 id="nombre"
@@ -90,10 +118,47 @@ export function Reservar({
                 required
                 autoFocus
                 defaultValue={estado.valores?.nombre}
-                placeholder="Nombre del niño o niña"
+                placeholder={paraOtro ? 'Nombre del paciente' : 'Nombre completo'}
                 className="campo mt-1.5"
               />
             </div>
+
+            {paraOtro && (
+              <>
+                <div>
+                  <label htmlFor="tutor" className="block text-sm font-medium text-ink">
+                    Tu nombre
+                  </label>
+                  <input
+                    id="tutor"
+                    name="tutor"
+                    required
+                    defaultValue={estado.valores?.tutor}
+                    className="campo mt-1.5"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="parentesco" className="block text-sm font-medium text-ink">
+                    Tu parentesco <span className="font-normal text-muted">(opcional)</span>
+                  </label>
+                  <input
+                    id="parentesco"
+                    name="parentesco"
+                    list="parentescos"
+                    placeholder="Madre, padre, hijo…"
+                    defaultValue={estado.valores?.parentesco}
+                    className="campo mt-1.5"
+                  />
+                  <datalist id="parentescos">
+                    {['Madre', 'Padre', 'Tutor', 'Hijo', 'Hija', 'Cónyuge', 'Cuidador'].map(
+                      (r) => (
+                        <option key={r} value={r} />
+                      ),
+                    )}
+                  </datalist>
+                </div>
+              </>
+            )}
             <div>
               <label htmlFor="telefono" className="block text-sm font-medium text-ink">
                 Teléfono
@@ -137,7 +202,9 @@ export function Reservar({
           </div>
 
           <p className="mt-3 text-xs text-muted">
-            Con un teléfono o un correo basta; lo necesitamos para confirmarte.
+            {paraOtro
+              ? 'El teléfono y el correo son tuyos: es a ti a quien avisamos.'
+              : 'Con un teléfono o un correo basta; lo necesitamos para confirmarte.'}
           </p>
 
           {estado.error && (

@@ -56,15 +56,20 @@ export default async function PacientesPage({
             Quienes han agendado contigo, con su historial.
           </p>
         </div>
-        {total > 0 && (
-          <a
-            href={`/admin/pacientes/exportar?${paramsExport}`}
-            className="boton boton-suave"
-            download
-          >
-            Descargar Excel
-          </a>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {total > 0 && (
+            <a
+              href={`/admin/pacientes/exportar?${paramsExport}`}
+              className="boton boton-suave"
+              download
+            >
+              Descargar Excel
+            </a>
+          )}
+          <Link href="/admin/pacientes/nuevo" className="boton boton-primario">
+            Nuevo paciente
+          </Link>
+        </div>
       </header>
 
       <Filtros

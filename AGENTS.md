@@ -244,6 +244,20 @@ reconfigurarla.
 calendario que mantener, y el médico ve exactamente los huecos que verían sus
 pacientes.
 
+## Quién es el paciente
+
+El enredo clásico: una mamá agenda, escribe el nombre del niño y su propio
+teléfono, y el sistema guarda los dos en el mismo renglón sin saber cuál es
+cuál. Por eso `solicitar_cita` **pregunta** en vez de adivinar, y
+`patients.is_minor` guarda la respuesta.
+
+No se deduce de la edad: la fecha de nacimiento puede faltar, y adivinar de
+quién es el teléfono a partir de ella es justo el error que se quiere evitar.
+
+Cuando `is_minor` es true, el teléfono de quien agendó se guarda en
+`tutor_phone`, no en `phone`. La ficha lo dice con todas sus letras: "se le
+avisa a…".
+
 ## Pacientes y expediente
 
 `patients` tiene dueño (`professional_id`) y las políticas se apoyan en eso,
@@ -270,3 +284,15 @@ teléfonos van forzados a texto.
 Las hojas clínicas **no se arman** si quien exporta es asistente, y las
 consultas ni siquiera se lanzan. Confiar en que RLS las devuelva vacías sería
 apoyarse en un efecto secundario.
+
+## Reparto de datos del paciente
+
+La regla para decidir dónde va un campo nuevo: **¿lo necesita el asistente
+para operar la agenda?**
+
+- Sí → `patients` (contacto, tutor, contacto de emergencia, seguro). Si un
+  paciente se pone mal en la sala, la asistente tiene que poder llamar.
+- No → `clinical_records` o `consultation_notes`, de solo dueño.
+
+La presión arterial va como **texto** en el Excel: '100/65' como número Excel
+lo convierte en fecha.

@@ -18,13 +18,21 @@ export async function solicitarCita(
   const telefono = String(datos.get('telefono') ?? '').trim()
   const email = String(datos.get('email') ?? '').trim()
   const notas = String(datos.get('notas') ?? '').trim()
+  // Quien agenda dice si es para sí mismo o para alguien más. Antes se
+  // adivinaba, y adivinar de quién es el teléfono es justo el error caro.
+  const paraOtro = datos.get('para_otro') === '1'
+  const tutor = String(datos.get('tutor') ?? '').trim()
+  const parentesco = String(datos.get('parentesco') ?? '').trim()
   const medico = String(datos.get('medico') ?? '')
   const cuando = String(datos.get('cuando') ?? '')
 
-  const valores = { nombre, telefono, email, notas }
+  const valores = { nombre, telefono, email, notas, tutor, parentesco }
 
   if (!inicio) return { error: 'Elige un horario primero.', valores }
   if (!nombre) return { error: 'Necesitamos el nombre del paciente.', valores }
+  if (paraOtro && !tutor) {
+    return { error: 'Escribe tu nombre, para saber quién agenda.', valores }
+  }
   if (!telefono && !email) {
     return { error: 'Déjanos un teléfono o un correo para poder confirmarte.', valores }
   }
@@ -40,6 +48,8 @@ export async function solicitarCita(
     p_telefono: telefono || null,
     p_email: email || null,
     p_notas: notas || null,
+    p_tutor: paraOtro ? tutor : null,
+    p_parentesco: paraOtro ? parentesco || null : null,
   })
 
   if (error) {

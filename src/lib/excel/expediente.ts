@@ -99,22 +99,30 @@ export async function construirExpediente(datos: Datos) {
 
   const hojaPacientes = {
     sheet: 'Pacientes',
-    columns: columnas([26, 10, 18, 12, 18, 28, 24, 14, 18]),
+    columns: columnas([26, 10, 18, 12, 14, 18, 28, 24, 14, 18, 22, 16, 18, 18, 30]),
     data: [
       encabezados([
-        'Nombre', 'Edad', 'Fecha de nacimiento', 'Sexo', 'Teléfono', 'Correo',
-        'Tutor', 'Parentesco', 'Teléfono del tutor',
+        'Nombre', 'Edad', 'Fecha de nacimiento', 'Sexo', 'Depende de alguien',
+        'Teléfono', 'Correo', 'Responsable', 'Parentesco', 'Teléfono del responsable',
+        'Contacto de emergencia', 'Parentesco', 'Teléfono de emergencia',
+        'Seguro', 'Notas de recepción',
       ]),
       ...pacientes.map((p) => [
         texto(p.name),
         texto(edad(p.birth_date)),
         texto(p.birth_date),
         texto(p.sex),
+        texto(p.is_minor ? 'Sí' : 'No'),
         comoTexto(p.phone),
         texto(p.email),
         texto(p.tutor_name),
         texto(p.tutor_relationship),
         comoTexto(p.tutor_phone),
+        texto(p.emergency_contact_name),
+        texto(p.emergency_contact_relationship),
+        comoTexto(p.emergency_contact_phone),
+        texto(p.insurance),
+        texto(p.notes),
       ]),
     ],
   }
@@ -140,11 +148,12 @@ export async function construirExpediente(datos: Datos) {
     ? [
         {
           sheet: 'Expediente',
-          columns: columnas([26, 30, 30, 30, 14, 50]),
+          columns: columnas([26, 30, 30, 30, 14, 30, 30, 30, 30, 40]),
           data: [
             encabezados([
               'Paciente', 'Alergias', 'Padecimientos', 'Medicamentos',
-              'Tipo de sangre', 'Notas',
+              'Tipo de sangre', 'Vacunas', 'Cirugías y hospitalizaciones',
+              'Antecedentes familiares', 'Hábitos', 'Notas',
             ]),
             ...expedientes.map((e) => [
               texto(nombre(e.patient_id)),
@@ -152,20 +161,35 @@ export async function construirExpediente(datos: Datos) {
               texto(e.conditions),
               texto(e.medications),
               texto(e.blood_type),
+              texto(e.immunizations),
+              texto(e.surgical_history),
+              texto(e.family_history),
+              texto(e.habits),
               texto(e.notes),
             ]),
           ],
         },
         {
           sheet: 'Consultas',
-          columns: columnas([26, 12, 12, 12, 60]),
+          columns: columnas([26, 12, 10, 10, 10, 12, 10, 10, 30, 40, 50]),
           data: [
-            encabezados(['Paciente', 'Fecha', 'Peso (kg)', 'Talla (cm)', 'Nota de consulta']),
+            encabezados([
+              'Paciente', 'Fecha', 'Peso (kg)', 'Talla (cm)', 'Temp. (°C)',
+              'Presión arterial', 'Pulso (lpm)', 'Sat. O₂ (%)',
+              'Diagnóstico', 'Tratamiento', 'Nota de consulta',
+            ]),
             ...consultas.map((n) => [
               texto(nombre(n.patient_id)),
               fechaLocal(n.created_at, zona),
               numero(n.weight_kg),
               numero(n.height_cm),
+              numero(n.temperature_c),
+              // La presión va como texto: "100/65" no es un número.
+              comoTexto(n.blood_pressure),
+              numero(n.heart_rate),
+              numero(n.oxygen_saturation),
+              texto(n.diagnosis),
+              texto(n.treatment),
               texto(n.note),
             ]),
           ],
