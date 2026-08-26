@@ -13,7 +13,9 @@
     "typecheck": "tsc --noEmit",
     "db:push": "supabase db push",
     "test:slots": "tsx scripts/verify-slots.ts",
-    "test": "npm run db:verify && npm run test:slots"
+    "test": "npm run db:verify && npm run test:slots",
+    "demo:sembrar": "supabase db query --linked -f supabase/fixtures/demo-consultorio.sql",
+    "demo:limpiar": "supabase db query --linked -f supabase/fixtures/demo-limpiar.sql"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.5",
