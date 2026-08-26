@@ -163,6 +163,10 @@ export type Appointment = {
   status: AppointmentStatus
   rescheduled_to: string | null
   notes: string | null
+  /** Cuándo se le escribió al paciente para confirmar. */
+  confirmation_sent_at: string | null
+  /** Cuándo el paciente dijo que sí viene. */
+  patient_confirmed_at: string | null
   created_at: string | null
   updated_at: string | null
 }

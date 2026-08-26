@@ -518,6 +518,50 @@ async function main() {
 
   await db.query(`delete from professionals where id = $1`, [rag])
 
+  console.log('\nConfirmación del paciente')
+
+  const citaConf = (
+    await db.query<{ id: string }>(
+      `insert into appointments (professional_id, patient_id, starts_at, ends_at, status)
+       values ($1, null, now() + interval '50 days', now() + interval '50 days' + interval '30 minutes', 'confirmed')
+       returning id`,
+      [proId],
+    )
+  ).rows[0].id
+
+  await db.query(
+    `update appointments set confirmation_sent_at = now(), patient_confirmed_at = now()
+      where id = $1`,
+    [citaConf],
+  )
+  const marcada = await db.query<{ n: number }>(
+    `select count(*)::int as n from appointments
+      where id = $1 and patient_confirmed_at is not null`,
+    [citaConf],
+  )
+  check('una cita confirmada se puede confirmar con el paciente', marcada.rows[0].n === 1)
+
+  // Una solicitud pendiente no se puede "confirmar con el paciente".
+  const solicitud = (
+    await db.query<{ id: string }>(
+      `insert into appointments (professional_id, starts_at, ends_at, status)
+       values ($1, now() + interval '51 days', now() + interval '51 days' + interval '30 minutes', 'requested')
+       returning id`,
+      [proId],
+    )
+  ).rows[0].id
+  let sinAceptar = false
+  try {
+    await db.query(`update appointments set patient_confirmed_at = now() where id = $1`, [
+      solicitud,
+    ])
+  } catch (err) {
+    sinAceptar = String(err).includes('confirmada por el consultorio')
+  }
+  check('una solicitud sin aceptar no se puede confirmar con el paciente', sinAceptar)
+
+  await db.query(`delete from appointments where id = any($1)`, [[citaConf, solicitud]])
+
   console.log('\nMáquina de estados')
 
   async function transicion(desde: string, hacia: string) {

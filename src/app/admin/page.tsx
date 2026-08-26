@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { exigirConsultorio } from '@/lib/consultorio'
 import { cancelarCita, marcarCompletada, marcarNoAsistio } from '@/lib/admin/actions'
 import { AccionesCita } from '@/components/acciones-cita'
+import { ConfirmarAsistencia, type DatosConfirmacion } from '@/components/confirmar-asistencia'
+import { contactoParaConfirmar } from '@/lib/whatsapp'
 import { EstadoVacio } from '@/components/estado-vacio'
 import { Filtros } from '@/components/filtros'
 import { VistaAgenda } from '@/components/vista-agenda'
@@ -18,7 +20,12 @@ type Cita = {
   starts_at: string
   ends_at: string
   notes: string | null
-  patients: Pick<Patient, 'name' | 'phone'> | null
+  confirmation_sent_at: string | null
+  patient_confirmed_at: string | null
+  patients: Pick<
+    Patient,
+    'name' | 'phone' | 'is_minor' | 'tutor_name' | 'tutor_phone'
+  > | null
 }
 
 function agruparPorDia(citas: Cita[], zona: string) {
@@ -95,14 +102,18 @@ export default async function AgendaPage({
     (filtros.q
       ? supabase
           .from('appointments')
-          .select('id, starts_at, ends_at, notes, patients!inner(name, phone)')
+          .select(
+            'id, starts_at, ends_at, notes, confirmation_sent_at, patient_confirmed_at, patients!inner(name, phone, is_minor, tutor_name, tutor_phone)',
+          )
           .or(
             `name.ilike.*${filtros.q.replace(/[,()*]/g, '')}*,phone.ilike.*${filtros.q.replace(/[,()*]/g, '')}*`,
             { referencedTable: 'patients' },
           )
       : supabase
           .from('appointments')
-          .select('id, starts_at, ends_at, notes, patients(name, phone)')
+          .select(
+            'id, starts_at, ends_at, notes, confirmation_sent_at, patient_confirmed_at, patients(name, phone, is_minor, tutor_name, tutor_phone)',
+          )
     )
       .eq('status', 'confirmed')
       .gte('starts_at', hace30Dias)
@@ -117,6 +128,30 @@ export default async function AgendaPage({
       .gte('starts_at', ahora),
     supabase.from('availability').select('id', { count: 'exact', head: true }),
   ])
+
+  const { data: recordatorios } = await supabase
+    .from('reminder_settings')
+    .select('message_template')
+    .maybeSingle<{ message_template: string | null }>()
+
+  const plantilla =
+    recordatorios?.message_template ??
+    'Hola {paciente}, te recordamos tu cita con {doctor} el {fecha} a las {hora}.'
+
+  /** Lo que el componente de confirmación necesita para armar el mensaje. */
+  function datosConfirmacion(cita: Cita): DatosConfirmacion {
+    return {
+      citaId: cita.id,
+      contacto: cita.patients ? contactoParaConfirmar(cita.patients) : null,
+      plantilla,
+      paciente: cita.patients?.name ?? 'el paciente',
+      doctor: profesional.name,
+      fecha: fechaLarga(cita.starts_at, zona),
+      hora: hora(cita.starts_at, zona),
+      contactadoEn: cita.confirmation_sent_at,
+      confirmadaEn: cita.patient_confirmed_at,
+    }
+  }
 
   const todas = confirmadas ?? []
   // Una cita que ya terminó sigue confirmada hasta que el consultorio dice
@@ -218,21 +253,24 @@ export default async function AgendaPage({
                     cita={cita}
                     zona={zona}
                     acciones={
-                      /* Todavía no ocurre: moverla o cancelarla. Cerrarla se
-                         habilita cuando ya pasó. */
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Link
-                          href={`/admin/reagendar/${cita.id}`}
-                          className="boton boton-suave px-3 py-1.5 text-xs"
-                        >
-                          Reagendar
-                        </Link>
-                        <AccionesCita
-                          id={cita.id}
-                          acciones={[
-                            { accion: cancelarCita, etiqueta: 'Cancelar', tono: 'peligro' },
-                          ]}
-                        />
+                      /* Todavía no ocurre: confirmar con el paciente, moverla
+                         o cancelarla. Cerrarla se habilita cuando ya pasó. */
+                      <div className="flex flex-col gap-3">
+                        <ConfirmarAsistencia datos={datosConfirmacion(cita)} />
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Link
+                            href={`/admin/reagendar/${cita.id}`}
+                            className="boton boton-suave px-3 py-1.5 text-xs"
+                          >
+                            Reagendar
+                          </Link>
+                          <AccionesCita
+                            id={cita.id}
+                            acciones={[
+                              { accion: cancelarCita, etiqueta: 'Cancelar', tono: 'peligro' },
+                            ]}
+                          />
+                        </div>
                       </div>
                     }
                   />
