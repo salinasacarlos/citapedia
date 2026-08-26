@@ -146,6 +146,21 @@ export type ConsultationNote = {
   updated_at: string | null
 }
 
+/** Un estudio o documento del expediente. Solo dueño, como lo demás clínico. */
+export type ConsultationFile = {
+  id: string
+  professional_id: string
+  patient_id: string
+  appointment_id: string | null
+  path: string
+  filename: string
+  mime: string
+  size_bytes: number
+  kind: string | null
+  uploaded_by: string | null
+  created_at: string | null
+}
+
 export type PatientResumen = Omit<Patient, 'created_at'> & {
   created_at: string | null
   total_citas: number
@@ -203,6 +218,7 @@ export type Database = {
       clinical_records: Table<ClinicalRecord>
       declared_records: Table<DeclaredRecord>
       consultation_notes: Table<ConsultationNote>
+      consultation_files: Table<ConsultationFile>
       appointments: Table<Appointment>
       reminder_settings: Table<ReminderSettings>
     }

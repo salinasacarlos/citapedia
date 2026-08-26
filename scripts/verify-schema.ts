@@ -1137,6 +1137,45 @@ async function main() {
   }
   check('el asistente no puede escribir en el expediente', escrituraClinica)
 
+  // Los estudios son clínicos: valen la misma regla que las alergias.
+  // La ruta se arma aquí: usar $1 como uuid y como texto en la misma consulta
+  // deja a Postgres sin poder inferir el tipo del parámetro.
+  await db.query(
+    `insert into consultation_files
+       (professional_id, patient_id, path, filename, mime, size_bytes)
+     values ($1, $2, $3, 'lab.pdf', 'application/pdf', 1234)`,
+    [proA2, pacienteA, `${proA2}/${pacienteA}/1-lab.pdf`],
+  )
+
+  const estudiosAsistente = await como<{ n: number }>(
+    invitado,
+    `select count(*)::int as n from consultation_files`,
+  )
+  check(
+    'el asistente NO ve los estudios del expediente',
+    Number(estudiosAsistente.rows[0].n) === 0,
+  )
+
+  const estudiosMedico = await como<{ n: number }>(
+    drA,
+    `select count(*)::int as n from consultation_files`,
+  )
+  check('el médico sí ve los estudios de su paciente', Number(estudiosMedico.rows[0].n) === 1)
+
+  let subidaAsistente = false
+  try {
+    await como(
+      invitado,
+      `insert into consultation_files
+         (professional_id, patient_id, path, filename, mime, size_bytes)
+       values ($1, $2, 'colado', 'colado.pdf', 'application/pdf', 1)`,
+      [proA2, pacienteA],
+    )
+  } catch (err) {
+    subidaAsistente = String(err).includes('row-level security')
+  }
+  check('ni puede subir uno', subidaAsistente)
+
   const ajeno = await como<{ n: number }>(
     drB,
     `select count(*)::int as n from patients`,
