@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Marca } from '@/components/marca'
 import { salir } from '@/lib/auth/actions'
 import type { MemberRole } from '@/lib/database.types'
@@ -60,20 +60,35 @@ export function CabeceraAdmin({
 }) {
   const ruta = usePathname()
   const [abierto, setAbierto] = useState(false)
+  const [cuenta, setCuenta] = useState(false)
+  const zonaCuenta = useRef<HTMLDivElement>(null)
 
   const etiquetaRol = rol === 'owner' ? 'Dueño del consultorio' : 'Asistente'
 
   // Navegar cierra el menú: si no, queda tapando la pantalla a la que llegaste.
   useEffect(() => {
     setAbierto(false)
+    setCuenta(false)
   }, [ruta])
 
   useEffect(() => {
     function alPresionar(e: KeyboardEvent) {
-      if (e.key === 'Escape') setAbierto(false)
+      if (e.key === 'Escape') {
+        setAbierto(false)
+        setCuenta(false)
+      }
+    }
+    function alClicarFuera(e: MouseEvent) {
+      if (zonaCuenta.current && !zonaCuenta.current.contains(e.target as Node)) {
+        setCuenta(false)
+      }
     }
     document.addEventListener('keydown', alPresionar)
-    return () => document.removeEventListener('keydown', alPresionar)
+    document.addEventListener('mousedown', alClicarFuera)
+    return () => {
+      document.removeEventListener('keydown', alPresionar)
+      document.removeEventListener('mousedown', alClicarFuera)
+    }
   }, [])
 
   return (
@@ -81,14 +96,13 @@ export function CabeceraAdmin({
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
         <Marca href="/admin" />
 
-        {/* ---------- Escritorio ---------- */}
-        {/* La foto y el nombre son el acceso al perfil, no un menú: es donde
-            la gente ya busca sus datos. Salir queda a la vista, sin esconderse
-            detrás de un clic extra. */}
-        <div className="hidden items-center gap-2 md:flex">
-          <Link
-            href="/admin/perfil"
-            aria-label="Editar mi página"
+        {/* ---------- Escritorio: la foto abre el menú de cuenta ---------- */}
+        <div ref={zonaCuenta} className="relative hidden md:block">
+          <button
+            type="button"
+            onClick={() => setCuenta((v) => !v)}
+            aria-expanded={cuenta}
+            aria-haspopup="menu"
             className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition hover:bg-surface-2"
           >
             <Avatar foto={foto} nombre={nombre} />
@@ -96,10 +110,46 @@ export function CabeceraAdmin({
               <span className="block truncate text-sm font-semibold text-ink">{nombre}</span>
               <span className="block text-xs text-muted">{etiquetaRol}</span>
             </span>
-          </Link>
-          <form action={salir}>
-            <button className="boton boton-suave px-3 py-1.5 text-xs">Salir</button>
-          </form>
+            <svg
+              viewBox="0 0 24 24"
+              className={`size-4 text-muted transition-transform ${cuenta ? 'rotate-180' : ''}`}
+              fill="none"
+              aria-hidden
+            >
+              <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </button>
+
+          {cuenta && (
+            <div
+              role="menu"
+              className="absolute right-0 z-40 mt-1 w-56 rounded-marca border border-border bg-surface p-1 shadow-lg"
+            >
+              <Link
+                href="/admin/perfil"
+                role="menuitem"
+                className="block rounded-lg px-3 py-2 text-sm transition hover:bg-surface-2"
+              >
+                Mi página pública
+              </Link>
+              <Link
+                href="/admin/cuenta"
+                role="menuitem"
+                className="block rounded-lg px-3 py-2 text-sm transition hover:bg-surface-2"
+              >
+                Mi cuenta
+              </Link>
+              <div className="my-1 border-t border-border" />
+              <form action={salir}>
+                <button
+                  role="menuitem"
+                  className="w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-peligro transition hover:bg-peligro-suave"
+                >
+                  Salir
+                </button>
+              </form>
+            </div>
+          )}
         </div>
 
         {/* ---------- Móvil: hamburguesa ---------- */}
@@ -168,6 +218,12 @@ export function CabeceraAdmin({
           </nav>
 
           <div className="border-t border-border px-2 py-2">
+            <Link
+              href="/admin/cuenta"
+              className="block rounded-lg px-3 py-2.5 text-sm font-medium text-foreground transition hover:bg-surface-2"
+            >
+              Mi cuenta
+            </Link>
             <form action={salir}>
               <button className="w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium text-peligro transition hover:bg-peligro-suave">
                 Salir

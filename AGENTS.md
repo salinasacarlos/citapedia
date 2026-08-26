@@ -198,8 +198,26 @@ hace scroll esconde justo lo que el usuario busca.
 - **Escritorio**: pestañas, con la foto y el nombre a la derecha como acceso
   al perfil, y Salir como botón visible.
 
-La foto y el nombre **no** abren un menú desplegable: son un enlace directo a
-`/admin/perfil`, que es donde la gente ya busca sus datos. Salir no se esconde
-detrás de un clic extra.
+La foto y el nombre abren el menú de cuenta: Mi página pública, Mi cuenta y
+Salir. En móvil todo eso vive dentro de la hamburguesa.
 
 El menú se cierra al navegar (`useEffect` sobre `usePathname`) y con Escape.
+
+## Cuenta
+
+`/admin/cuenta` es datos de acceso; `/admin/perfil` es lo que ven los
+pacientes. Son cosas distintas y conviene que sigan separadas.
+
+Cambiar contraseña **exige la de ahora**, reautenticando con
+`signInWithPassword`. Una sesión olvidada en la computadora del consultorio no
+puede servir para cambiar la contraseña y dejar fuera al dueño.
+
+Eliminar el consultorio pide escribir el slug. Un "¿estás seguro?" se acepta
+por reflejo, y esto borra la agenda completa sin vuelta atrás. Borra el
+`professional` (cascada), no el usuario de auth: esa cuenta queda viva y cae en
+`/sin-acceso`.
+
+Cambiar el correo de acceso está pendiente a propósito: exige confirmar el
+nuevo por mensaje, y sin SMTP el médico se quedaría fuera de su propia cuenta.
+Ojo además con que `professionals.email` y el correo de `auth.users` son campos
+distintos: al habilitarlo hay que mover los dos.
