@@ -352,7 +352,8 @@ async function main() {
   )
   const pacienteRag = (
     await db.query<{ id: string }>(
-      `insert into patients (name) values ('Niña Reagenda') returning id`,
+      `insert into patients (professional_id, name) values ($1, 'Niña Reagenda') returning id`,
+      [rag],
     )
   ).rows[0].id
 
@@ -810,6 +811,70 @@ async function main() {
   )
   check('un asistente no puede sacar al dueño', Number(sacarDueño.rows[0].n) === 0)
 
+  // Expediente: el asistente ve a quién contactar, no lo clínico.
+  const pacienteA = (
+    await db.query<{ id: string }>(
+      `insert into patients (professional_id, name, phone, birth_date, tutor_name)
+       values ($1, 'Niño Prueba', '+52 55 0000 0000', '2019-04-12', 'Mamá Prueba')
+       returning id`,
+      [proA2],
+    )
+  ).rows[0].id
+
+  await db.query(
+    `insert into clinical_records (patient_id, professional_id, allergies, conditions)
+     values ($1, $2, 'Penicilina', 'Asma leve')`,
+    [pacienteA, proA2],
+  )
+
+  const contactoAsistente = await como<{ name: string; phone: string }>(
+    invitado,
+    `select name, phone from patients where id = $1`,
+    [pacienteA],
+  )
+  check(
+    'el asistente sí ve los datos de contacto del paciente',
+    contactoAsistente.rows[0]?.phone === '+52 55 0000 0000',
+  )
+
+  const clinicoAsistente = await como<{ n: number }>(
+    invitado,
+    `select count(*)::int as n from clinical_records`,
+  )
+  check(
+    'el asistente NO ve el expediente clínico',
+    Number(clinicoAsistente.rows[0].n) === 0,
+  )
+
+  const clinicoMedico = await como<{ allergies: string }>(
+    drA,
+    `select allergies from clinical_records where patient_id = $1`,
+    [pacienteA],
+  )
+  check(
+    'el médico sí ve el expediente de su paciente',
+    clinicoMedico.rows[0]?.allergies === 'Penicilina',
+  )
+
+  let escrituraClinica = false
+  try {
+    await como(
+      invitado,
+      `insert into clinical_records (patient_id, professional_id, allergies)
+       values ($1, $2, 'inventado')`,
+      [pacienteA, proA2],
+    )
+  } catch (err) {
+    escrituraClinica = String(err).includes('row-level security')
+  }
+  check('el asistente no puede escribir en el expediente', escrituraClinica)
+
+  const ajeno = await como<{ n: number }>(
+    drB,
+    `select count(*)::int as n from patients`,
+  )
+  check('un médico no ve los pacientes de otro consultorio', Number(ajeno.rows[0].n) === 0)
+
   const equipoA = await como<{ email: string; rol: string }>(
     drA,
     `select email, rol::text from miembros_del_consultorio()`,
@@ -828,10 +893,6 @@ async function main() {
   )
   check('un médico no ve el equipo de otro consultorio', equipoB.rows.length === 1)
 
-  const pacientesPrevios = (
-    await db.query<{ n: number }>(`select count(*)::int as n from patients`)
-  ).rows[0].n
-
   // Borrar al profesional se lleva su agenda.
   await db.query(`delete from professionals where id = $1`, [proId])
   const huerfanas = await db.query<{ n: number }>(
@@ -843,11 +904,22 @@ async function main() {
   )
   check('borrar al profesional limpia su agenda en cascada', Number(huerfanas.rows[0].n) === 0)
 
-  const pacientes = await db.query<{ n: number }>(`select count(*)::int as n from patients`)
+  // Cambió a propósito al darle dueño al paciente: el expediente de un
+  // consultorio no debe quedar huérfano cuando el consultorio desaparece.
+  const suyos = await db.query<{ n: number }>(
+    `select count(*)::int as n from patients where professional_id = $1`,
+    [proId],
+  )
+  check('borrar al profesional se lleva a sus pacientes', suyos.rows[0].n === 0)
+
+  const deOtros = await db.query<{ n: number }>(
+    `select count(*)::int as n from patients where professional_id <> $1`,
+    [proId],
+  )
   check(
-    'los pacientes sobreviven al borrado del profesional',
-    pacientes.rows[0].n === pacientesPrevios,
-    `${pacientesPrevios} antes, ${pacientes.rows[0].n} después`,
+    'los pacientes de otros consultorios no se tocan',
+    deOtros.rows[0].n > 0,
+    `${deOtros.rows[0].n} intactos`,
   )
 
   await db.close()

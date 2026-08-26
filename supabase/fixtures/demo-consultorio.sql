@@ -36,18 +36,19 @@ for pro in select * from public.professionals loop
   lunes_ant  := date_trunc('week', (now() at time zone tz)) - interval '7 days';
   ayer       := date_trunc('day',  (now() at time zone tz)) - interval '1 day';
 
-  insert into public.patients (name, phone, email) values
-    ('Regina Ontiveros', '+52 55 1010 2020', 'regina@demo.citapedia.mx') returning id into p1;
-  insert into public.patients (name, phone, email) values
-    ('Diego Alcántara',  '+52 55 3030 4040', 'diego@demo.citapedia.mx')  returning id into p2;
-  insert into public.patients (name, phone, email) values
-    ('Camila Fuentes',   '+52 55 5050 6060', 'camila@demo.citapedia.mx') returning id into p3;
-  insert into public.patients (name, phone, email) values
-    ('Bruno Salazar',    '+52 55 7070 8080', 'bruno@demo.citapedia.mx')  returning id into p4;
-  insert into public.patients (name, phone, email) values
-    ('Valentina Ruiz',   '+52 55 9090 1010', 'valentina@demo.citapedia.mx') returning id into p5;
-  insert into public.patients (name, phone, email) values
-    ('Iker Montoya',     '+52 55 2020 3030', 'iker@demo.citapedia.mx')   returning id into p6;
+  -- Mezcla de menores y adultos: la app sirve para ambos.
+  insert into public.patients (professional_id, name, phone, email, birth_date, tutor_name, tutor_relationship) values
+    (pro.id, 'Regina Ontiveros', '+52 55 1010 2020', 'regina@demo.citapedia.mx', '2021-06-18', 'Mariana Ontiveros', 'Madre') returning id into p1;
+  insert into public.patients (professional_id, name, phone, email, birth_date, tutor_name, tutor_relationship) values
+    (pro.id, 'Diego Alcántara',  '+52 55 3030 4040', 'diego@demo.citapedia.mx',  '2025-01-09', 'Sofía Alcántara', 'Madre') returning id into p2;
+  insert into public.patients (professional_id, name, phone, email, birth_date) values
+    (pro.id, 'Camila Fuentes',   '+52 55 5050 6060', 'camila@demo.citapedia.mx', '1989-03-22') returning id into p3;
+  insert into public.patients (professional_id, name, phone, email, birth_date, tutor_name, tutor_relationship) values
+    (pro.id, 'Bruno Salazar',    '+52 55 7070 8080', 'bruno@demo.citapedia.mx',  '2016-11-30', 'Andrés Salazar', 'Padre') returning id into p4;
+  insert into public.patients (professional_id, name, phone, email, birth_date) values
+    (pro.id, 'Valentina Ruiz',   '+52 55 9090 1010', 'valentina@demo.citapedia.mx', '1996-08-05') returning id into p5;
+  insert into public.patients (professional_id, name, phone, email, birth_date, tutor_name, tutor_relationship) values
+    (pro.id, 'Iker Montoya',     '+52 55 2020 3030', 'iker@demo.citapedia.mx',   '2013-02-14', 'Paola Montoya', 'Madre') returning id into p6;
 
   -- Bandeja: dos pacientes peleando el mismo hueco, más una suelta.
   insert into public.appointments (professional_id, patient_id, starts_at, ends_at, status, notes) values
@@ -102,6 +103,13 @@ for pro in select * from public.professionals loop
   values (pro.id, p6, (lunes_prox + interval '2 days' + time '09:30') at time zone tz,
                       (lunes_prox + interval '2 days' + time '10:00') at time zone tz,
           'rescheduled', nueva, 'La familia pidió cambiar de día.');
+
+  -- Expediente de algunos: alergias y padecimientos que se ven en la ficha.
+  insert into public.clinical_records (patient_id, professional_id, allergies, conditions, medications, blood_type)
+  values
+    (p1, pro.id, 'Penicilina', 'Asma leve', 'Salbutamol en crisis', 'O+'),
+    (p4, pro.id, null, 'Rinitis alérgica estacional', null, 'A+'),
+    (p3, pro.id, 'Sulfas', null, null, 'O-');
 
   -- Un bloqueo, para ver cómo se ve en el calendario.
   insert into public.time_blocks (professional_id, starts_at, ends_at, reason) values
