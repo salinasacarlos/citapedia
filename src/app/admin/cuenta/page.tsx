@@ -44,8 +44,10 @@ export default async function CuentaPage() {
         <section className="rounded-marca border border-peligro/30 bg-peligro-suave/40 p-4 sm:p-6">
           <h2 className="font-semibold text-peligro">Eliminar el consultorio</h2>
           <p className="mt-1 text-sm text-muted">
-            Se borran tu página pública, tu horario y todas tus citas. Tus pacientes
-            dejarán de poder agendar contigo. Esto no se puede deshacer.
+            Se borran tu página pública, tu horario, todas tus citas y{' '}
+            <strong className="font-semibold">el expediente de cada paciente</strong>:
+            sus datos, alergias, padecimientos y notas de consulta. Esto no se puede
+            deshacer.
           </p>
           <div className="mt-4">
             <EliminarConsultorio slug={profesional.slug} />

@@ -62,14 +62,14 @@ begin
   values (pro_id, 'email', '{24,2}');
 
   -- ---------------------------------------------------------- pacientes
-  insert into patients (name, phone, email) values
-    ('Ana Reyes',      '+52 55 2222 1111', 'ana.reyes@example.com')    returning id into ana_id;
-  insert into patients (name, phone, email) values
-    ('Luis Márquez',   '+52 55 3333 2222', 'luis.marquez@example.com') returning id into luis_id;
-  insert into patients (name, phone, email) values
-    ('Mateo Villalba', '+52 55 4444 3333', 'mateo.v@example.com')      returning id into mateo_id;
-  insert into patients (name, phone, email) values
-    ('Sofía Duarte',   '+52 55 5555 4444', 'sofia.duarte@example.com') returning id into sofia_id;
+  insert into patients (professional_id, name, phone, email, birth_date) values
+    (pro_id, 'Ana Reyes',      '+52 55 2222 1111', 'ana.reyes@example.com',    '2018-03-14') returning id into ana_id;
+  insert into patients (professional_id, name, phone, email, birth_date) values
+    (pro_id, 'Luis Márquez',   '+52 55 3333 2222', 'luis.marquez@example.com', '2024-11-02') returning id into luis_id;
+  insert into patients (professional_id, name, phone, email) values
+    (pro_id, 'Mateo Villalba', '+52 55 4444 3333', 'mateo.v@example.com')      returning id into mateo_id;
+  insert into patients (professional_id, name, phone, email, birth_date) values
+    (pro_id, 'Sofía Duarte',   '+52 55 5555 4444', 'sofia.duarte@example.com', '1991-07-30') returning id into sofia_id;
 
   -- --------------------------------------------------------------- citas
 
