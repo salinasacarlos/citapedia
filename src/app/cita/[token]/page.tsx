@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { Marca } from '@/components/marca'
 import { AccionesCitaPaciente } from '@/components/acciones-cita-paciente'
 import { DeclararDatos } from '@/components/declarar-datos'
+import { ReagendarPaciente } from '@/components/reagendar-paciente'
+import { cargarPaginaPublica, huecosDe } from '@/lib/publico/datos'
 import { duracion, fechaLarga, hora } from '@/lib/fechas'
 import type { AppointmentStatus } from '@/lib/database.types'
 
@@ -22,6 +24,8 @@ type Vista = {
   estado: AppointmentStatus
   confirmada_por_paciente: boolean
   ya_declaro: boolean
+  puede_reagendar: boolean
+  duracion_min: number
 }
 
 /** Qué decirle al paciente según en qué quedó su cita. */
@@ -48,7 +52,9 @@ const DESENLACE: Partial<Record<AppointmentStatus, { titulo: string; texto: stri
   },
   rescheduled: {
     titulo: 'Esta cita se movió',
-    texto: 'El consultorio te dio otro horario. Busca la liga nueva que te mandaron.',
+    // Mover la cita ya no es solo cosa del consultorio: el paciente también
+    // puede hacerlo desde aquí, así que el texto no le atribuye el cambio a nadie.
+    texto: 'Esta liga quedó vieja. La cita nueva tiene la suya.',
   },
   completed: { titulo: 'Esta consulta ya se atendió', texto: 'Gracias por venir.' },
   no_show: {
@@ -83,6 +89,13 @@ export default async function CitaPage({
   const yaPaso = new Date(cita.fin) < new Date()
   const desenlace = DESENLACE[cita.estado]
   const puedeActuar = cita.estado === 'confirmed' && !yaPaso
+
+  // Los huecos solo se calculan si de verdad va a poder mover la cita.
+  const datosPublicos = cita.puede_reagendar ? await cargarPaginaPublica(cita.slug) : null
+  const dias =
+    datosPublicos && cita.puede_reagendar
+      ? huecosDe(datosPublicos, cita.duracion_min)
+      : []
 
   return (
     <Marco>
@@ -124,10 +137,16 @@ export default async function CitaPage({
       ) : null}
 
       {puedeActuar && (
-        <AccionesCitaPaciente
-          token={token}
-          yaConfirmo={cita.confirmada_por_paciente}
-        />
+        <>
+          <AccionesCitaPaciente token={token} yaConfirmo={cita.confirmada_por_paciente} />
+          {cita.puede_reagendar ? (
+            <ReagendarPaciente token={token} zona={zona} dias={dias} />
+          ) : (
+            <p className="mt-3 text-center text-xs text-muted">
+              Para moverla o cancelarla faltando pocas horas, habla al consultorio.
+            </p>
+          )}
+        </>
       )}
 
       {/* Adelantar datos médicos sirve mientras la cita siga en pie. */}

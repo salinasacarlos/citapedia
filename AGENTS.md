@@ -101,6 +101,10 @@ Reglas que se rompieron una vez y no deben volver a romperse:
   encima. Apilar y pasar a fila en `sm:`.
 - `capitalize` sube todas las palabras ("31 De Agosto"). Para fechas en
   español va `first-letter:uppercase`.
+- El mismo componente en dos anchos distintos va con `@container`, no con
+  `md:`: `SelectorHueco` vive en la página pública (ancha) y dentro de la
+  tarjeta de la cita (448 px). La media query mira la ventana, no la tarjeta,
+  y ahí las horas se encimaban.
 - Las barras de pestañas que hacen scroll llevan `-mx-4 px-4` para que la
   última pestaña no quede cortada contra el padding del contenedor.
 
@@ -128,6 +132,23 @@ Regla de la agenda: una cita `confirmed` que ya terminó NO desaparece — cae e
 "Por cerrar" hasta que el consultorio dice qué pasó. Y cerrar o marcar
 inasistencia solo se ofrece cuando la cita ya ocurrió; antes, lo único honesto
 es cancelar.
+
+## El paciente mueve su propia cita
+
+Desde la liga (`/cita/[token]`) el paciente no solo confirma o cancela: si algo
+se le atravesó, puede mover la cita él mismo. Cancelar para volver a agendar
+pierde el hueco y termina en inasistencia; moverla lo conserva.
+
+- `reagendar_cita_paciente` es la única puerta, y no confía en la UI: revalida
+  el token, el estado y la anticipación. `horas_minimas_para_reagendar()` es 12.
+- La cita nueva nace **`confirmed`**, no `requested`: ya estaba aprobada, mover
+  la hora no la vuelve a poner en la fila de espera.
+- Conserva paciente y duración, igual que reagendar desde el consultorio.
+- La liga vieja muere con la cita vieja; la respuesta redirige al token nuevo.
+  Por eso el aviso de `rescheduled` no le atribuye el cambio a nadie: ahora
+  puede haberlo hecho cualquiera de los dos lados.
+- `ver_cita` devuelve `puede_reagendar` y `duracion_min` para que la página no
+  tenga que recalcular la regla ni ofrecer huecos de la duración equivocada.
 
 ## Filtros y listas
 

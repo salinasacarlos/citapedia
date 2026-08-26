@@ -53,6 +53,11 @@ function casillasDelMes(mes: string): (string | null)[] {
  * todos los días a la vez produce una pared de botones idénticos donde nadie
  * encuentra nada, y en un teléfono es peor.
  */
+/**
+ * Consulta de contenedor, no de viewport: este selector vive tanto en una
+ * página ancha como dentro de una tarjeta angosta, y `md:` solo sabe del
+ * tamaño de la ventana — dentro de la tarjeta las horas quedaban ilegibles.
+ */
 export function SelectorHueco({
   dias,
   zona,
@@ -91,8 +96,9 @@ export function SelectorHueco({
   const iMes = meses.indexOf(mes)
 
   return (
-    <div className="gap-6 md:grid md:grid-cols-[auto_1fr]">
-      <div className="tarjeta p-4 md:w-80">
+    <div className="@container">
+      <div className="gap-6 @2xl:grid @2xl:grid-cols-[auto_1fr]">
+      <div className="tarjeta p-4 @2xl:w-80">
         <div className="mb-3 flex items-center justify-between gap-2">
           <button
             type="button"
@@ -157,7 +163,7 @@ export function SelectorHueco({
         </p>
       </div>
 
-      <div ref={listaHoras} className="mt-5 scroll-mt-4 md:mt-0">
+      <div ref={listaHoras} className="mt-5 scroll-mt-4 @2xl:mt-0">
         {dia ? (
           <>
             <p className="text-sm font-semibold text-ink first-letter:uppercase">
@@ -168,7 +174,7 @@ export function SelectorHueco({
               {huecosDelDia.length === 1 ? 'horario libre' : 'horarios libres'}
             </p>
 
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 md:max-h-96 md:overflow-y-auto md:pr-1">
+            <div className="mt-3 grid grid-cols-2 gap-2 @lg:grid-cols-3 @2xl:max-h-96 @2xl:overflow-y-auto @2xl:pr-1">
               {huecosDelDia.map((hueco) => (
                 <button
                   key={hueco.inicio}
@@ -184,6 +190,7 @@ export function SelectorHueco({
         ) : (
           <p className="text-sm text-muted">Elige un día en el calendario.</p>
         )}
+      </div>
       </div>
     </div>
   )
