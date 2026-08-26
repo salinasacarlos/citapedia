@@ -315,6 +315,17 @@ Cuando `is_minor` es true, el teléfono de quien agendó se guarda en
 `tutor_phone`, no en `phone`. La ficha lo dice con todas sus letras: "se le
 avisa a…".
 
+## Adultos y niños, no solo pediatría
+
+El producto nació con copy de pediatra ("Agenda para pediatras", "los papás
+ven sus horarios") y eso ya no es cierto: sirve para cualquier consultorio. Los
+textos hablan de pacientes, y donde importa reconocen que a veces quien agenda
+acompaña al paciente en vez de serlo — que es lo que `is_minor` modela.
+
+La tagline "Cuidarlos es primero" se queda: es marca, no promesa de
+especialidad. Los placeholders de especialidad ("Pediatría") también, porque
+son ejemplos de qué escribir, no una afirmación.
+
 ## Pacientes y expediente
 
 `patients` tiene dueño (`professional_id`) y las políticas se apoyan en eso,
@@ -323,6 +334,12 @@ no en rodear por la tabla de citas.
 Lo clínico vive aparte porque **RLS filtra filas, no columnas**: no existe una
 política que deje al asistente ver el teléfono pero no las alergias.
 `clinical_records` y `consultation_notes` son de solo dueño.
+
+En la ficha, la lista de visitas se llama **Bitácora del paciente**, no
+"historial de citas": cada renglón junta la cita con lo que el médico anotó ese
+día, así que es la línea de tiempo del paciente y no un registro de agenda. El
+Historial del admin es otra cosa —las citas cerradas de todo el consultorio— y
+por eso conserva su nombre.
 
 `appointments.notes` es lo que escribió el paciente al pedir cita.
 `consultation_notes.note` es lo que encontró el médico. Son cosas distintas y
