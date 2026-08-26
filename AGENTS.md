@@ -187,3 +187,19 @@ los consultorios de los que quien pregunta ya es miembro.
 `next` solo acepta rutas internas (`/…`, y nunca `//…`). Sin ese filtro, el
 login y la confirmación de correo se vuelven un trampolín para mandar gente a
 dominios de terceros.
+
+## Navegación del admin
+
+Seis secciones no caben en una barra de pestañas en 375 px, y una barra que
+hace scroll esconde justo lo que el usuario busca.
+
+- **Móvil**: hamburguesa que despliega todo — foto y nombre (que llevan al
+  perfil), las secciones, y Salir separado abajo.
+- **Escritorio**: pestañas, con la foto y el nombre a la derecha como acceso
+  al perfil, y Salir como botón visible.
+
+La foto y el nombre **no** abren un menú desplegable: son un enlace directo a
+`/admin/perfil`, que es donde la gente ya busca sus datos. Salir no se esconde
+detrás de un clic extra.
+
+El menú se cierra al navegar (`useEffect` sobre `usePathname`) y con Escape.
