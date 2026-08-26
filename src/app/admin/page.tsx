@@ -17,6 +17,7 @@ export const metadata = { title: 'Agenda' }
 
 type Cita = {
   id: string
+  access_token: string
   starts_at: string
   ends_at: string
   notes: string | null
@@ -103,7 +104,7 @@ export default async function AgendaPage({
       ? supabase
           .from('appointments')
           .select(
-            'id, starts_at, ends_at, notes, confirmation_sent_at, patient_confirmed_at, patients!inner(name, phone, is_minor, tutor_name, tutor_phone)',
+            'id, access_token, starts_at, ends_at, notes, confirmation_sent_at, patient_confirmed_at, patients!inner(name, phone, is_minor, tutor_name, tutor_phone)',
           )
           .or(
             `name.ilike.*${filtros.q.replace(/[,()*]/g, '')}*,phone.ilike.*${filtros.q.replace(/[,()*]/g, '')}*`,
@@ -112,7 +113,7 @@ export default async function AgendaPage({
       : supabase
           .from('appointments')
           .select(
-            'id, starts_at, ends_at, notes, confirmation_sent_at, patient_confirmed_at, patients(name, phone, is_minor, tutor_name, tutor_phone)',
+            'id, access_token, starts_at, ends_at, notes, confirmation_sent_at, patient_confirmed_at, patients(name, phone, is_minor, tutor_name, tutor_phone)',
           )
     )
       .eq('status', 'confirmed')
@@ -134,9 +135,14 @@ export default async function AgendaPage({
     .select('message_template')
     .maybeSingle<{ message_template: string | null }>()
 
-  const plantilla =
+  // Si el médico no puso {liga} en su plantilla, se agrega al final: es lo que
+  // deja al paciente confirmar solo y adelantar sus datos.
+  const base =
     recordatorios?.message_template ??
     'Hola {paciente}, te recordamos tu cita con {doctor} el {fecha} a las {hora}.'
+  const plantilla = base.includes('{liga}') ? base : `${base} Aquí puedes confirmar: {liga}`
+
+  const sitio = process.env.NEXT_PUBLIC_SITE_URL ?? ''
 
   /** Lo que el componente de confirmación necesita para armar el mensaje. */
   function datosConfirmacion(cita: Cita): DatosConfirmacion {
@@ -150,6 +156,7 @@ export default async function AgendaPage({
       hora: hora(cita.starts_at, zona),
       contactadoEn: cita.confirmation_sent_at,
       confirmadaEn: cita.patient_confirmed_at,
+      liga: `${sitio}/cita/${cita.access_token}`,
     }
   }
 

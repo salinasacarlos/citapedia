@@ -121,7 +121,7 @@ Cada estado necesita un camino real en la UI, o es dato muerto. Estado actual:
 | `completed` | Se atendió, en Agenda → Por cerrar |
 | `no_show` | No asistió, en Agenda → Por cerrar |
 | `cancelled_by_professional` | Cancelar, en Agenda |
-| `cancelled_by_patient` | **sin camino todavía** |
+| `cancelled_by_patient` | "No voy a poder asistir", en la liga de la cita |
 | `rescheduled` | Reagendar, en Agenda (`reagendar_cita`) |
 
 Regla de la agenda: una cita `confirmed` que ya terminó NO desaparece — cae en
@@ -372,3 +372,25 @@ seguro del formato; en el resto se avisa pero se deja pasar. Equivocarse sobre
 el largo de un país lejano no puede dejar a alguien sin poder agendar.
 
 A un paciente que depende de alguien se le escribe **a su tutor**.
+
+## La liga de la cita
+
+Cada cita tiene un `access_token` (dos uuid pegados, 64 hex). La recepcionista
+lo manda por WhatsApp y el paciente ve su cita, la confirma, avisa si no puede,
+y adelanta sus datos médicos.
+
+Se usa `gen_random_uuid` y no `gen_random_bytes` porque la primera es del
+núcleo de Postgres; la segunda vive en el esquema `extensions` en Supabase,
+fuera del search_path de las migraciones.
+
+`ver_cita`, `confirmar_asistencia`, `cancelar_cita_paciente` y
+`declarar_datos_medicos` son SECURITY DEFINER y se identifican con el token:
+quien abre la liga no tiene sesión. `ver_cita` devuelve solo lo de esa cita,
+nunca el resto de la agenda.
+
+`solicitar_cita` devuelve el token, no el id: es lo que el paciente necesita
+para volver a su cita.
+
+Si la plantilla del recordatorio no trae `{liga}`, se agrega al final. Es lo
+que deja al paciente confirmar solo, sin que la recepcionista tenga que
+preguntarle.

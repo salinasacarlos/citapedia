@@ -4,8 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 
 export type EstadoReserva = {
   error?: string
-  /** El id sirve para que el paciente pueda adelantar sus datos médicos. */
-  confirmada?: { cuando: string; medico: string; citaId: string }
+  /** El token es la liga a la cita: sirve para volver y para declarar datos. */
+  confirmada?: { cuando: string; medico: string; token: string }
   valores?: Record<string, string>
 }
 
@@ -42,7 +42,7 @@ export async function solicitarCita(
 
   // La validación de verdad vive en la base: que el hueco exista, esté libre y
   // siga en el futuro. Aquí solo se traduce lo que responda.
-  const { data: citaId, error } = await supabase.rpc('solicitar_cita', {
+  const { data: token, error } = await supabase.rpc('solicitar_cita', {
     p_slug: slug,
     p_starts_at: inicio,
     p_nombre: nombre,
@@ -58,7 +58,7 @@ export async function solicitarCita(
     return { error: limpio || 'No pudimos registrar tu solicitud.', valores }
   }
 
-  return { confirmada: { cuando, medico, citaId: String(citaId) } }
+  return { confirmada: { cuando, medico, token: String(token) } }
 }
 
 export type EstadoDeclaracion = { error?: string; ok?: boolean }
@@ -80,7 +80,7 @@ export async function declararDatosMedicos(
 
   const supabase = await createClient()
   const { error } = await supabase.rpc('declarar_datos_medicos', {
-    p_cita: String(datos.get('cita') ?? ''),
+    p_token: String(datos.get('cita') ?? ''),
     p_consentimiento: true,
     p_alergias: String(datos.get('alergias') ?? '').trim() || null,
     p_padecimientos: String(datos.get('padecimientos') ?? '').trim() || null,

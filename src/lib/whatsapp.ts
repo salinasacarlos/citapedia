@@ -53,13 +53,14 @@ export function numeroParaWhatsApp(
  */
 export function armarMensaje(
   plantilla: string,
-  datos: { paciente: string; doctor: string; fecha: string; hora: string },
+  datos: { paciente: string; doctor: string; fecha: string; hora: string; liga?: string },
 ): string {
   return plantilla
     .replace(/\{paciente\}/g, datos.paciente)
     .replace(/\{doctor\}/g, datos.doctor)
     .replace(/\{fecha\}/g, datos.fecha)
     .replace(/\{hora\}/g, datos.hora)
+    .replace(/\{liga\}/g, datos.liga ?? '')
     .replace(/\s+/g, ' ')
     // "a las {hora}." con hora = "6:30 p.m." deja "p.m..". Pasa con cualquier
     // plantilla que cierre con punto, así que se limpia aquí y no pidiéndole

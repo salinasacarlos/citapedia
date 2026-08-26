@@ -18,6 +18,8 @@ export type DatosConfirmacion = {
   hora: string
   contactadoEn: string | null
   confirmadaEn: string | null
+  /** La liga donde el paciente confirma y sube sus datos. */
+  liga: string
 }
 
 export function ConfirmarAsistencia({ datos }: { datos: DatosConfirmacion }) {
@@ -54,6 +56,7 @@ export function ConfirmarAsistencia({ datos }: { datos: DatosConfirmacion }) {
                 doctor: datos.doctor,
                 fecha: datos.fecha,
                 hora: datos.hora,
+                liga: datos.liga,
               }),
             )}
             target="_blank"
