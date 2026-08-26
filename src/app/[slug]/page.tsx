@@ -1,0 +1,104 @@
+import { notFound } from 'next/navigation'
+import type { Metadata } from 'next'
+import { cargarPaginaPublica, huecosDe } from '@/lib/publico/datos'
+import { Reservar } from '@/components/reservar'
+import { Marca } from '@/components/marca'
+import { nombreDePila } from '@/lib/fechas'
+
+export const dynamic = 'force-dynamic'
+
+type Props = { params: Promise<{ slug: string }> }
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params
+  const datos = await cargarPaginaPublica(slug)
+  if (!datos) return { title: 'Consultorio no encontrado' }
+
+  const { perfil } = datos
+  return {
+    title: `${perfil.name}${perfil.specialty ? ` · ${perfil.specialty}` : ''}`,
+    description:
+      perfil.bio?.slice(0, 155) ??
+      `Agenda tu cita con ${perfil.name} en CitaPedia.`,
+  }
+}
+
+export default async function PaginaPublica({ params }: Props) {
+  const { slug } = await params
+  const datos = await cargarPaginaPublica(slug)
+  if (!datos) notFound()
+
+  const { perfil } = datos
+  const dias = huecosDe(datos)
+
+  return (
+    <div className="min-h-dvh">
+      <header className="border-b border-border bg-surface">
+        <div className="mx-auto max-w-3xl px-4 py-4 sm:px-6">
+          <Marca href="/" />
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
+        <section className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5">
+          {perfil.photo_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={perfil.photo_url}
+              alt={perfil.name}
+              className="size-20 shrink-0 rounded-2xl object-cover sm:size-24"
+            />
+          ) : (
+            <div
+              aria-hidden
+              className="flex size-20 shrink-0 items-center justify-center rounded-2xl bg-brand-suave text-3xl font-bold text-brand sm:size-24"
+            >
+              {nombreDePila(perfil.name).charAt(0)}
+            </div>
+          )}
+
+          <div className="min-w-0 flex-1">
+            <h1 className="text-2xl font-extrabold tracking-tight text-balance text-ink sm:text-3xl">
+              {perfil.name}
+            </h1>
+            {perfil.specialty && <p className="mt-1 text-brand font-semibold">{perfil.specialty}</p>}
+            {(perfil.clinic_address || perfil.phone) && (
+              <p className="mt-2 text-sm text-muted">
+                {[perfil.clinic_address, perfil.phone].filter(Boolean).join(' · ')}
+              </p>
+            )}
+          </div>
+        </section>
+
+        {perfil.bio && (
+          <section className="mt-8">
+            <h2 className="font-bold text-ink">Sobre {nombreDePila(perfil.name)}</h2>
+            <p className="mt-2 leading-relaxed whitespace-pre-line text-muted">{perfil.bio}</p>
+          </section>
+        )}
+
+        {perfil.consultation_info && (
+          <section className="tarjeta mt-6 p-5">
+            <h2 className="font-bold text-ink">Antes de tu visita</h2>
+            <p className="mt-2 text-sm leading-relaxed whitespace-pre-line text-muted">
+              {perfil.consultation_info}
+            </p>
+          </section>
+        )}
+
+        <hr className="my-10 border-border" />
+
+        <Reservar
+          slug={perfil.slug}
+          medico={perfil.name}
+          zona={perfil.timezone}
+          dias={dias}
+        />
+      </main>
+
+      <footer className="mx-auto max-w-3xl px-4 py-10 text-center text-xs text-muted sm:px-6">
+        Agenda gestionada con CitaPedia.
+      </footer>
+    </div>
+  )
+}

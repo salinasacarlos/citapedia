@@ -1,0 +1,598 @@
+/**
+ * Verifica la migración y el seed contra un Postgres real (PGlite, en memoria).
+ * No sustituye a `supabase db reset`, pero prueba que el SQL corre y que las
+ * reglas del dominio (solapes, estados, cascadas) se comportan como esperamos.
+ *
+ *   npm run db:verify
+ */
+import { readFileSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
+import { PGlite } from '@electric-sql/pglite'
+import { btree_gist } from '@electric-sql/pglite/contrib/btree_gist'
+import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto'
+
+const MIGRATIONS_DIR = join(process.cwd(), 'supabase', 'migrations')
+const FIXTURE = join(process.cwd(), 'supabase', 'fixtures', 'demo.sql')
+
+let failures = 0
+
+function check(label: string, ok: boolean, detail = '') {
+  console.log(`${ok ? '  ok  ' : ' FAIL '} ${label}${detail ? ` — ${detail}` : ''}`)
+  if (!ok) failures++
+}
+
+async function main() {
+  const db = new PGlite({ extensions: { btree_gist, pgcrypto } })
+
+  // Supabase provee auth.users; en local la stubbeamos para poder correr el SQL.
+  await db.exec(`
+    create schema if not exists auth;
+    create table auth.users (
+      id uuid primary key default gen_random_uuid(),
+      email text unique,
+      raw_user_meta_data jsonb default '{}'::jsonb,
+      created_at timestamptz default now()
+    );
+    -- Igual que en Supabase: auth.uid() sale del claim 'sub' del JWT.
+    create or replace function auth.uid() returns uuid
+      language sql stable as $fn$
+        select (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')::uuid;
+      $fn$;
+    create schema if not exists storage;
+    create table storage.buckets (
+      id text primary key, name text, public boolean,
+      file_size_limit bigint, allowed_mime_types text[]
+    );
+    create table storage.objects (
+      id uuid primary key default gen_random_uuid(),
+      bucket_id text references storage.buckets(id),
+      name text, owner uuid
+    );
+    alter table storage.objects enable row level security;
+    create or replace function storage.foldername(name text) returns text[]
+      language sql immutable as $fn$
+        select string_to_array(regexp_replace(name, '/[^/]*$', ''), '/');
+      $fn$;
+    create role anon;
+    create role authenticated;
+    grant usage on schema public, auth, storage to anon, authenticated;
+    grant select, insert, update, delete on storage.objects to authenticated;
+    grant select on storage.objects to anon;
+    grant execute on function auth.uid() to anon, authenticated;
+  `)
+
+  console.log('\nMigraciones')
+  for (const file of readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith('.sql')).sort()) {
+    await db.exec(readFileSync(join(MIGRATIONS_DIR, file), 'utf8'))
+    check(file, true)
+  }
+
+  // Supabase otorga estos permisos a anon/authenticated por defecto; RLS es
+  // lo que filtra, no la falta de grant. Replicarlo hace fiel la prueba.
+  await db.exec(`
+    grant select, insert, update, delete on all tables in schema public to authenticated;
+    grant select on all tables in schema public to anon;
+    grant execute on all functions in schema public to anon, authenticated;
+  `)
+
+  console.log('\nFixture de prueba')
+  await db.exec(readFileSync(FIXTURE, 'utf8'))
+  check('fixtures/demo.sql', true)
+
+  console.log('\nDatos sembrados')
+  const pro = await db.query<{ name: string; slug: string; slot_duration: number }>(
+    `select name, slug, slot_duration from professionals`,
+  )
+  check('1 pediatra', pro.rows.length === 1, pro.rows[0]?.slug)
+
+  const avail = await db.query<{ n: number }>(
+    `select count(*)::int as n from availability`,
+  )
+  check('horario semanal (11 franjas: L–V x2 + sábado)', avail.rows[0].n === 11)
+
+  const byStatus = await db.query<{ status: string; n: number }>(
+    `select status::text, count(*)::int as n from appointments group by 1 order by 1`,
+  )
+  console.log(
+    '        ' + byStatus.rows.map((r) => `${r.status}=${r.n}`).join('  '),
+  )
+  const statuses = new Set(byStatus.rows.map((r) => r.status))
+  for (const s of ['requested', 'confirmed', 'completed', 'rejected', 'rescheduled', 'expired', 'no_show', 'cancelled_by_patient']) {
+    check(`hay citas en estado ${s}`, statuses.has(s))
+  }
+
+  const resched = await db.query<{ n: number }>(
+    `select count(*)::int as n from appointments a
+       join appointments b on b.id = a.rescheduled_to
+      where a.status = 'rescheduled' and b.status = 'confirmed'`,
+  )
+  check('cita reagendada enlaza a su reemplazo confirmado', resched.rows[0].n === 1)
+
+  console.log('\nReglas del dominio')
+
+  // Dos solicitudes pueden competir por el mismo hueco.
+  const compiten = await db.query<{ n: number }>(
+    `select count(*)::int as n from appointments a
+       join appointments b on b.id <> a.id
+        and b.professional_id = a.professional_id
+        and b.starts_at = a.starts_at
+      where a.status = 'requested' and b.status = 'requested'`,
+  )
+  check('dos solicitudes pueden pedir el mismo horario', compiten.rows[0].n > 0)
+
+  // Pero dos confirmadas no pueden solaparse.
+  const proId = (await db.query<{ id: string }>(`select id from professionals limit 1`)).rows[0].id
+  const ocupada = (
+    await db.query<{ starts_at: Date; ends_at: Date }>(
+      `select starts_at, ends_at from appointments where status = 'confirmed' order by starts_at limit 1`,
+    )
+  ).rows[0]
+  const solapado = new Date(+new Date(ocupada.starts_at) + 10 * 60_000)
+  let rechazada = false
+  try {
+    await db.query(
+      `insert into appointments (professional_id, starts_at, ends_at, status)
+       values ($1, $2, $3, 'confirmed')`,
+      [proId, solapado, ocupada.ends_at],
+    )
+  } catch (err) {
+    rechazada = String(err).includes('appointments_no_overlap_when_confirmed')
+  }
+  check('dos citas confirmadas no pueden solaparse', rechazada)
+
+  // Un slug con mayúsculas o espacios no es una URL pública válida.
+  let slugRechazado = false
+  try {
+    await db.query(
+      `insert into professionals (name, email, slug) values ('X', 'x@x.com', 'Dra Mariana')`,
+    )
+  } catch (err) {
+    slugRechazado = String(err).includes('professionals_slug_format')
+  }
+  check('el slug público debe ser url-safe', slugRechazado)
+
+  // Un slug que pise una ruta de la app dejaría la página pública inaccesible.
+  let reservadoBloqueado = false
+  try {
+    await db.query(`update professionals set slug = 'admin' where id = $1`, [proId])
+  } catch (err) {
+    reservadoBloqueado = String(err).includes('professionals_slug_no_reservado')
+  }
+  check('un slug reservado por la app se rechaza', reservadoBloqueado)
+
+  let cortoBloqueado = false
+  try {
+    await db.query(`update professionals set slug = 'ab' where id = $1`, [proId])
+  } catch (err) {
+    cortoBloqueado = String(err).includes('professionals_slug_largo')
+  }
+  check('un slug de menos de 3 letras se rechaza', cortoBloqueado)
+
+  // Rango invertido.
+  let rangoRechazado = false
+  try {
+    await db.query(
+      `insert into availability (professional_id, weekday, start_time, end_time)
+       values ($1, 1, '13:00', '09:00')`,
+      [proId],
+    )
+  } catch (err) {
+    rangoRechazado = String(err).includes('availability_time_order')
+  }
+  check('el horario no puede terminar antes de empezar', rangoRechazado)
+
+  // updated_at se mueve solo.
+  const antes = (
+    await db.query<{ updated_at: Date }>(`select updated_at from professionals limit 1`)
+  ).rows[0].updated_at
+  await db.query(`update professionals set bio = bio || ' ' where id = $1`, [proId])
+  const despues = (
+    await db.query<{ updated_at: Date }>(`select updated_at from professionals where id = $1`, [proId])
+  ).rows[0].updated_at
+  check('updated_at se actualiza solo', +new Date(despues) > +new Date(antes))
+
+  let zonaMala = false
+  try {
+    await db.query(`update professionals set timezone = 'Marte/Olympus' where id = $1`, [proId])
+  } catch (err) {
+    zonaMala = String(err).includes('Zona horaria desconocida')
+  }
+  check('la zona horaria del consultorio se valida', zonaMala)
+
+  const zonaOk = await db.query<{ timezone: string }>(
+    `update professionals set timezone = 'America/Tijuana' where id = $1 returning timezone`,
+    [proId],
+  )
+  check('se puede cambiar a otra zona real', zonaOk.rows[0].timezone === 'America/Tijuana')
+
+  console.log('\nSolicitud de cita desde la página pública')
+
+  // Un consultorio limpio para probar la reserva de punta a punta.
+  const rsv = (
+    await db.query<{ id: string }>(
+      `insert into professionals (name, email, slug, slot_duration, timezone)
+       values ('Dra. Reserva', 'reserva@clinica.com', 'dra-reserva', 30, 'America/Mexico_City')
+       returning id`,
+    )
+  ).rows[0].id
+  await db.query(
+    `insert into availability (professional_id, weekday, start_time, end_time)
+     select $1, d, '09:00', '13:00' from generate_series(0, 6) d`,
+    [rsv],
+  )
+
+  /** Próximo día a las 10:00 hora de CDMX = 16:00 UTC. */
+  const manana = new Date(Date.now() + 86_400_000)
+  const y = manana.getUTCFullYear()
+  const m = String(manana.getUTCMonth() + 1).padStart(2, '0')
+  const d = String(manana.getUTCDate()).padStart(2, '0')
+  const slot = `${y}-${m}-${d}T16:00:00Z`
+
+  async function pedir(cuando: string, nombre: string, email: string | null, tel: string | null) {
+    return db.query<{ solicitar_cita: string }>(
+      `select public.solicitar_cita('dra-reserva', $1::timestamptz, $2, $3, $4, 'Prueba')`,
+      [cuando, nombre, tel, email],
+    )
+  }
+
+  const cita1 = await pedir(slot, 'Niña Uno', 'uno@example.com', null)
+  check('un paciente puede solicitar cita', Boolean(cita1.rows[0].solicitar_cita))
+
+  const estado = await db.query<{ status: string; ends_at: Date }>(
+    `select status::text, ends_at from appointments where id = $1`,
+    [cita1.rows[0].solicitar_cita],
+  )
+  check('la cita nace solicitada', estado.rows[0].status === 'requested')
+  check(
+    'la duración sale del consultorio (30 min)',
+    new Date(estado.rows[0].ends_at).getTime() - Date.parse(slot) === 30 * 60_000,
+  )
+
+  // Dos personas pueden pedir el mismo hueco: el médico elige.
+  const cita2 = await pedir(slot, 'Niño Dos', 'dos@example.com', null)
+  check('otro paciente puede pedir el mismo hueco', Boolean(cita2.rows[0].solicitar_cita))
+
+  // Pero si ya hay una confirmada, ese hueco se cierra.
+  await db.query(`update appointments set status = 'confirmed' where id = $1`, [
+    cita1.rows[0].solicitar_cita,
+  ])
+  let cerrado = false
+  try {
+    await pedir(slot, 'Niña Tres', 'tres@example.com', null)
+  } catch (err) {
+    cerrado = String(err).includes('acaba de tomar ese horario')
+  }
+  check('con una cita confirmada el hueco deja de ofrecerse', cerrado)
+
+  // Fuera del horario publicado.
+  let fuera = false
+  try {
+    await pedir(`${y}-${m}-${d}T05:00:00Z`, 'Niño Cuatro', 'cuatro@example.com', null)
+  } catch (err) {
+    fuera = String(err).includes('no está disponible')
+  }
+  check('no se puede pedir fuera del horario publicado', fuera)
+
+  // En el pasado.
+  let pasado = false
+  try {
+    await pedir('2020-01-01T16:00:00Z', 'Niña Cinco', 'cinco@example.com', null)
+  } catch (err) {
+    pasado = String(err).includes('ya pasó')
+  }
+  check('no se puede pedir en el pasado', pasado)
+
+  // Sin forma de contactar.
+  let sinContacto = false
+  try {
+    await pedir(`${y}-${m}-${d}T17:00:00Z`, 'Niño Seis', null, null)
+  } catch (err) {
+    sinContacto = String(err).includes('teléfono o un correo')
+  }
+  check('exige teléfono o correo', sinContacto)
+
+  // Un bloqueo tapa el hueco.
+  await db.query(
+    `insert into time_blocks (professional_id, starts_at, ends_at, reason)
+     values ($1, $2::timestamptz, $2::timestamptz + interval '1 hour', 'Junta')`,
+    [rsv, `${y}-${m}-${d}T18:00:00Z`],
+  )
+  let bloqueado = false
+  try {
+    await pedir(`${y}-${m}-${d}T18:00:00Z`, 'Niña Siete', 'siete@example.com', null)
+  } catch (err) {
+    bloqueado = String(err).includes('no está disponible')
+  }
+  check('un bloqueo del médico cierra el hueco', bloqueado)
+
+  // Tope de solicitudes vivas por contacto.
+  let frenado = false
+  try {
+    // 15:00–19:00 UTC es la ventana (09:00–13:00 CDMX); 16:00 ya está
+    // confirmada y 18:00 bloqueada, así que quedan estas.
+    for (const h of ['15:00', '15:30', '16:30', '17:00']) {
+      await pedir(`${y}-${m}-${d}T${h}:00Z`, 'Niño Spam', 'spam@example.com', null)
+    }
+  } catch (err) {
+    frenado = String(err).includes('varias solicitudes pendientes')
+  }
+  check('se frena a quien acumula solicitudes pendientes', frenado)
+
+  // El paciente que vuelve no se duplica.
+  await db.query(
+    `update appointments set status = 'rejected'
+      where professional_id = $1 and status = 'requested'
+        and patient_id in (select id from patients where email = 'dos@example.com')`,
+    [rsv],
+  )
+  const pacientesAntes = (
+    await db.query<{ n: number }>(`select count(*)::int as n from patients where email = 'dos@example.com'`)
+  ).rows[0].n
+  await pedir(`${y}-${m}-${d}T17:30:00Z`, 'Niño Dos', 'dos@example.com', null)
+  const pacientesDespues = (
+    await db.query<{ n: number }>(`select count(*)::int as n from patients where email = 'dos@example.com'`)
+  ).rows[0].n
+  check('un paciente que regresa no se duplica', pacientesAntes === 1 && pacientesDespues === 1)
+
+  await db.query(`delete from professionals where id = $1`, [rsv])
+
+  console.log('\nMáquina de estados')
+
+  async function transicion(desde: string, hacia: string) {
+    const cita = (
+      await db.query<{ id: string }>(
+        `insert into appointments (professional_id, starts_at, ends_at, status)
+         values ($1, now() - interval '40 days', now() - interval '40 days' + interval '30 minutes', $2)
+         returning id`,
+        [proId, desde],
+      )
+    ).rows[0].id
+    try {
+      await db.query(`update appointments set status = $2 where id = $1`, [cita, hacia])
+      return true
+    } catch {
+      return false
+    } finally {
+      await db.query(`delete from appointments where id = $1`, [cita])
+    }
+  }
+
+  check('requested → confirmed se permite', await transicion('requested', 'confirmed'))
+  check('requested → rejected se permite', await transicion('requested', 'rejected'))
+  check('requested → completed se bloquea', !(await transicion('requested', 'completed')))
+  check('confirmed → no_show se permite', await transicion('confirmed', 'no_show'))
+  check('rejected → confirmed se bloquea', !(await transicion('rejected', 'confirmed')))
+  check('completed → requested se bloquea', !(await transicion('completed', 'requested')))
+  check(
+    'confirmed → rescheduled exige apuntar a la nueva cita',
+    !(await transicion('confirmed', 'rescheduled')),
+  )
+
+  console.log('\nRLS')
+
+  // Dos médicos que se registran por su cuenta. El trigger sobre auth.users
+  // les crea consultorio, membership de owner y preferencias.
+  const drA = (
+    await db.query<{ id: string }>(
+      `insert into auth.users (email, raw_user_meta_data)
+       values ('ana@clinica.com', '{"name":"Dra. Ana Ríos","specialty":"Pediatría"}')
+       returning id`,
+    )
+  ).rows[0].id
+  const drB = (
+    await db.query<{ id: string }>(
+      `insert into auth.users (email, raw_user_meta_data)
+       values ('beto@clinica.com', '{"name":"Dr. Beto Lugo"}')
+       returning id`,
+    )
+  ).rows[0].id
+
+  const altas = await db.query<{ name: string; slug: string; role: string }>(
+    `select p.name, p.slug, m.role::text
+       from professionals p join memberships m on m.professional_id = p.id
+      where m.user_id in ($1, $2) order by p.name`,
+    [drA, drB],
+  )
+  check('el registro crea professional + membership owner', altas.rows.length === 2)
+  check(
+    'el slug se genera sin acentos ni espacios',
+    altas.rows.some((r) => r.slug === 'dra-ana-rios'),
+    altas.rows.map((r) => r.slug).join(', '),
+  )
+  check('el rol inicial es owner', altas.rows.every((r) => r.role === 'owner'))
+
+  const ajustes = await db.query<{ n: number }>(
+    `select count(*)::int as n from reminder_settings r
+       join memberships m on m.professional_id = r.professional_id
+      where m.user_id in ($1, $2)`,
+    [drA, drB],
+  )
+  check('el registro deja listas las preferencias de recordatorio', ajustes.rows[0].n === 2)
+
+  const reservado = (
+    await db.query<{ id: string }>(
+      `insert into auth.users (email, raw_user_meta_data)
+       values ('admin@clinica.com', '{"name":"Admin"}') returning id`,
+    )
+  ).rows[0].id
+  const slugDelReservado = (
+    await db.query<{ slug: string }>(
+      `select p.slug from professionals p
+         join memberships m on m.professional_id = p.id where m.user_id = $1`,
+      [reservado],
+    )
+  ).rows[0].slug
+  check(
+    'el alta automática esquiva los slugs reservados',
+    slugDelReservado !== 'admin',
+    slugDelReservado,
+  )
+
+  // Un asistente invitado NO debe estrenar consultorio propio.
+  const invitado = (
+    await db.query<{ id: string }>(
+      `insert into auth.users (email, raw_user_meta_data)
+       values ('asistente@clinica.com', '{"signup_kind":"assistant"}') returning id`,
+    )
+  ).rows[0].id
+  const consultorioInvitado = await db.query<{ n: number }>(
+    `select count(*)::int as n from memberships where user_id = $1`,
+    [invitado],
+  )
+  check('un asistente invitado no estrena consultorio propio', consultorioInvitado.rows[0].n === 0)
+
+  /** Corre una consulta haciéndose pasar por un usuario logueado (o por el público). */
+  async function como<T>(userId: string | null, sql: string, params: unknown[] = []) {
+    await db.exec(`set role ${userId ? 'authenticated' : 'anon'}`)
+    await db.query(`select set_config('request.jwt.claims', $1, false)`, [
+      userId ? JSON.stringify({ sub: userId }) : '',
+    ])
+    try {
+      return await db.query<T>(sql, params)
+    } finally {
+      await db.exec(`reset role`)
+    }
+  }
+
+  const proA = altas.rows.find((r) => r.slug === 'dra-ana-rios')!
+  const idA = (
+    await db.query<{ id: string }>(`select id from professionals where slug = $1`, [proA.slug])
+  ).rows[0].id
+
+  // Cada consultorio ve el suyo y solo el suyo.
+  const veA = await como<{ slug: string }>(drA, `select slug from professionals`)
+  check(
+    'un médico solo ve su propio consultorio',
+    veA.rows.length === 1 && veA.rows[0].slug === 'dra-ana-rios',
+    `${veA.rows.length} fila(s)`,
+  )
+
+  const veB = await como<{ slug: string }>(drB, `select slug from professionals`)
+  check(
+    'el otro médico ve el suyo, no el de su colega',
+    veB.rows.length === 1 && veB.rows[0].slug !== 'dra-ana-rios',
+  )
+
+  // La agenda sembrada pertenece a un tercer consultorio sin dueño: nadie la ve.
+  const citasA = await como<{ n: number }>(drA, `select count(*)::int as n from appointments`)
+  check('un médico no ve citas de otro consultorio', Number(citasA.rows[0].n) === 0)
+
+  const pacientesA = await como<{ n: number }>(drA, `select count(*)::int as n from patients`)
+  check('un médico no ve pacientes que no son suyos', Number(pacientesA.rows[0].n) === 0)
+
+  // Escribir en agenda ajena tampoco.
+  let escrituraBloqueada = false
+  try {
+    await como(drB, `insert into availability (professional_id, weekday, start_time, end_time)
+                     values ($1, 1, '08:00', '09:00')`, [idA])
+  } catch (err) {
+    escrituraBloqueada = String(err).includes('row-level security')
+  }
+  check('nadie puede escribir en la agenda de otro consultorio', escrituraBloqueada)
+
+  // Fotos: cada consultorio solo escribe en su propia carpeta.
+  const idB = (
+    await db.query<{ id: string }>(`select id from professionals where slug <> $1 and slug <> $2 limit 1`,
+      ['dra-ana-rios', 'dra-mariana-cordero'])
+  ).rows[0].id
+
+  const subioPropia = await como(
+    drA,
+    `insert into storage.objects (bucket_id, name) values ('fotos-perfil', $1 || '/perfil.jpg')`,
+    [idA],
+  ).then(() => true).catch(() => false)
+  check('un médico puede subir su propia foto', subioPropia)
+
+  let ajenaBloqueada = false
+  try {
+    await como(drA, `insert into storage.objects (bucket_id, name) values ('fotos-perfil', $1 || '/perfil.jpg')`, [idB])
+  } catch (err) {
+    ajenaBloqueada = String(err).includes('row-level security')
+  }
+  check('no puede subir a la carpeta de otro consultorio', ajenaBloqueada)
+
+  let carpetaBasura = false
+  try {
+    await como(drA, `insert into storage.objects (bucket_id, name) values ('fotos-perfil', 'no-es-uuid/perfil.jpg')`)
+  } catch (err) {
+    carpetaBasura = String(err).includes('row-level security')
+  }
+  check('una carpeta con nombre inválido se rechaza sin reventar', carpetaBasura)
+
+  const fotoPublica = await como<{ n: number }>(
+    null,
+    `select count(*)::int as n from storage.objects where bucket_id = 'fotos-perfil'`,
+  )
+  check('las fotos sí son visibles para el público', Number(fotoPublica.rows[0].n) > 0)
+
+  // El público: tablas cerradas, vistas abiertas.
+  const anonPro = await como<{ n: number }>(null, `select count(*)::int as n from professionals`)
+  check('el público no lee la tabla professionals', Number(anonPro.rows[0].n) === 0)
+
+  const anonCitas = await como<{ n: number }>(null, `select count(*)::int as n from appointments`)
+  check('el público no lee citas', Number(anonCitas.rows[0].n) === 0)
+
+  const anonVista = await como<{ slug: string }>(null, `select slug from public_professionals`)
+  check('el público sí ve los perfiles por la vista', anonVista.rows.length >= 3)
+
+  const zonaPublica = await como<{ timezone: string }>(
+    null,
+    `select timezone from public_professionals limit 1`,
+  )
+  check('la vista pública incluye la zona horaria', Boolean(zonaPublica.rows[0]?.timezone))
+
+  let emailOculto = false
+  try {
+    await como(null, `select email from public_professionals`)
+  } catch (err) {
+    emailOculto = String(err).includes('does not exist')
+  }
+  check('la vista pública no expone el email de acceso', emailOculto)
+
+  const anonHuecos = await como<{ n: number }>(null, `select count(*)::int as n from public_busy_slots`)
+  check('el público ve las horas ocupadas para calcular huecos', Number(anonHuecos.rows[0].n) > 0)
+
+  let razonOculta = false
+  try {
+    await como(null, `select reason from public_time_blocks`)
+  } catch (err) {
+    razonOculta = String(err).includes('does not exist')
+  }
+  check('la vista pública de bloqueos no dice el motivo', razonOculta)
+
+  const pacientesPrevios = (
+    await db.query<{ n: number }>(`select count(*)::int as n from patients`)
+  ).rows[0].n
+
+  // Borrar al profesional se lleva su agenda.
+  await db.query(`delete from professionals where id = $1`, [proId])
+  const huerfanas = await db.query<{ n: number }>(
+    `select (select count(*) from appointments      where professional_id = $1)
+          + (select count(*) from availability      where professional_id = $1)
+          + (select count(*) from time_blocks       where professional_id = $1)
+          + (select count(*) from reminder_settings where professional_id = $1) as n`,
+    [proId],
+  )
+  check('borrar al profesional limpia su agenda en cascada', Number(huerfanas.rows[0].n) === 0)
+
+  const pacientes = await db.query<{ n: number }>(`select count(*)::int as n from patients`)
+  check(
+    'los pacientes sobreviven al borrado del profesional',
+    pacientes.rows[0].n === pacientesPrevios,
+    `${pacientesPrevios} antes, ${pacientes.rows[0].n} después`,
+  )
+
+  await db.close()
+
+  console.log(
+    failures === 0
+      ? '\n✅ Esquema verificado.\n'
+      : `\n❌ ${failures} verificación(es) fallaron.\n`,
+  )
+  process.exit(failures === 0 ? 0 : 1)
+}
+
+main().catch((err) => {
+  console.error(err)
+  process.exit(1)
+})

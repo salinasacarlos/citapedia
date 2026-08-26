@@ -1,0 +1,89 @@
+'use client'
+
+import Link from 'next/link'
+import { useActionState } from 'react'
+import { Marca } from '@/components/marca'
+import type { EstadoFormulario } from '@/lib/auth/actions'
+
+type Campo = {
+  name: string
+  label: string
+  type?: string
+  required?: boolean
+  autoComplete?: string
+  placeholder?: string
+  ayuda?: string
+}
+
+export function FormularioAuth({
+  accion,
+  titulo,
+  descripcion,
+  campos,
+  cta,
+  pie,
+}: {
+  accion: (estado: EstadoFormulario, datos: FormData) => Promise<EstadoFormulario>
+  titulo: string
+  descripcion: string
+  campos: Campo[]
+  cta: string
+  pie: { texto: string; enlace: string; href: string }
+}) {
+  const [estado, formAction, pendiente] = useActionState(accion, {})
+
+  return (
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-4 py-12 sm:px-6 sm:py-16">
+      <Marca href="/" />
+      <h1 className="mt-6 text-2xl font-bold tracking-tight text-ink">{titulo}</h1>
+      <p className="mt-2 text-sm text-muted">{descripcion}</p>
+
+      <form action={formAction} className="mt-8 space-y-4">
+        {campos.map((campo) => (
+          <div key={campo.name}>
+            <label htmlFor={campo.name} className="block text-sm font-medium text-ink">
+              {campo.label}
+            </label>
+            <input
+              id={campo.name}
+              name={campo.name}
+              type={campo.type ?? 'text'}
+              required={campo.required ?? true}
+              autoComplete={campo.autoComplete}
+              placeholder={campo.placeholder}
+              defaultValue={estado.valores?.[campo.name]}
+              className="campo mt-1.5"
+            />
+            {campo.ayuda && <p className="mt-1 text-xs text-muted">{campo.ayuda}</p>}
+          </div>
+        ))}
+
+        {estado.error && (
+          <p role="alert" className="rounded-lg bg-peligro-suave px-3 py-2 text-sm text-peligro">
+            {estado.error}
+          </p>
+        )}
+        {estado.aviso && (
+          <p role="status" className="rounded-lg bg-brand-suave px-3 py-2 text-sm text-brand">
+            {estado.aviso}
+          </p>
+        )}
+
+        <button
+          type="submit"
+          disabled={pendiente}
+          className="boton boton-primario w-full"
+        >
+          {pendiente ? 'Un momento…' : cta}
+        </button>
+      </form>
+
+      <p className="mt-6 text-center text-sm text-muted">
+        {pie.texto}{' '}
+        <Link href={pie.href} className="font-medium text-acento hover:underline">
+          {pie.enlace}
+        </Link>
+      </p>
+    </main>
+  )
+}

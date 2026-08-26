@@ -1,69 +1,97 @@
-import Image from "next/image";
+import Link from 'next/link'
+import { Marca } from '@/components/marca'
+import { obtenerConsultorio } from '@/lib/consultorio'
 
-export default function Home() {
+export const dynamic = 'force-dynamic'
+
+const PASOS = [
+  {
+    titulo: 'Tu página, tu cara',
+    texto:
+      'Una liga propia con tu foto, tu formación y cómo es tu consulta. Se la mandas a una mamá y ya sabe quién eres.',
+  },
+  {
+    titulo: 'Tú decides cada cita',
+    texto:
+      'Los pacientes solicitan; tú aceptas o rechazas. Nada entra a tu agenda sin que lo apruebes.',
+  },
+  {
+    titulo: 'Los horarios se calculan solos',
+    texto:
+      'Defines tu semana una vez. Los huecos salen de restarle a tu horario las citas confirmadas y tus bloqueos.',
+  },
+  {
+    titulo: 'Nadie se olvida',
+    texto:
+      'Recordatorios automáticos por correo antes de cada cita, con el texto y la anticipación que tú elijas.',
+  },
+]
+
+export default async function Home() {
+  const consultorio = await obtenerConsultorio()
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
+    <div className="min-h-dvh">
+      <header className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-4 py-5 sm:px-6 sm:py-6">
+        <Marca href={null} />
+        <nav className="flex items-center gap-2">
+          {consultorio ? (
+            <Link href="/admin" className="boton boton-primario">
+              Ir a mi consultorio
+            </Link>
+          ) : (
+            <>
+              <Link href="/login" className="boton boton-suave">
+                Entrar
+              </Link>
+              <Link href="/registro" className="boton boton-primario">
+                Crear consultorio
+              </Link>
+            </>
+          )}
+        </nav>
+      </header>
+
+      <main className="mx-auto max-w-5xl px-4 sm:px-6">
+        <section className="py-16 sm:py-24">
+          <p className="text-sm font-semibold text-brand">Cuidarlos es primero</p>
+          <h1 className="mt-3 max-w-2xl text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">
+            La agenda de tu consultorio, sin llamadas ni libreta
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="mt-5 max-w-xl text-lg text-muted">
+            CitaPedia le da a cada pediatra una página propia donde los papás ven sus
+            horarios y solicitan cita. Tú apruebas cada una, desde el celular, entre
+            paciente y paciente.
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <Link href="/registro" className="boton boton-primario px-5 py-3">
+              Crear mi consultorio
+            </Link>
+            <Link href="/login" className="boton boton-suave px-5 py-3">
+              Ya tengo cuenta
+            </Link>
+          </div>
+          <p className="mt-4 text-sm text-muted">
+            Sin pagos de por medio: CitaPedia agenda, tú cobras como siempre.
+          </p>
+        </section>
+
+        <section className="grid gap-4 pb-20 sm:grid-cols-2">
+          {PASOS.map((paso) => (
+            <div key={paso.titulo} className="tarjeta p-6">
+              <h2 className="font-bold text-ink">{paso.titulo}</h2>
+              <p className="mt-2 text-sm leading-relaxed text-muted">{paso.texto}</p>
+            </div>
+          ))}
+        </section>
       </main>
+
+      <footer className="border-t border-border">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-4 py-8 text-sm text-muted sm:px-6">
+          <Marca href={null} />
+          <p>Hecho para pediatras.</p>
+        </div>
+      </footer>
     </div>
-  );
+  )
 }

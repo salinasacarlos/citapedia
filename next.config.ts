@@ -1,7 +1,9 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  /* config options here */
-};
+  // Hay un package-lock.json en el home del usuario; sin esto Turbopack
+  // sube demasiado buscando la raíz del proyecto.
+  turbopack: { root: __dirname },
+}
 
-export default nextConfig;
+export default nextConfig

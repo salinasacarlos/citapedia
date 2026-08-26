@@ -6,14 +6,24 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:verify": "tsx scripts/verify-schema.ts",
+    "db:reset": "supabase db reset",
+    "db:types": "supabase gen types typescript --linked > src/lib/database.types.ts",
+    "typecheck": "tsc --noEmit",
+    "db:push": "supabase db push",
+    "test:slots": "tsx scripts/verify-slots.ts",
+    "test": "npm run db:verify && npm run test:slots"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.5",
+    "@supabase/supabase-js": "^2.112.4",
     "next": "16.3.3",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.7",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -21,6 +31,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.3",
     "tailwindcss": "^4",
+    "tsx": "^4.23.12",
     "typescript": "^5"
   }
 }
