@@ -73,10 +73,50 @@ export type TimeBlock = {
 
 export type Patient = {
   id: string
+  professional_id: string
   name: string
   phone: string | null
   email: string | null
+  birth_date: string | null
+  sex: 'femenino' | 'masculino' | 'otro' | null
+  tutor_name: string | null
+  tutor_phone: string | null
+  tutor_relationship: string | null
   created_at: string | null
+}
+
+/** Expediente clínico. Solo lo ve el dueño del consultorio. */
+export type ClinicalRecord = {
+  patient_id: string
+  professional_id: string
+  allergies: string | null
+  conditions: string | null
+  medications: string | null
+  blood_type: string | null
+  notes: string | null
+  updated_at: string | null
+}
+
+/** Una nota por consulta, con lo que el médico midió y encontró. */
+export type ConsultationNote = {
+  id: string
+  appointment_id: string
+  patient_id: string
+  professional_id: string
+  author_id: string | null
+  note: string | null
+  weight_kg: number | null
+  height_cm: number | null
+  created_at: string | null
+  updated_at: string | null
+}
+
+export type PatientResumen = Omit<Patient, 'created_at'> & {
+  created_at: string | null
+  total_citas: number
+  citas_atendidas: number
+  ultima_visita: string | null
+  proxima_cita: string | null
 }
 
 export type Appointment = {
@@ -119,6 +159,8 @@ export type Database = {
       availability: Table<Availability>
       time_blocks: Table<TimeBlock>
       patients: Table<Patient>
+      clinical_records: Table<ClinicalRecord>
+      consultation_notes: Table<ConsultationNote>
       appointments: Table<Appointment>
       reminder_settings: Table<ReminderSettings>
     }
@@ -132,6 +174,7 @@ export type Database = {
       /** Bloqueos sin el motivo. */
       public_time_blocks: { Row: Omit<TimeBlock, 'reason'>; Relationships: [] }
       /** Horas ya tomadas, sin decir por quién. */
+      patients_resumen: { Row: PatientResumen; Relationships: [] }
       public_busy_slots: {
         Row: Pick<Appointment, 'professional_id' | 'starts_at' | 'ends_at'>
         Relationships: []

@@ -9,6 +9,13 @@
 --
 --   npm run demo:sembrar
 
+-- Correrlo dos veces chocaba con las citas que ya había sembrado. Limpia lo
+-- suyo primero: así se puede correr las veces que haga falta sin pensarlo.
+delete from public.appointments
+ where patient_id in (select id from public.patients where email like '%@demo.citapedia.mx');
+delete from public.patients where email like '%@demo.citapedia.mx';
+delete from public.time_blocks where reason like '[demo]%';
+
 do $$
 declare
   pro         public.professionals%rowtype;

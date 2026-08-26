@@ -1,0 +1,188 @@
+import writeXlsxFile from 'write-excel-file/node'
+import { edad } from '@/lib/fechas'
+import type {
+  AppointmentStatus,
+  ClinicalRecord,
+  ConsultationNote,
+  Patient,
+} from '@/lib/database.types'
+
+/**
+ * Exportación a Excel de verdad (.xlsx), no CSV.
+ *
+ * CSV parece suficiente hasta que Excel se come el "+" de un teléfono, lo
+ * convierte a notación científica y rompe los acentos. Con nombres y
+ * teléfonos mexicanos eso pasa siempre, así que los teléfonos van forzados a
+ * texto y las fechas como fechas de verdad.
+ */
+
+export const ESTADO_ES: Record<AppointmentStatus, string> = {
+  requested: 'Solicitada',
+  confirmed: 'Confirmada',
+  completed: 'Se atendió',
+  cancelled_by_patient: 'Canceló el paciente',
+  cancelled_by_professional: 'Canceló el consultorio',
+  rejected: 'Rechazada',
+  rescheduled: 'Reagendada',
+  no_show: 'No asistió',
+  expired: 'Venció',
+}
+
+export type CitaExport = {
+  id: string
+  patient_id: string
+  starts_at: string
+  ends_at: string
+  status: AppointmentStatus
+  notes: string | null
+}
+
+type Datos = {
+  consultorio: string
+  zona: string
+  pacientes: Patient[]
+  citas: CitaExport[]
+  /** Solo llegan si quien exporta es el dueño. */
+  expedientes: ClinicalRecord[]
+  consultas: ConsultationNote[]
+  incluyeClinico: boolean
+}
+
+const ENCABEZADO = { fontWeight: 'bold' as const, backgroundColor: '#E6F7F5' }
+
+function texto(valor: string | null | undefined) {
+  return { type: String, value: valor ?? '' }
+}
+
+function numero(valor: number | null | undefined) {
+  return valor === null || valor === undefined
+    ? { type: String, value: '' }
+    : { type: Number, value: Number(valor) }
+}
+
+/** Un teléfono es texto: si va como número, Excel se come el + y los ceros. */
+const comoTexto = texto
+
+function fechaLocal(iso: string | null, zona: string) {
+  if (!iso) return { type: String, value: '' }
+  return {
+    type: String,
+    value: new Intl.DateTimeFormat('es-MX', {
+      dateStyle: 'short',
+      timeZone: zona,
+    }).format(new Date(iso)),
+  }
+}
+
+function horaLocal(iso: string | null, zona: string) {
+  if (!iso) return { type: String, value: '' }
+  return {
+    type: String,
+    value: new Intl.DateTimeFormat('es-MX', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: zona,
+    }).format(new Date(iso)),
+  }
+}
+
+function encabezados(titulos: string[]) {
+  return titulos.map((t) => ({ value: t, ...ENCABEZADO, type: String }))
+}
+
+export async function construirExpediente(datos: Datos) {
+  const { pacientes, citas, expedientes, consultas, zona, incluyeClinico } = datos
+  const porPaciente = new Map(pacientes.map((p) => [p.id, p]))
+  const nombre = (id: string) => porPaciente.get(id)?.name ?? 'Paciente'
+  const columnas = (anchos: number[]) => anchos.map((width) => ({ width }))
+
+  const hojaPacientes = {
+    sheet: 'Pacientes',
+    columns: columnas([26, 10, 18, 12, 18, 28, 24, 14, 18]),
+    data: [
+      encabezados([
+        'Nombre', 'Edad', 'Fecha de nacimiento', 'Sexo', 'Teléfono', 'Correo',
+        'Tutor', 'Parentesco', 'Teléfono del tutor',
+      ]),
+      ...pacientes.map((p) => [
+        texto(p.name),
+        texto(edad(p.birth_date)),
+        texto(p.birth_date),
+        texto(p.sex),
+        comoTexto(p.phone),
+        texto(p.email),
+        texto(p.tutor_name),
+        texto(p.tutor_relationship),
+        comoTexto(p.tutor_phone),
+      ]),
+    ],
+  }
+
+  const hojaCitas = {
+    sheet: 'Citas',
+    columns: columnas([26, 12, 12, 22, 50]),
+    data: [
+      encabezados(['Paciente', 'Fecha', 'Hora', 'Estado', 'Motivo que escribió el paciente']),
+      ...citas.map((c) => [
+        texto(nombre(c.patient_id)),
+        fechaLocal(c.starts_at, zona),
+        horaLocal(c.starts_at, zona),
+        texto(ESTADO_ES[c.status]),
+        texto(c.notes),
+      ]),
+    ],
+  }
+
+  // Las hojas clínicas solo se arman si quien exporta es el dueño. No basta
+  // con esconderlas: si el asistente pudiera pedirlas, las tendría.
+  const hojasClinicas = incluyeClinico
+    ? [
+        {
+          sheet: 'Expediente',
+          columns: columnas([26, 30, 30, 30, 14, 50]),
+          data: [
+            encabezados([
+              'Paciente', 'Alergias', 'Padecimientos', 'Medicamentos',
+              'Tipo de sangre', 'Notas',
+            ]),
+            ...expedientes.map((e) => [
+              texto(nombre(e.patient_id)),
+              texto(e.allergies),
+              texto(e.conditions),
+              texto(e.medications),
+              texto(e.blood_type),
+              texto(e.notes),
+            ]),
+          ],
+        },
+        {
+          sheet: 'Consultas',
+          columns: columnas([26, 12, 12, 12, 60]),
+          data: [
+            encabezados(['Paciente', 'Fecha', 'Peso (kg)', 'Talla (cm)', 'Nota de consulta']),
+            ...consultas.map((n) => [
+              texto(nombre(n.patient_id)),
+              fechaLocal(n.created_at, zona),
+              numero(n.weight_kg),
+              numero(n.height_cm),
+              texto(n.note),
+            ]),
+          ],
+        },
+      ]
+    : []
+
+  return writeXlsxFile([hojaPacientes, hojaCitas, ...hojasClinicas]).toBuffer()
+}
+
+/** 'Dr. Ernesto Peña' → 'dr-ernesto-pena' para el nombre del archivo. */
+export function nombreArchivo(base: string, sufijo: string) {
+  const limpio = base
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+  return `${limpio || 'citapedia'}-${sufijo}.xlsx`
+}
