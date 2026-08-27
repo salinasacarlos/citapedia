@@ -15,12 +15,21 @@ export function Filtros({
   estados,
   conFechas = true,
   placeholder = 'Buscar por nombre, teléfono o correo',
+  etiquetaEstado = 'Desenlace',
+  etiquetaTodos = 'Todos',
 }: {
   ruta: string
   estados?: OpcionEstado[]
   /** En vistas ya acotadas a un periodo, el rango de fechas sobra. */
   conFechas?: boolean
   placeholder?: string
+  /** Cómo se llama aquí lo que el select filtra. */
+  etiquetaEstado?: string
+  /**
+   * Qué dice la opción vacía. En el Historial es "Todos"; en Solicitudes lo
+   * que no está filtrado es lo que espera decisión, y decirle "Todos" mentiría.
+   */
+  etiquetaTodos?: string
 }) {
   const router = useRouter()
   const params = useSearchParams()
@@ -108,7 +117,7 @@ export function Filtros({
         {estados && (
           <div className="sm:col-span-2 lg:col-span-4">
             <label htmlFor="estado" className="block text-xs font-medium text-muted">
-              Desenlace
+              {etiquetaEstado}
             </label>
             <select
               id="estado"
@@ -116,7 +125,7 @@ export function Filtros({
               onChange={(e) => navegar({ estado: e.target.value })}
               className="campo mt-1"
             >
-              <option value="">Todos</option>
+              <option value="">{etiquetaTodos}</option>
               {estados.map((o) => (
                 <option key={o.valor} value={o.valor}>
                   {o.etiqueta}

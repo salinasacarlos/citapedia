@@ -249,6 +249,10 @@ funciona, y filtrar es trabajo de Postgres, no del navegador.
   PostgREST filtra el recurso incrustado pero no las filas padre. Se usa
   **solo** cuando hay búsqueda, porque si no excluiría citas sin paciente.
 - Listas largas van paginadas (`POR_PAGINA`), con `count: 'exact'`.
+- El selector de estado se etiqueta por lista: en el Historial la opción vacía
+  es "Todos", en Solicitudes es "Por revisar" — ahí lo no filtrado es lo que
+  espera decisión, y llamarle "Todos" mentiría. Filtrando por un estado ya
+  decidido desaparecen Aceptar y Rechazar: ofrecerlos sería mentir también.
 
 ## Calendario
 
