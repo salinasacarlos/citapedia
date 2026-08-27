@@ -102,6 +102,42 @@ El día que la revisión de PRs pida ver la rama corriendo, se quita y se paga
 el build de más — pero mientras la verificación sea en localhost, no compra
 nada.
 
+## Correo saliente
+
+Resend por HTTP (`src/lib/correo/enviar.ts`), sin SDK: es un POST con tres
+campos y una dependencia menos en un servidor que ya mueve datos de salud.
+
+El recordatorio se arma con **la misma plantilla** que el WhatsApp manual. Que
+los dos canales digan lo mismo no es economía de código: es que al paciente le
+llegue el mismo mensaje por donde sea. Y `{paciente}` es el nombre de **quien
+recibe**, no el del paciente — a la cita de un menor se le escribe a su tutor,
+y poner ahí al paciente saludaba al equivocado. De quién es la cita se dice
+aparte, en el recuadro.
+
+Sin dominio verificado en Resend, `onboarding@resend.dev` solo puede escribirle
+al dueño de la cuenta. Sirve para probar; para producción hace falta el dominio.
+
+## El cron de recordatorios
+
+`GET /api/recordatorios`, disparado por el cron de Vercel una vez al día
+(`vercel.json`). En Hobby los crons corren una vez al día, y con la
+anticipación por defecto de 24 h eso alcanza.
+
+- Va con la llave de servicio (`createAdminClient`) porque mira las citas de
+  todos los consultorios y no hay nadie en sesión. Por eso la puerta es
+  `CRON_SECRET`, y **falla cerrado**: sin secreto configurado responde 503. Al
+  revés —abierto mientras no se configure— cualquiera podría vaciar la agenda
+  del día en correos.
+- `appointments.reminder_sent_at` marca lo ya avisado. Vive en la cita y no en
+  una tabla de envíos porque la pregunta de todos los días es "¿a esta ya le
+  avisé?", y esa es de la cita.
+- Si Resend falla, **no** se marca: mañana se reintenta. Un recordatorio
+  repetido molesta; uno que nunca sale cuesta la cita. Si el paciente no tiene
+  correo sí se marca, para que no se atore en cada corrida.
+- `?destino=correo@x` manda un correo de muestra y no escribe nada. Es la
+  única forma de probar el envío sin dispararle recordatorios a pacientes
+  reales para averiguar si la llave sirve.
+
 ## Formularios
 
 React 19 resetea los formularios después de cada acción. Donde perder lo
