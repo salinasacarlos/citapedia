@@ -138,6 +138,21 @@ pase por `/auth/confirm`, que ya sabe filtrar destinos.
 `/admin/cuenta`: aquí la credencial es la liga. Pedirle la de ahora a alguien
 que nunca tuvo una no lleva a ningún lado.
 
+### La ficha de soporte
+
+`/plataforma/[id]` responde las preguntas que llegan por WhatsApp. La raya:
+**la consola ve la operación, no el contenido.**
+
+- Fechas, horas, estados y conteos, sí. Nombres de pacientes, teléfonos,
+  correos y notas, **no** — para diagnosticar "no me aparece una cita" basta
+  con cuándo y en qué quedó; el nombre no ayuda y es dato de un tercero que no
+  es cliente de la plataforma. Una prueba revisa las columnas que devuelve
+  `plataforma_citas` para que nadie las agregue de pasada.
+- Los correos del **equipo** sí se ven: son las personas con las que la
+  plataforma trata.
+- "No tiene horario publicado" va arriba y en rojo: es la causa número uno de
+  "mi liga no deja agendar", y verlo de inmediato ahorra la conversación.
+
 ## Despliegue
 
 Vercel construye por su cuenta cada push a cualquier rama como Preview, y

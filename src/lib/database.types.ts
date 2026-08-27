@@ -277,8 +277,54 @@ export type Database = {
           ultimo_ingreso: string | null
         }[]
       }
+      plataforma_consultorio: {
+        Args: { p_id: string }
+        Returns: {
+          id: string
+          name: string
+          slug: string
+          specialty: string | null
+          email: string | null
+          timezone: string
+          slot_duration: number
+          created_at: string
+          suspended_at: string | null
+          suspended_reason: string | null
+          franjas: number
+          bloqueos: number
+          pacientes: number
+          solicitadas: number
+          confirmadas: number
+          atendidas: number
+          inasistencias: number
+          canceladas: number
+          recordatorios_horas: number[] | null
+          ultima_actividad: string | null
+        }[]
+      }
+      plataforma_equipo: {
+        Args: { p_id: string }
+        Returns: {
+          email: string
+          rol: MemberRole
+          desde: string
+          ultimo_ingreso: string | null
+        }[]
+      }
+      plataforma_citas: {
+        Args: { p_id: string; p_limite?: number }
+        Returns: {
+          starts_at: string
+          ends_at: string
+          status: AppointmentStatus
+          created_at: string
+          tiene_paciente: boolean
+          confirmada_por_paciente: boolean
+          recordatorio_enviado: boolean
+        }[]
+      }
       plataforma_bitacora: {
-        Args: { p_limite?: number }
+        Args: { p_target?: string | null; p_limite?: number }
         Returns: {
           created_at: string
           action: string

@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { exigirSuperadmin } from '@/lib/plataforma/acceso'
 import { reactivarConsultorio } from '@/lib/plataforma/actions'
 import { SuspenderConsultorio } from '@/components/suspender-consultorio'
@@ -112,7 +113,9 @@ export default async function Plataforma() {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <p className="flex flex-wrap items-center gap-x-2 font-semibold text-ink">
-                    {c.name}
+                    <Link href={`/plataforma/${c.id}`} className="hover:underline">
+                      {c.name}
+                    </Link>
                     {c.suspended_at && (
                       <span className="rounded-full bg-peligro-suave px-2 py-0.5 text-xs font-medium text-peligro">
                         Suspendido

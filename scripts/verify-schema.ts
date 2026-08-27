@@ -1310,7 +1310,58 @@ async function main() {
   )
   check('reactivar lo devuelve tal cual', Number(devuelto.rows[0].n) === 1)
 
+  // La ficha de soporte: operación sí, contenido no.
+  const ficha = await como<{ franjas: number; pacientes: number; name: string }>(
+    drA,
+    `select name, franjas, pacientes from plataforma_consultorio($1)`,
+    [proA2],
+  )
+  check('la ficha de soporte trae la configuración', ficha.rows[0]?.name !== undefined)
+
+  const citasSoporte = await como<Record<string, unknown>>(
+    drA,
+    `select * from plataforma_citas($1, 5)`,
+    [proA2],
+  )
+  const columnas = citasSoporte.fields.map((f) => f.name)
+  check(
+    'las citas de soporte no traen al paciente',
+    !columnas.some((c) => ['patient_id', 'name', 'phone', 'email', 'notes'].includes(c)),
+    columnas.join(', '),
+  )
+
+  const equipoSoporte = await como<{ n: number }>(
+    drA,
+    `select count(*)::int as n from plataforma_equipo($1)`,
+    [proA2],
+  )
+  check('y el equipo sí, que son las personas con las que trata la plataforma',
+    Number(equipoSoporte.rows[0].n) > 0)
+
   await db.query(`delete from platform_admins where user_id = $1`, [drA])
+
+  // Sin el alta, ninguna de las tres devuelve nada.
+  const fichaAjena = await como<{ n: number }>(
+    drA,
+    `select count(*)::int as n from plataforma_consultorio($1)`,
+    [proA2],
+  )
+  const citasAjenas = await como<{ n: number }>(
+    drA,
+    `select count(*)::int as n from plataforma_citas($1, 5)`,
+    [proA2],
+  )
+  const equipoAjeno = await como<{ n: number }>(
+    drA,
+    `select count(*)::int as n from plataforma_equipo($1)`,
+    [proA2],
+  )
+  check(
+    'quitada el alta, la ficha de soporte se cierra entera',
+    Number(fichaAjena.rows[0].n) === 0 &&
+      Number(citasAjenas.rows[0].n) === 0 &&
+      Number(equipoAjeno.rows[0].n) === 0,
+  )
 
   console.log('\nAgendar desde el consultorio')
 
