@@ -21,6 +21,12 @@ export function RegenerarLiga({ id, email }: { id: string; email: string }) {
         {pendiente ? 'Generando…' : 'Generar liga nueva'}
       </button>
       {estado.error && <span className="text-xs text-peligro">{estado.error}</span>}
+      {estado.avisoEnvio && (
+        <span className="text-xs text-alerta">{estado.avisoEnvio}</span>
+      )}
+      {estado.ok && !estado.avisoEnvio && (
+        <span className="text-xs text-exito">Enviada por correo</span>
+      )}
     </form>
   )
 }

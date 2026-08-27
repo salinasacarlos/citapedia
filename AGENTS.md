@@ -117,6 +117,22 @@ aparte, en el recuadro.
 Sin dominio verificado en Resend, `onboarding@resend.dev` solo puede escribirle
 al dueño de la cuenta. Sirve para probar; para producción hace falta el dominio.
 
+## La invitación por correo
+
+`invitarAsistente` manda la liga por correo, pero **el correo es una comodidad,
+no la invitación**: la fila ya quedó grabada y la liga se puede copiar. Por eso
+el envío no puede reventar la acción — un problema de Resend dejaría al médico
+sin poder invitar a nadie. Si falla, se dice por qué y la liga sigue en
+pantalla.
+
+Los errores de Resend se traducen (`traducirResend`): llegan en inglés y hablan
+de su producto. El más frecuente por mucho es el del dominio sin verificar, y
+mientras no haya dominio **la invitación no le va a llegar a nadie que no sea
+el dueño de la cuenta de Resend** — la liga a mano sigue siendo el camino real.
+
+El correo no lleva más que la liga. Ni contraseña temporal ni datos del equipo:
+quien lo recibe todavía no es miembro de nada.
+
 ## El cron de recordatorios
 
 `GET /api/recordatorios`, disparado por el cron de Vercel una vez al día

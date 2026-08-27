@@ -25,6 +25,25 @@ function remitente() {
   return process.env.RESEND_FROM ?? 'CitaPedia <onboarding@resend.dev>'
 }
 
+/**
+ * Los errores de Resend llegan en inglés y hablan de su producto, no del
+ * nuestro. El más frecuente por mucho es el del dominio sin verificar, y
+ * dicho tal cual no le explica nada a quien está frente a la pantalla.
+ */
+export function traducirResend(mensaje: string): string {
+  const m = mensaje.toLowerCase()
+  if (m.includes('own email address') || m.includes('verify a domain')) {
+    return 'Todavía no hay dominio verificado en Resend, así que solo se puede escribir a la cuenta del dueño.'
+  }
+  if (m.includes('api key is invalid') || m.includes('unauthorized')) {
+    return 'La llave de Resend no es válida.'
+  }
+  if (m.includes('rate') && m.includes('limit')) {
+    return 'Resend está limitando los envíos; inténtalo en un momento.'
+  }
+  return mensaje
+}
+
 export async function enviarCorreo(correo: Correo): Promise<ResultadoEnvio> {
   const llave = process.env.RESEND_API_KEY
   if (!llave) return { ok: false, error: 'Falta RESEND_API_KEY.' }
@@ -49,7 +68,12 @@ export async function enviarCorreo(correo: Correo): Promise<ResultadoEnvio> {
     | null
 
   if (!respuesta.ok) {
-    return { ok: false, error: cuerpo?.message ?? `Resend respondió ${respuesta.status}.` }
+    return {
+      ok: false,
+      error: cuerpo?.message
+        ? traducirResend(cuerpo.message)
+        : `Resend respondió ${respuesta.status}.`,
+    }
   }
   return { ok: true, id: cuerpo?.id ?? '' }
 }

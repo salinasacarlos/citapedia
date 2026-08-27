@@ -3,6 +3,8 @@
  *   npm run test:correo
  */
 import { armarRecordatorio, correoParaAvisar } from '../src/lib/correo/recordatorio'
+import { armarInvitacion } from '../src/lib/correo/invitacion'
+import { traducirResend } from '../src/lib/correo/enviar'
 
 let fallos = 0
 function check(etiqueta: string, ok: boolean, detalle = '') {
@@ -159,7 +161,57 @@ check(
   tokio.texto.split('\n').find((l) => l.includes(':00')) ?? '',
 )
 
+console.log('\nLa invitación al asistente')
+
+const invita = armarInvitacion({
+  para: 'asistente@example.com',
+  consultorio: 'Dr. Ernesto Peña',
+  liga: 'https://citapedia.vercel.app/invitacion/tok123',
+  dias: 7,
+})
+
+check('va al correo invitado', invita.para === 'asistente@example.com')
+check('el asunto nombra al consultorio', invita.asunto.includes('Dr. Ernesto Peña'))
+check('la liga va completa en el texto', invita.texto.includes('/invitacion/tok123'))
+check('y en el HTML', invita.html.includes('href="https://citapedia.vercel.app/invitacion/tok123"'))
+check('dice cuánto dura', invita.texto.includes('7 días'))
+check(
+  'avisa que el expediente no se comparte',
+  // El HTML va con saltos de línea: se compara sin espacios de más.
+  invita.html.replace(/\s+/g, ' ').includes('expediente clínico se queda con el médico'),
+)
+check(
+  'la contraseña la elige quien recibe, nunca se manda una',
+  invita.texto.includes('eliges tu propia contraseña') &&
+    !/contraseña (temporal|provisional|es:)/i.test(invita.texto),
+)
+
+const conMarcas = armarInvitacion({
+  para: 'a@example.com',
+  consultorio: 'Clínica <b>Norte</b> & Asociados',
+  liga: 'https://x/invitacion/t',
+  dias: 7,
+})
+check('escapa el nombre del consultorio', !conMarcas.html.includes('<b>Norte</b>'))
+
+console.log('\nLo que se le dice al médico cuando falla el envío')
+
+check(
+  'el error del dominio sin verificar sale en español',
+  traducirResend('You can only send testing emails to your own email address').includes(
+    'dominio verificado',
+  ),
+)
+check(
+  'y el de la llave inválida también',
+  traducirResend('API key is invalid').includes('llave de Resend'),
+)
+check(
+  'un error que no conocemos se pasa tal cual, no se traga',
+  traducirResend('algo raro') === 'algo raro',
+)
+
 console.log(
-  fallos === 0 ? '\n✅ Recordatorios verificados.\n' : `\n❌ ${fallos} fallo(s).\n`,
+  fallos === 0 ? '\n✅ Correos verificados.\n' : `\n❌ ${fallos} fallo(s).\n`,
 )
 process.exit(fallos === 0 ? 0 : 1)
