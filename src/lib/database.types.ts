@@ -18,6 +18,9 @@ export type AppointmentStatus =
 export type MemberRole = 'owner' | 'assistant'
 
 export type Professional = {
+  /** Cuenta desactivada por la plataforma. Null = activa. */
+  suspended_at: string | null
+  suspended_reason: string | null
   id: string
   name: string
   email: string
@@ -241,6 +244,101 @@ export type Database = {
       }
     }
     Functions: {
+      es_superadmin: { Args: Record<string, never>; Returns: boolean }
+      plataforma_resumen: {
+        Args: Record<string, never>
+        Returns: {
+          consultorios: number
+          activos: number
+          suspendidos: number
+          altas_30d: number
+          pacientes: number
+          citas: number
+          citas_30d: number
+          solicitudes_abiertas: number
+        }[]
+      }
+      plataforma_consultorios: {
+        Args: Record<string, never>
+        Returns: {
+          id: string
+          name: string
+          slug: string
+          specialty: string | null
+          email: string | null
+          created_at: string
+          suspended_at: string | null
+          suspended_reason: string | null
+          miembros: number
+          pacientes: number
+          citas: number
+          citas_30d: number
+          ultima_cita: string | null
+          ultimo_ingreso: string | null
+        }[]
+      }
+      plataforma_consultorio: {
+        Args: { p_id: string }
+        Returns: {
+          id: string
+          name: string
+          slug: string
+          specialty: string | null
+          email: string | null
+          timezone: string
+          slot_duration: number
+          created_at: string
+          suspended_at: string | null
+          suspended_reason: string | null
+          franjas: number
+          bloqueos: number
+          pacientes: number
+          solicitadas: number
+          confirmadas: number
+          atendidas: number
+          inasistencias: number
+          canceladas: number
+          recordatorios_horas: number[] | null
+          ultima_actividad: string | null
+        }[]
+      }
+      plataforma_equipo: {
+        Args: { p_id: string }
+        Returns: {
+          email: string
+          rol: MemberRole
+          desde: string
+          ultimo_ingreso: string | null
+        }[]
+      }
+      plataforma_citas: {
+        Args: { p_id: string; p_limite?: number }
+        Returns: {
+          starts_at: string
+          ends_at: string
+          status: AppointmentStatus
+          created_at: string
+          tiene_paciente: boolean
+          confirmada_por_paciente: boolean
+          recordatorio_enviado: boolean
+        }[]
+      }
+      plataforma_bitacora: {
+        Args: { p_target?: string | null; p_limite?: number }
+        Returns: {
+          created_at: string
+          action: string
+          detail: string | null
+          target: string | null
+          actor: string | null
+        }[]
+      }
+      plataforma_anotar: {
+        Args: { p_action: string; p_target: string | null; p_detail?: string | null }
+        Returns: undefined
+      }
+      plataforma_suspender: { Args: { p_id: string; p_motivo: string }; Returns: undefined }
+      plataforma_reactivar: { Args: { p_id: string }; Returns: undefined }
       miembros_del_consultorio: {
         Args: Record<string, never>
         Returns: {

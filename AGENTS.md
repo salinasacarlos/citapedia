@@ -83,6 +83,76 @@ medianoche a medianoche del día siguiente: el fin es exclusivo, y
 Bloquear un rango donde ya hay citas `confirmed` se rechaza con el conteo, en
 vez de dejar citas prometidas dentro de un bloqueo.
 
+## La consola de plataforma
+
+`/plataforma` es la consola de operación: dar de alta consultorios, activarlos
+o desactivarlos, ver uso y ayudar a quien se atore. Un rol que ve a través de
+todos los consultorios es lo más peligroso del sistema, así que se construyó
+con tres reglas.
+
+**No se toca el RLS de los consultorios.** Sería fácil agregarle
+`or es_superadmin()` a cada política, y es justo como esto sale mal: se
+ensancha en silencio cada permiso existente y ya nadie puede razonar qué ve
+quién. El acceso va por funciones SECURITY DEFINER hechas para esto, cada una
+revisando `es_superadmin()` en su primera línea.
+
+**Nada clínico.** Ninguna función de plataforma toca `clinical_records`,
+`consultation_notes`, `consultation_files` ni `declared_records`. Operar no
+necesita leer el expediente de nadie, y lo que no se expone no se filtra. La
+pantalla lo dice con todas sus letras, para que quede claro qué es esto.
+
+**Todo queda anotado.** `platform_audit` guarda quién suspendió a quién y por
+qué. El motivo es obligatorio: suspender apaga el negocio de alguien más.
+
+Detalles que importan:
+
+- `platform_admins` **no tiene políticas**: nadie la lee ni la escribe por la
+  API. El primer operador se da de alta por SQL, y así nadie puede
+  autonombrarse desde la aplicación.
+- La puerta de la consola responde **404**, no 403: quien no es operador no
+  tiene por qué enterarse de que existe. Y saltársela no daría acceso a nada,
+  porque las funciones revisan por su cuenta.
+- La suspensión muerde en tres lados, no solo en la UI: `public_professionals`
+  filtra a los suspendidos (su página pública deja de existir), un trigger en
+  `appointments` rechaza citas nuevas —`solicitar_cita` es SECURITY DEFINER y
+  lee la tabla directo, así que sin el trigger una liga vieja seguiría
+  agendando—, y `exigirConsultorio` manda a `/suspendido` en vez de a `/login`,
+  donde la sesión válida los dejaría rebotando.
+
+### Dar de alta un consultorio
+
+Crear el usuario de auth necesita la llave de servicio, así que la acción vive
+en el servidor y **lo primero que hace es preguntarle a la base, con la sesión
+de quien pide y no con la llave, si esa persona es operador**. Sin ese paso,
+cualquiera con sesión podría crearse consultorios.
+
+De ahí en adelante lo arma `handle_new_user`, igual que en el registro normal.
+
+No se manda contraseña: se crea la cuenta y el médico elige la suya con una
+liga de un solo uso (`/definir-contrasena`). Una contraseña temporal tendría
+que viajar por algún lado, y ese lado siempre termina siendo WhatsApp. La liga
+se arma con el `hashed_token` y no con el `action_link` de Supabase, para que
+pase por `/auth/confirm`, que ya sabe filtrar destinos.
+
+`/definir-contrasena` no pide la contraseña anterior, al revés que
+`/admin/cuenta`: aquí la credencial es la liga. Pedirle la de ahora a alguien
+que nunca tuvo una no lleva a ningún lado.
+
+### La ficha de soporte
+
+`/plataforma/[id]` responde las preguntas que llegan por WhatsApp. La raya:
+**la consola ve la operación, no el contenido.**
+
+- Fechas, horas, estados y conteos, sí. Nombres de pacientes, teléfonos,
+  correos y notas, **no** — para diagnosticar "no me aparece una cita" basta
+  con cuándo y en qué quedó; el nombre no ayuda y es dato de un tercero que no
+  es cliente de la plataforma. Una prueba revisa las columnas que devuelve
+  `plataforma_citas` para que nadie las agregue de pasada.
+- Los correos del **equipo** sí se ven: son las personas con las que la
+  plataforma trata.
+- "No tiene horario publicado" va arriba y en rojo: es la causa número uno de
+  "mi liga no deja agendar", y verlo de inmediato ahorra la conversación.
+
 ## Despliegue
 
 Vercel construye por su cuenta cada push a cualquier rama como Preview, y
