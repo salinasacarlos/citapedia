@@ -5,6 +5,7 @@
 import { armarRecordatorio, correoParaAvisar } from '../src/lib/correo/recordatorio'
 import { armarInvitacion } from '../src/lib/correo/invitacion'
 import { traducirResend } from '../src/lib/correo/enviar'
+import { armarCitaAceptada } from '../src/lib/correo/cita-aceptada'
 
 let fallos = 0
 function check(etiqueta: string, ok: boolean, detalle = '') {
@@ -193,6 +194,45 @@ const conMarcas = armarInvitacion({
   dias: 7,
 })
 check('escapa el nombre del consultorio', !conMarcas.html.includes('<b>Norte</b>'))
+
+console.log('\nEl aviso de cita aceptada')
+
+const aceptada = armarCitaAceptada({
+  destinatario: { nombre: 'Adriana Robles', correo: 'adriana@example.com' },
+  paciente: 'Ximena Robles',
+  esMenor: true,
+  doctor: 'Dr. Ernesto Peña',
+  direccion: 'Av. Universidad 900, CDMX',
+  telefono: '+52 55 8899 1122',
+  inicio: '2026-09-01T16:00:00Z',
+  zona: MX,
+  liga: 'https://citapedia.vercel.app/cita/tok',
+})
+
+check('le llega al tutor', aceptada.para === 'adriana@example.com')
+check('lo saluda a él', aceptada.texto.startsWith('Hola Adriana,'))
+check('pero dice de quién es la cita', aceptada.texto.includes('La cita de Ximena Robles'))
+check('la hora va en la zona del consultorio', aceptada.texto.includes('10:00 a.m.'))
+check('pide confirmar, que es a lo que viene', aceptada.html.includes('Confirmar que voy a ir'))
+check('lleva la liga', aceptada.html.includes('href="https://citapedia.vercel.app/cita/tok"'))
+check(
+  'y dice que desde ahí también se mueve o se cancela',
+  aceptada.html.includes('moverla o avisarnos'),
+)
+
+const aceptadaAdulto = armarCitaAceptada({
+  destinatario: { nombre: 'Carlos Salinas', correo: 'c@example.com' },
+  paciente: 'Carlos Salinas',
+  esMenor: false,
+  doctor: 'Dra. Lucía Ferrer',
+  direccion: null,
+  telefono: null,
+  inicio: '2026-09-01T16:00:00Z',
+  zona: MX,
+  liga: 'https://x/cita/t',
+})
+check('para un adulto el asunto habla de "Tu cita"', aceptadaAdulto.asunto.startsWith('Tu cita'))
+check('y no inventa dirección cuando no hay', !aceptadaAdulto.texto.includes('Dirección:'))
 
 console.log('\nLo que se le dice al médico cuando falla el envío')
 

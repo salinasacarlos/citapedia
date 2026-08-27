@@ -4,8 +4,10 @@ import { aceptarCita, marcarVencidas, rechazarCita } from '@/lib/admin/actions'
 import { AccionesCita } from '@/components/acciones-cita'
 import { EstadoVacio } from '@/components/estado-vacio'
 import { Filtros } from '@/components/filtros'
+import { CitaAceptada } from '@/components/cita-aceptada'
 import { aplicarFiltros, hayFiltros, leerFiltros } from '@/lib/filtros'
-import { fechaLarga, rangoHorario, relativo } from '@/lib/fechas'
+import { fechaLarga, hora, rangoHorario, relativo } from '@/lib/fechas'
+import { armarMensaje, contactoParaConfirmar } from '@/lib/whatsapp'
 import type { Patient } from '@/lib/database.types'
 
 export const dynamic = 'force-dynamic'
@@ -18,6 +20,16 @@ type Solicitud = {
   notes: string | null
   created_at: string | null
   patients: Pick<Patient, 'name' | 'phone' | 'email'> | null
+}
+
+/** Agrupa por día, igual que la agenda: una lista plana de fechas cuesta leer. */
+function agruparPorDia(solicitudes: Solicitud[], zona: string) {
+  const porDia = new Map<string, Solicitud[]>()
+  for (const s of solicitudes) {
+    const dia = fechaLarga(s.starts_at, zona)
+    porDia.set(dia, [...(porDia.get(dia) ?? []), s])
+  }
+  return [...porDia.entries()]
 }
 
 export default async function SolicitudesPage({
@@ -47,12 +59,47 @@ export default async function SolicitudesPage({
     .order('starts_at')
     .returns<Solicitud[]>()
 
+  // La cita recién aceptada viaja por la URL: la lista ya no la contiene
+  // (dejó de estar `requested`) y su liga se necesita justo en ese momento.
+  const tokenAceptada = typeof params.aceptada === 'string' ? params.aceptada : null
+  const { data: aceptada } = tokenAceptada
+    ? await supabase
+        .from('appointments')
+        .select(
+          'access_token, starts_at, patients(name, phone, is_minor, tutor_name, tutor_phone)',
+        )
+        .eq('access_token', tokenAceptada)
+        .maybeSingle<{
+          access_token: string
+          starts_at: string
+          patients: Pick<
+            Patient,
+            'name' | 'phone' | 'is_minor' | 'tutor_name' | 'tutor_phone'
+          > | null
+        }>()
+    : { data: null }
+
+  const { data: ajustes } = await supabase
+    .from('reminder_settings')
+    .select('message_template')
+    .maybeSingle<{ message_template: string | null }>()
+
+  const base =
+    ajustes?.message_template ??
+    'Hola {paciente}, te recordamos tu cita con {doctor} el {fecha} a las {hora}.'
+  const plantilla = base.includes('{liga}') ? base : `${base} Aquí puedes confirmar: {liga}`
+  const sitio = process.env.NEXT_PUBLIC_SITE_URL ?? ''
+
   const ahora = new Date().toISOString()
   const todas = data ?? []
+
+  // Filtrando por estado, lo que se ve ya está decidido: no hay nada que
+  // aceptar, ni que separar por hora, y ofrecer los botones sería mentir.
+  const decidido = filtros.estado !== ''
   // Una solicitud cuyo horario ya pasó no se puede aceptar: nadie la atendió
   // a tiempo. Se separa para no mezclarla con lo que sí requiere decisión.
-  const pendientes = todas.filter((s) => s.starts_at >= ahora)
-  const vencidas = todas.filter((s) => s.starts_at < ahora)
+  const pendientes = decidido ? todas : todas.filter((s) => s.starts_at >= ahora)
+  const vencidas = decidido ? [] : todas.filter((s) => s.starts_at < ahora)
 
   // Dos solicitudes al mismo horario compiten: aceptar una deja fuera a la otra.
   const porHorario = new Map<string, number>()
@@ -65,17 +112,58 @@ export default async function SolicitudesPage({
       <header className="mb-6">
         <h1 className="text-2xl font-bold tracking-tight text-ink">Solicitudes</h1>
         <p className="mt-1 text-sm text-muted">
-          {pendientes.length === 0
-            ? hayFiltros(filtros)
-              ? 'Ninguna solicitud coincide con estos filtros.'
-              : 'Nada pendiente por revisar.'
-            : `${pendientes.length} ${
-                pendientes.length === 1 ? 'paciente espera' : 'pacientes esperan'
-              } tu respuesta. Hasta que aceptes, el horario sigue libre.`}
+          {decidido
+            ? `${pendientes.length} ${
+                pendientes.length === 1 ? 'solicitud' : 'solicitudes'
+              } ${
+                filtros.estado === 'rejected'
+                  ? 'que rechazaste'
+                  : pendientes.length === 1
+                    ? 'que venció'
+                    : 'que vencieron'
+              }. Ya no ${pendientes.length === 1 ? 'requiere' : 'requieren'} nada de ti.`
+            : pendientes.length === 0
+              ? hayFiltros(filtros)
+                ? 'Ninguna solicitud coincide con estos filtros.'
+                : 'Nada pendiente por revisar.'
+              : `${pendientes.length} ${
+                  pendientes.length === 1 ? 'paciente espera' : 'pacientes esperan'
+                } tu respuesta. Hasta que aceptes, el horario sigue libre.`}
         </p>
       </header>
 
-      <Filtros ruta="/admin/solicitudes" />
+      {aceptada?.patients && (
+        <CitaAceptada
+          paciente={aceptada.patients.name}
+          liga={`${sitio}/cita/${aceptada.access_token}`}
+          telefono={contactoParaConfirmar(aceptada.patients)?.telefono ?? null}
+          correo={
+            params.correo === 'enviado'
+              ? 'enviado'
+              : params.correo === 'falla'
+                ? 'falla'
+                : 'sin-correo'
+          }
+          mensaje={armarMensaje(plantilla, {
+            paciente:
+              contactoParaConfirmar(aceptada.patients)?.nombre ?? aceptada.patients.name,
+            doctor: profesional.name,
+            fecha: fechaLarga(aceptada.starts_at, zona),
+            hora: hora(aceptada.starts_at, zona),
+            liga: `${sitio}/cita/${aceptada.access_token}`,
+          })}
+        />
+      )}
+
+      <Filtros
+        ruta="/admin/solicitudes"
+        etiquetaEstado="Estado"
+        etiquetaTodos="Por revisar"
+        estados={[
+          { valor: 'rejected', etiqueta: 'Rechazadas' },
+          { valor: 'expired', etiqueta: 'Vencidas y archivadas' },
+        ]}
+      />
 
       {vencidas.length > 0 && (
         <section className="mb-8 rounded-marca border border-border bg-surface-2 px-4 py-4 sm:px-5">
@@ -108,8 +196,14 @@ export default async function SolicitudesPage({
             : 'Cuando alguien pida cita desde tu página pública, aparecerá aquí para que la aceptes o la rechaces.'}
         </EstadoVacio>
       ) : (
-        <ul className="space-y-3">
-          {pendientes.map((s) => {
+        <div className="space-y-8">
+          {agruparPorDia(pendientes, zona).map(([dia, delDia]) => (
+            <section key={dia}>
+              <h2 className="mb-3 text-sm font-semibold text-muted first-letter:uppercase">
+                {dia}
+              </h2>
+              <ul className="space-y-3">
+                {delDia.map((s) => {
             const compiten = (porHorario.get(s.starts_at) ?? 0) > 1
             const contacto = [s.patients?.phone, s.patients?.email].filter(Boolean)
 
@@ -126,12 +220,8 @@ export default async function SolicitudesPage({
                   )}
                 </div>
 
-                <p className="mt-1 flex flex-wrap gap-x-2 text-sm text-muted">
-                  <span className="first-letter:uppercase">{fechaLarga(s.starts_at, zona)}</span>
-                  <span aria-hidden>·</span>
-                  <span className="whitespace-nowrap tabular-nums">
-                    {rangoHorario(s.starts_at, s.ends_at, zona)}
-                  </span>
+                <p className="mt-1 text-sm whitespace-nowrap tabular-nums text-muted">
+                  {rangoHorario(s.starts_at, s.ends_at, zona)}
                 </p>
 
                 {contacto.length > 0 && (
@@ -157,19 +247,25 @@ export default async function SolicitudesPage({
                   </p>
                 )}
 
-                <div className="mt-4">
-                  <AccionesCita
-                    id={s.id}
-                    acciones={[
-                      { accion: aceptarCita, etiqueta: 'Aceptar', tono: 'primario' },
-                      { accion: rechazarCita, etiqueta: 'Rechazar', tono: 'peligro' },
-                    ]}
-                  />
-                </div>
+                {/* Ya decidida, no hay nada que aceptar ni que rechazar. */}
+                {!decidido && (
+                  <div className="mt-4">
+                    <AccionesCita
+                      id={s.id}
+                      acciones={[
+                        { accion: aceptarCita, etiqueta: 'Aceptar', tono: 'primario' },
+                        { accion: rechazarCita, etiqueta: 'Rechazar', tono: 'peligro' },
+                      ]}
+                    />
+                  </div>
+                )}
               </li>
             )
           })}
-        </ul>
+              </ul>
+            </section>
+          ))}
+        </div>
       )}
     </>
   )

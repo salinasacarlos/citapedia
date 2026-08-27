@@ -704,9 +704,66 @@ async function main() {
       solicitud,
     ])
   } catch (err) {
-    sinAceptar = String(err).includes('confirmada por el consultorio')
+    sinAceptar = String(err).includes('ya aceptó')
   }
   check('una solicitud sin aceptar no se puede confirmar con el paciente', sinAceptar)
+
+  // El bug: el trigger también corría al cambiar el estado, así que una cita
+  // ya confirmada por el paciente quedaba trabada — no se podía cancelar, ni
+  // cerrar, ni marcar inasistencia.
+  // Una cita nueva por destino: devolver la misma a 'confirmed' es una
+  // transición que la máquina de estados prohíbe, y el error sería de ella.
+  let dias = 60
+  for (const destino of [
+    'cancelled_by_professional',
+    'completed',
+    'no_show',
+    'rescheduled',
+  ]) {
+    dias++
+    const suya = (
+      await db.query<{ id: string }>(
+        `insert into appointments (professional_id, starts_at, ends_at, status,
+                                   confirmation_sent_at, patient_confirmed_at)
+         values ($1, now() + ($2 || ' days')::interval,
+                     now() + ($2 || ' days')::interval + interval '30 minutes',
+                     'confirmed', now(), now())
+         returning id`,
+        [proId, String(dias)],
+      )
+    ).rows[0].id
+
+    // `rescheduled` además exige apuntar a la cita nueva: esa regla es de la
+    // máquina de estados y no tiene que ver con la confirmación.
+    let reemplazo: string | null = null
+    if (destino === 'rescheduled') {
+      dias++
+      reemplazo = (
+        await db.query<{ id: string }>(
+          `insert into appointments (professional_id, starts_at, ends_at, status)
+           values ($1, now() + ($2 || ' days')::interval,
+                       now() + ($2 || ' days')::interval + interval '30 minutes', 'confirmed')
+           returning id`,
+          [proId, String(dias)],
+        )
+      ).rows[0].id
+    }
+
+    let movida = false
+    try {
+      await db.query(
+        `update appointments set status = $2, rescheduled_to = $3 where id = $1`,
+        [suya, destino, reemplazo],
+      )
+      movida = true
+    } catch (err) {
+      console.log(`      ${destino}: ${String(err).slice(0, 100)}`)
+    }
+    check(`una cita que el paciente confirmó sí se puede pasar a ${destino}`, movida)
+    await db.query(`delete from appointments where id = any($1)`, [
+      [suya, reemplazo].filter(Boolean),
+    ])
+  }
 
   await db.query(`delete from appointments where id = any($1)`, [[citaConf, solicitud]])
 

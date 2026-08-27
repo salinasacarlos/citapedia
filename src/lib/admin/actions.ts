@@ -1,8 +1,12 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { exigirConsultorio } from '@/lib/consultorio'
+import { enviarCorreo } from '@/lib/correo/enviar'
+import { armarCitaAceptada } from '@/lib/correo/cita-aceptada'
+import { correoParaAvisar } from '@/lib/correo/recordatorio'
 import type { AppointmentStatus } from '@/lib/database.types'
 import { horaLocalAInstante } from '@/lib/slots'
 
@@ -157,8 +161,78 @@ async function cambiarEstado(id: string, status: AppointmentStatus): Promise<Res
   return { ok: 'Listo.' }
 }
 
-export async function aceptarCita(_estado: Resultado, datos: FormData) {
-  return cambiarEstado(String(datos.get('id')), 'confirmed')
+/**
+ * Aceptar no es solo cambiar el estado: es el momento en que el paciente tiene
+ * que enterarse. Se le manda el correo con su liga y se redirige con el token
+ * en la URL, para que la recepcionista tenga la liga a la mano sin ir a
+ * buscarla — la solicitud desaparece de esta lista en cuanto se acepta.
+ */
+export async function aceptarCita(
+  _estado: Resultado,
+  datos: FormData,
+): Promise<Resultado> {
+  const id = String(datos.get('id'))
+  const resultado = await cambiarEstado(id, 'confirmed')
+  if (resultado.error) return resultado
+
+  const supabase = await createClient()
+  const { data: cita } = await supabase
+    .from('appointments')
+    .select(
+      `access_token, starts_at,
+       patients(name, email, is_minor, tutor_name, tutor_email),
+       professionals(name, timezone, clinic_address, phone)`,
+    )
+    .eq('id', id)
+    .maybeSingle<{
+      access_token: string
+      starts_at: string
+      patients: {
+        name: string
+        email: string | null
+        is_minor: boolean | null
+        tutor_name: string | null
+        tutor_email: string | null
+      } | null
+      professionals: {
+        name: string
+        timezone: string
+        clinic_address: string | null
+        phone: string | null
+      } | null
+    }>()
+
+  if (!cita) return redirect('/admin/solicitudes')
+
+  const destinatario = cita.patients ? correoParaAvisar(cita.patients) : null
+  const sitio = process.env.NEXT_PUBLIC_SITE_URL ?? ''
+  const liga = `${sitio}/cita/${cita.access_token}`
+
+  // El correo es un extra: si falla, la cita ya quedó aceptada y la liga
+  // sigue ahí para mandarla por WhatsApp. Nunca al revés.
+  let correo: 'enviado' | 'sin-correo' | 'falla' = 'sin-correo'
+  if (destinatario && cita.professionals) {
+    try {
+      const envio = await enviarCorreo(
+        armarCitaAceptada({
+          destinatario,
+          paciente: cita.patients!.name,
+          esMenor: Boolean(cita.patients!.is_minor),
+          doctor: cita.professionals.name,
+          direccion: cita.professionals.clinic_address,
+          telefono: cita.professionals.phone,
+          inicio: cita.starts_at,
+          zona: cita.professionals.timezone,
+          liga,
+        }),
+      )
+      correo = envio.ok ? 'enviado' : 'falla'
+    } catch {
+      correo = 'falla'
+    }
+  }
+
+  return redirect(`/admin/solicitudes?aceptada=${cita.access_token}&correo=${correo}`)
 }
 
 export async function rechazarCita(_estado: Resultado, datos: FormData) {

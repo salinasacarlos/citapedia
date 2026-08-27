@@ -221,6 +221,19 @@ pierde el hueco y termina en inasistencia; moverla lo conserva.
 - `ver_cita` devuelve `puede_reagendar` y `duracion_min` para que la página no
   tenga que recalcular la regla ni ofrecer huecos de la duración equivocada.
 
+## Confirmar antes de lo que no tiene vuelta
+
+`ConfirmarAccion` es un `<dialog>` nativo: trae foco atrapado, Escape y fondo
+inerte sin reimplementarlos mal. Se abre con `showModal()` desde un efecto,
+porque el atributo `open` renderiza el diálogo **sin** modalidad.
+
+Se cierra al confirmar, no cuando responde el servidor: esperar con el diálogo
+encima parece que no pasó nada. El error, si lo hay, sale en la fila.
+
+Cancelar una cita lo usa. No es como quitar una franja del horario: del otro
+lado hay una persona que ya apartó ese día, y muchas veces ya confirmó que
+viene — el diálogo lo dice con esas palabras.
+
 ## Filtros y listas
 
 Los filtros viven en la URL (`?q=&desde=&hasta=&estado=&pagina=`), nunca en
@@ -236,6 +249,10 @@ funciona, y filtrar es trabajo de Postgres, no del navegador.
   PostgREST filtra el recurso incrustado pero no las filas padre. Se usa
   **solo** cuando hay búsqueda, porque si no excluiría citas sin paciente.
 - Listas largas van paginadas (`POR_PAGINA`), con `count: 'exact'`.
+- El selector de estado se etiqueta por lista: en el Historial la opción vacía
+  es "Todos", en Solicitudes es "Por revisar" — ahí lo no filtrado es lo que
+  espera decisión, y llamarle "Todos" mentiría. Filtrando por un estado ya
+  decidido desaparecen Aceptar y Rechazar: ofrecerlos sería mentir también.
 
 ## Calendario
 
@@ -496,6 +513,12 @@ contacto puede estar de cualquiera de ellos.
 
 `status = 'confirmed'` significa que el **consultorio** aceptó la cita. Que el
 **paciente** diga que viene es otra cosa, y es la que baja las inasistencias.
+
+El trigger que la valida mira **el acto de confirmar**, no el estado en
+general. Cuando miraba las dos cosas, una cita que el paciente ya había
+confirmado quedaba trabada: no se podía cancelar, ni cerrar, ni marcar
+inasistencia, ni reagendar — y el error que salía hablaba de confirmación, que
+no tenía nada que ver con lo que se estaba intentando.
 
 Va como marcas de tiempo (`confirmation_sent_at`, `patient_confirmed_at`), no
 como valor del enum, a propósito: la restricción de solape filtra por
