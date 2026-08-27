@@ -37,9 +37,22 @@ export function InvitarAsistente() {
         </p>
       )}
 
+      {estado.ok && !estado.avisoEnvio && (
+        <p role="status" className="mt-3 text-sm text-exito">
+          {estado.ok}
+        </p>
+      )}
+
+      {/* Si el correo no salió, la invitación igual existe: se pasa a mano. */}
+      {estado.avisoEnvio && (
+        <p role="status" className="mt-3 text-sm text-alerta">
+          {estado.avisoEnvio}
+        </p>
+      )}
+
       {estado.token && (
         <div className="mt-4">
-          <LigaInvitacion token={estado.token} />
+          <LigaInvitacion token={estado.token} enviada={!estado.avisoEnvio} />
         </div>
       )}
     </div>

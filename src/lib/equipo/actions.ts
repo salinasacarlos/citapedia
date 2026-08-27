@@ -5,11 +5,50 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { exigirConsultorio } from '@/lib/consultorio'
+import { enviarCorreo } from '@/lib/correo/enviar'
+import { armarInvitacion } from '@/lib/correo/invitacion'
 
-export type ResultadoEquipo = { error?: string; ok?: string; token?: string }
+export type ResultadoEquipo = {
+  error?: string
+  ok?: string
+  token?: string
+  /** Por qué no salió el correo. La liga sigue sirviendo: se pasa a mano. */
+  avisoEnvio?: string
+}
 
 /** Días que una invitación sigue sirviendo. */
 const VIGENCIA_DIAS = 7
+
+/**
+ * Manda la invitación por correo, y si no se puede lo dice sin estorbar.
+ *
+ * El correo es una comodidad, no la invitación: la invitación ya quedó grabada
+ * y la liga se puede copiar. Si esto reventara la acción, un problema de
+ * Resend dejaría al médico sin poder invitar a nadie.
+ */
+async function mandarInvitacion(
+  email: string,
+  consultorio: string,
+  token: string,
+): Promise<string | undefined> {
+  const sitio = process.env.NEXT_PUBLIC_SITE_URL
+  if (!sitio) return 'No hay dirección del sitio configurada; comparte la liga tú.'
+
+  try {
+    const envio = await enviarCorreo(
+      armarInvitacion({
+        para: email,
+        consultorio,
+        liga: `${sitio}/invitacion/${token}`,
+        dias: VIGENCIA_DIAS,
+      }),
+    )
+    if (!envio.ok) return `No se pudo mandar el correo (${envio.error}). Pásale la liga tú.`
+  } catch {
+    return 'No se pudo mandar el correo. Pásale la liga tú.'
+  }
+  return undefined
+}
 
 function traducir(mensaje: string): string {
   if (mensaje.includes('invitations_pendiente_unica')) {
@@ -49,8 +88,14 @@ export async function invitarAsistente(
 
   if (error) return { error: traducir(error.message) }
 
+  const avisoEnvio = await mandarInvitacion(email, profesional.name, token)
+
   revalidatePath('/admin/equipo')
-  return { ok: `Invitación lista para ${email}.`, token }
+  return {
+    ok: avisoEnvio ? `Invitación lista para ${email}.` : `Invitación enviada a ${email}.`,
+    token,
+    avisoEnvio,
+  }
 }
 
 /**
@@ -82,8 +127,16 @@ export async function regenerarInvitacion(
 
   if (error) return { error: traducir(error.message) }
 
+  const avisoEnvio = await mandarInvitacion(email, profesional.name, token)
+
   revalidatePath('/admin/equipo')
-  return { ok: 'Liga nueva lista. La anterior dejó de servir.' }
+  return {
+    ok: avisoEnvio
+      ? 'Liga nueva lista. La anterior dejó de servir.'
+      : 'Liga nueva enviada por correo. La anterior dejó de servir.',
+    token,
+    avisoEnvio,
+  }
 }
 
 export async function cancelarInvitacion(datos: FormData) {
