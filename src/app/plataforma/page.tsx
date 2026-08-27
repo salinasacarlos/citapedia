@@ -1,6 +1,7 @@
 import { exigirSuperadmin } from '@/lib/plataforma/acceso'
 import { reactivarConsultorio } from '@/lib/plataforma/actions'
 import { SuspenderConsultorio } from '@/components/suspender-consultorio'
+import { AltaConsultorio } from '@/components/alta-consultorio'
 import { EstadoVacio } from '@/components/estado-vacio'
 import { fechaCorta, relativo } from '@/lib/fechas'
 
@@ -65,12 +66,17 @@ export default async function Plataforma() {
 
   return (
     <>
-      <header className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight text-ink">Consultorios</h1>
-        <p className="mt-1 text-sm text-muted">
-          Uso de la plataforma. Aquí no se ve nada clínico: ni expedientes, ni notas
-          de consulta, ni estudios.
-        </p>
+      <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-ink">Consultorios</h1>
+          <p className="mt-1 text-sm text-muted">
+            Uso de la plataforma. Aquí no se ve nada clínico: ni expedientes, ni notas
+            de consulta, ni estudios.
+          </p>
+        </div>
+        <div className="sm:shrink-0">
+          <AltaConsultorio />
+        </div>
       </header>
 
       {r && (

@@ -119,6 +119,25 @@ Detalles que importan:
   agendando—, y `exigirConsultorio` manda a `/suspendido` en vez de a `/login`,
   donde la sesión válida los dejaría rebotando.
 
+### Dar de alta un consultorio
+
+Crear el usuario de auth necesita la llave de servicio, así que la acción vive
+en el servidor y **lo primero que hace es preguntarle a la base, con la sesión
+de quien pide y no con la llave, si esa persona es operador**. Sin ese paso,
+cualquiera con sesión podría crearse consultorios.
+
+De ahí en adelante lo arma `handle_new_user`, igual que en el registro normal.
+
+No se manda contraseña: se crea la cuenta y el médico elige la suya con una
+liga de un solo uso (`/definir-contrasena`). Una contraseña temporal tendría
+que viajar por algún lado, y ese lado siempre termina siendo WhatsApp. La liga
+se arma con el `hashed_token` y no con el `action_link` de Supabase, para que
+pase por `/auth/confirm`, que ya sabe filtrar destinos.
+
+`/definir-contrasena` no pide la contraseña anterior, al revés que
+`/admin/cuenta`: aquí la credencial es la liga. Pedirle la de ahora a alguien
+que nunca tuvo una no lleva a ningún lado.
+
 ## Despliegue
 
 Vercel construye por su cuenta cada push a cualquier rama como Preview, y

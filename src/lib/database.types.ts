@@ -287,6 +287,10 @@ export type Database = {
           actor: string | null
         }[]
       }
+      plataforma_anotar: {
+        Args: { p_action: string; p_target: string | null; p_detail?: string | null }
+        Returns: undefined
+      }
       plataforma_suspender: { Args: { p_id: string; p_motivo: string }; Returns: undefined }
       plataforma_reactivar: { Args: { p_id: string }; Returns: undefined }
       miembros_del_consultorio: {
