@@ -18,6 +18,7 @@ export function ConfirmarAccion({
   onCancelar,
   onConfirmar,
   pendiente = false,
+  confirmarDeshabilitado = false,
 }: {
   abierto: boolean
   titulo: string
@@ -27,6 +28,8 @@ export function ConfirmarAccion({
   onCancelar: () => void
   onConfirmar: () => void
   pendiente?: boolean
+  /** Para cuando el diálogo pide algo antes de dejar continuar. */
+  confirmarDeshabilitado?: boolean
 }) {
   const dialogo = useRef<HTMLDialogElement>(null)
 
@@ -66,10 +69,10 @@ export function ConfirmarAccion({
           <button
             type="button"
             onClick={onConfirmar}
-            disabled={pendiente}
-            className="boton border border-peligro bg-peligro-suave font-semibold text-peligro hover:bg-peligro hover:text-white"
+            disabled={pendiente || confirmarDeshabilitado}
+            className="boton border border-peligro disabled:opacity-50 disabled:hover:bg-peligro-suave disabled:hover:text-peligro bg-peligro-suave font-semibold text-peligro hover:bg-peligro hover:text-white"
           >
-            {pendiente ? 'Cancelando…' : confirmar}
+            {pendiente ? 'Un momento…' : confirmar}
           </button>
         </div>
       </div>

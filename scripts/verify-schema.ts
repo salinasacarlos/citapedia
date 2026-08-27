@@ -31,7 +31,10 @@ async function main() {
       id uuid primary key default gen_random_uuid(),
       email text unique,
       raw_user_meta_data jsonb default '{}'::jsonb,
-      created_at timestamptz default now()
+      created_at timestamptz default now(),
+      -- La consola de plataforma la lee para saber a quién ayudar: una cuenta
+      -- que nadie ha vuelto a abrir es justo la que hay que mirar.
+      last_sign_in_at timestamptz
     );
     -- Igual que en Supabase: auth.uid() sale del claim 'sub' del JWT.
     create or replace function auth.uid() returns uuid
@@ -1238,6 +1241,76 @@ async function main() {
     `select count(*)::int as n from patients`,
   )
   check('un médico no ve los pacientes de otro consultorio', Number(ajeno.rows[0].n) === 0)
+
+  console.log('\nLa consola de plataforma')
+
+  // Un médico normal es exactamente quien no debe poder asomarse.
+  const soyAdmin = await como<{ es: boolean }>(drA, `select es_superadmin() as es`)
+  check('un médico no es superadmin', soyAdmin.rows[0].es === false)
+
+  const listaAjena = await como<{ n: number }>(
+    drA,
+    `select count(*)::int as n from plataforma_consultorios()`,
+  )
+  check('y la lista de consultorios le sale vacía', Number(listaAjena.rows[0].n) === 0)
+
+  let suspenderAjeno = false
+  try {
+    await como(drA, `select plataforma_suspender($1, 'porque sí')`, [proA2])
+  } catch (err) {
+    suspenderAjeno = String(err).includes('No autorizado')
+  }
+  check('ni puede suspender a nadie', suspenderAjeno)
+
+  // Con el alta explícita, sí.
+  await db.query(`insert into platform_admins (user_id) values ($1)`, [drA])
+  const ahoraSi = await como<{ n: number }>(
+    drA,
+    `select count(*)::int as n from plataforma_consultorios()`,
+  )
+  check('dado de alta en platform_admins, sí ve la lista', Number(ahoraSi.rows[0].n) > 0)
+
+  await como(drA, `select plataforma_suspender($1, 'prueba')`, [proA2])
+  const suspendido = await db.query<{ n: number }>(
+    `select count(*)::int as n from professionals
+      where id = $1 and suspended_at is not null`,
+    [proA2],
+  )
+  check('suspender deja marca en el consultorio', Number(suspendido.rows[0].n) === 1)
+
+  const anotado = await db.query<{ n: number }>(
+    `select count(*)::int as n from platform_audit
+      where action = 'suspender' and target_id = $1 and actor_id = $2`,
+    [proA2, drA],
+  )
+  check('y queda en la bitácora, con quién lo hizo', Number(anotado.rows[0].n) === 1)
+
+  let citaEnSuspendido = false
+  try {
+    await db.query(
+      `insert into appointments (professional_id, starts_at, ends_at, status)
+       values ($1, now() + interval '80 days', now() + interval '80 days' + interval '30 minutes', 'requested')`,
+      [proA2],
+    )
+  } catch (err) {
+    citaEnSuspendido = String(err).includes('no está recibiendo citas')
+  }
+  check('un consultorio suspendido ya no recibe citas', citaEnSuspendido)
+
+  const enPublico = await db.query<{ n: number }>(
+    `select count(*)::int as n from public_professionals where id = $1`,
+    [proA2],
+  )
+  check('y desaparece de la página pública', Number(enPublico.rows[0].n) === 0)
+
+  await como(drA, `select plataforma_reactivar($1)`, [proA2])
+  const devuelto = await db.query<{ n: number }>(
+    `select count(*)::int as n from public_professionals where id = $1`,
+    [proA2],
+  )
+  check('reactivar lo devuelve tal cual', Number(devuelto.rows[0].n) === 1)
+
+  await db.query(`delete from platform_admins where user_id = $1`, [drA])
 
   console.log('\nAgendar desde el consultorio')
 

@@ -38,8 +38,13 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // El admin es del consultorio: sin sesión, a la puerta.
-  if (!user && request.nextUrl.pathname.startsWith('/admin')) {
+  // El admin es del consultorio y /plataforma es la consola de operación:
+  // sin sesión, a la puerta las dos.
+  if (
+    !user &&
+    (request.nextUrl.pathname.startsWith('/admin') ||
+      request.nextUrl.pathname.startsWith('/plataforma'))
+  ) {
     const login = request.nextUrl.clone()
     login.pathname = '/login'
     login.searchParams.set('next', request.nextUrl.pathname)
