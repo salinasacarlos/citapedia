@@ -52,7 +52,8 @@ export function CancelarCita({
             <>
               <p>
                 <strong className="text-ink">{paciente}</strong> tenía apartado{' '}
-                <span className="whitespace-nowrap">{cuando}</span>.
+                {/* `cuando` ya termina en "p.m." — otro punto lo duplica. */}
+                <span className="whitespace-nowrap">{cuando}</span>
               </p>
               <p className="mt-2">
                 El horario vuelve a quedar libre para quien lo pida.{' '}
