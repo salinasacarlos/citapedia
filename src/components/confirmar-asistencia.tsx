@@ -28,15 +28,16 @@ export function ConfirmarAsistencia({ datos }: { datos: DatosConfirmacion }) {
   // escribió para que la recepcionista no tenga que acordarse.
   const [contactado, setContactado] = useState(Boolean(datos.contactadoEn))
 
+  // La insignia de "confirmó" vive junto al nombre, arriba: repetirla aquí
+  // llenaba la fila de lo mismo dicho dos veces.
   if (datos.confirmadaEn) {
     return (
       <div className="flex flex-wrap items-center gap-2">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-exito-suave px-2.5 py-1 text-xs font-medium text-exito">
-          <span aria-hidden>✓</span> El paciente confirmó
-        </span>
         <form action={deshacerConfirmacion}>
           <input type="hidden" name="id" value={datos.citaId} />
-          <button className="text-xs text-muted hover:underline">Deshacer</button>
+          <button className="text-xs text-muted hover:underline">
+            Deshacer confirmación
+          </button>
         </form>
         {/* Sigue sirviendo después de confirmar: por ahí adelanta sus datos y mueve la cita. */}
         <CopiarLiga liga={datos.liga} />
@@ -65,9 +66,16 @@ export function ConfirmarAsistencia({ datos }: { datos: DatosConfirmacion }) {
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => {
+              // El ancla vive dentro de un form, y `requestSubmit` se come la
+              // apertura nativa de la pestaña: WhatsApp terminaba abriéndose
+              // encima de la agenda. Se abre a mano, todavía dentro del gesto
+              // del clic para que no lo bloquee el navegador, y luego se marca.
+              e.preventDefault()
+              const destino = e.currentTarget.href
+              const form = e.currentTarget.closest('form') as HTMLFormElement | null
+              window.open(destino, '_blank', 'noopener,noreferrer')
               setContactado(true)
-              // El envío queda registrado sin bloquear la apertura de WhatsApp.
-              ;(e.currentTarget.closest('form') as HTMLFormElement)?.requestSubmit()
+              form?.requestSubmit()
             }}
             className="boton boton-suave px-3 py-1.5 text-xs"
           >

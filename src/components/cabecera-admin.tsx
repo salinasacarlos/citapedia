@@ -50,14 +50,29 @@ function Avatar({ foto, nombre }: { foto: string | null; nombre: string }) {
   )
 }
 
+/** Cuántas esperan respuesta, junto a la sección donde se responden. */
+function Insignia({ cuantas }: { cuantas: number }) {
+  if (cuantas === 0) return null
+  return (
+    <span
+      aria-label={`${cuantas} por revisar`}
+      className="ml-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-brand px-1.5 py-0.5 text-[11px] leading-none font-bold text-white tabular-nums"
+    >
+      {cuantas > 99 ? '99+' : cuantas}
+    </span>
+  )
+}
+
 export function CabeceraAdmin({
   nombre,
   rol,
   foto,
+  porRevisar = 0,
 }: {
   nombre: string
   rol: MemberRole
   foto: string | null
+  porRevisar?: number
 }) {
   const ruta = usePathname()
   const [abierto, setAbierto] = useState(false)
@@ -183,6 +198,7 @@ export function CabeceraAdmin({
                 }`}
               >
                 {s.etiqueta}
+                {s.href === '/admin/solicitudes' && <Insignia cuantas={porRevisar} />}
               </Link>
             )
           })}
@@ -213,6 +229,7 @@ export function CabeceraAdmin({
                   }`}
                 >
                   {s.etiqueta}
+                  {s.href === '/admin/solicitudes' && <Insignia cuantas={porRevisar} />}
                 </Link>
               )
             })}

@@ -1,8 +1,9 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { exigirConsultorio } from '@/lib/consultorio'
-import { cancelarCita, marcarCompletada, marcarNoAsistio } from '@/lib/admin/actions'
+import { marcarCompletada, marcarNoAsistio } from '@/lib/admin/actions'
 import { AccionesCita } from '@/components/acciones-cita'
+import { CancelarCita } from '@/components/cancelar-cita'
 import { ConfirmarAsistencia, type DatosConfirmacion } from '@/components/confirmar-asistencia'
 import { contactoParaConfirmar } from '@/lib/whatsapp'
 import { EstadoVacio } from '@/components/estado-vacio'
@@ -80,8 +81,21 @@ function FilaCita({
         </div>
 
         <div className="mt-1 min-w-0 flex-1 sm:mt-0">
-          <p className="font-semibold text-ink">
+          <p className="flex flex-wrap items-center gap-x-2 font-semibold text-ink">
             {cita.patients?.name ?? 'Paciente sin nombre'}
+            {/*
+              Junto al nombre y no abajo entre los botones: la pregunta al
+              barrer la agenda es "¿quién ya dijo que viene?", y eso se
+              responde leyendo la columna de nombres, no cada fila entera.
+            */}
+            {cita.patient_confirmed_at && (
+              <span
+                title="El paciente confirmó que va a venir"
+                className="inline-flex items-center gap-1 rounded-full bg-exito-suave px-2 py-0.5 text-xs font-medium text-exito"
+              >
+                <span aria-hidden>✓</span> Confirmó
+              </span>
+            )}
           </p>
           <p className="mt-0.5 flex flex-wrap gap-x-2 text-sm text-muted">
             <span className="whitespace-nowrap">{duracion(cita.starts_at, cita.ends_at)}</span>
@@ -294,11 +308,14 @@ export default async function AgendaPage({
                           >
                             Reagendar
                           </Link>
-                          <AccionesCita
+                          <CancelarCita
                             id={cita.id}
-                            acciones={[
-                              { accion: cancelarCita, etiqueta: 'Cancelar', tono: 'peligro' },
-                            ]}
+                            paciente={cita.patients?.name ?? 'El paciente'}
+                            cuando={`${fechaLarga(cita.starts_at, zona)} a las ${hora(
+                              cita.starts_at,
+                              zona,
+                            )}`}
+                            confirmadaPorPaciente={Boolean(cita.patient_confirmed_at)}
                           />
                         </div>
                       </div>
