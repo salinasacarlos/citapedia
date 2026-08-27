@@ -58,6 +58,15 @@ export async function GET(request: Request) {
   const destinoPrueba = new URL(request.url).searchParams.get('destino')
   if (destinoPrueba) return prueba(destinoPrueba)
 
+  // Falta de configuración, no choque: un 500 vacío obliga a ir a los logs
+  // para enterarse de algo que se puede decir aquí mismo.
+  if (!process.env.SUPABASE_SECRET_KEY) {
+    return NextResponse.json(
+      { error: 'SUPABASE_SECRET_KEY no configurada.' },
+      { status: 503 },
+    )
+  }
+
   const supabase = createAdminClient()
   const ahora = new Date()
   const limite = new Date(ahora.getTime() + VENTANA_HORAS * 3600_000)
