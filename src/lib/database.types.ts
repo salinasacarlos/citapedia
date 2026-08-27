@@ -180,6 +180,8 @@ export type Appointment = {
   notes: string | null
   /** Cuándo se le escribió al paciente para confirmar. */
   confirmation_sent_at: string | null
+  /** Cuándo salió el recordatorio automático por correo. */
+  reminder_sent_at: string | null
   /** Credencial de la liga que el paciente recibe por WhatsApp. */
   access_token: string
   /** Cuándo el paciente dijo que sí viene. */

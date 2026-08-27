@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit",
     "db:push": "supabase db push",
     "test:slots": "tsx scripts/verify-slots.ts",
-    "test": "npm run db:verify && npm run test:slots",
+    "test:correo": "tsx scripts/verify-correo.ts",
+    "test": "npm run db:verify && npm run test:slots && npm run test:correo",
     "demo:sembrar": "supabase db query --linked -f supabase/fixtures/demo-consultorio.sql",
     "demo:limpiar": "supabase db query --linked -f supabase/fixtures/demo-limpiar.sql"
   },
