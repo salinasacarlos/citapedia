@@ -10,7 +10,7 @@ import type { ClinicalRecord, ConsultationNote, Patient } from '@/lib/database.t
  * devolvería vacías igual, pero pedirlas y confiar en que vengan vacías es
  * apoyarse en un efecto secundario. Mejor no pedirlas.
  */
-export async function exportarPacientes(filtroPaciente?: string) {
+export async function exportarPacientes(filtroPaciente?: string, hojas?: string[]) {
   const { profesional, esDueño } = await exigirConsultorio()
   const supabase = await createClient()
 
@@ -54,6 +54,7 @@ export async function exportarPacientes(filtroPaciente?: string) {
     expedientes: expedientes.data ?? [],
     consultas: consultas.data ?? [],
     incluyeClinico: esDueño,
+    hojas,
   })
 
   const base = filtroPaciente ? pacientes[0].name : profesional.name

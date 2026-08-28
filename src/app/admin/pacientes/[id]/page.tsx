@@ -9,6 +9,7 @@ import { edad, fechaCorta, fechaSuelta, hora } from '@/lib/fechas'
 import { describirOrigen } from '@/lib/origen'
 import { RegistrarConsulta } from '@/components/registrar-consulta'
 import { AvisosDelPaciente, type Aviso } from '@/components/avisos-del-paciente'
+import { DescargarExpediente } from '@/components/descargar-expediente'
 import type {
   AppointmentStatus,
   ClinicalRecord,
@@ -225,13 +226,7 @@ export default async function FichaPaciente({
           >
             Agendar cita
           </Link>
-          <a
-            href={`/admin/pacientes/${paciente.id}/exportar`}
-            className="boton boton-suave"
-            download
-          >
-            Descargar
-          </a>
+          <DescargarExpediente pacienteId={paciente.id} esDueño={esDueño} />
         </div>
       </header>
 
