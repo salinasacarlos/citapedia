@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { exigirConsultorio } from '@/lib/consultorio'
 import { FormularioConsulta } from '@/components/nota-consulta'
 import { Estudios, type EstudioVisible } from '@/components/estudios'
+import { HistorialDeNota, type Version } from '@/components/historial-de-nota'
 import { AccionesCita } from '@/components/acciones-cita'
 import { marcarCompletada, marcarNoAsistio } from '@/lib/admin/actions'
 import { edad, fechaCorta, fechaLarga, hora } from '@/lib/fechas'
@@ -81,8 +82,13 @@ export default async function Consulta({
 
   if (!paciente) notFound()
 
-  const [{ data: expediente }, { data: notas }, { data: declarado }, { data: archivos }] =
-    await Promise.all([
+  const [
+    { data: expediente },
+    { data: notas },
+    { data: declarado },
+    { data: archivos },
+    { data: versiones },
+  ] = await Promise.all([
       supabase
         .from('clinical_records')
         .select('*')
@@ -105,6 +111,9 @@ export default async function Consulta({
         .eq('patient_id', paciente.id)
         .order('created_at', { ascending: false })
         .returns<ConsultationFile[]>(),
+      // Lo que decía antes esta nota. Va aquí y no en la bitácora porque es
+      // donde alguien la está corrigiendo.
+      supabase.rpc('historial_de_nota', { p_cita: cita.id }).returns<Version[]>(),
     ])
 
   const todas = notas ?? []
@@ -194,6 +203,7 @@ export default async function Consulta({
               pacienteId={paciente.id}
               nota={nota}
             />
+            <HistorialDeNota versiones={versiones ?? []} zona={zona} />
           </section>
 
           <section>
