@@ -597,6 +597,13 @@ o desde la bitácora de la ficha.
   qué declaró y no se ha verificado, qué se le encontró la vez pasada, a quién
   se le avisa. Las alergias y padecimientos van arriba, en rojo, fuera de las
   columnas.
+- **El paciente que llegó sin cita**: toda nota clínica cuelga de una cita
+  (`consultation_notes.appointment_id` es obligatorio y único), así que
+  "Registrar una consulta" en la bitácora crea primero la cita y abre el
+  workspace. Nace **`completed`**, no `confirmed`, por dos razones: ya ocurrió,
+  y la restricción de solape solo mira las `confirmed` — si naciera confirmada,
+  a alguien que llegó de pronto mientras había otra cita agendada se le
+  rechazaría con "ese horario no está disponible", por algo que ya pasó.
 - Cerrar la cita ("Se atendió" / "No asistió") solo aparece si ya ocurrió, la
   misma regla que en la agenda.
 - El asistente que abra la liga ve un aviso, no un error: la agenda sigue

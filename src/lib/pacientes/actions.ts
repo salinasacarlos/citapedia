@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { exigirConsultorio } from '@/lib/consultorio'
+import { horaLocalAInstante } from '@/lib/slots'
 import type { Patient } from '@/lib/database.types'
 
 export type ResultadoPaciente = { error?: string; ok?: string }
@@ -193,4 +194,53 @@ export async function aceptarDeclarados(datos: FormData) {
   await supabase.rpc('aceptar_datos_declarados', { p_paciente: patient_id })
 
   revalidatePath(`/admin/pacientes/${patient_id}`)
+}
+
+/**
+ * Registra una consulta que ya ocurrió, para un paciente que llegó sin cita.
+ *
+ * Toda nota clínica cuelga de una cita (`consultation_notes.appointment_id` es
+ * obligatorio), así que primero hay que crear la cita. Nace **`completed`** por
+ * dos razones: ya pasó, y la restricción de solape solo mira las `confirmed`
+ * —un paciente que llega sin avisar mientras hay otra cita agendada no puede
+ * ser rechazado por "ese horario no está disponible" para algo que ya sucedió.
+ */
+export async function registrarConsulta(datos: FormData): Promise<void> {
+  const { profesional, esDueño } = await exigirConsultorio()
+  if (!esDueño) return
+
+  const pacienteId = String(datos.get('patient_id') ?? '')
+  const cuando = String(datos.get('cuando') ?? '').trim()
+
+  // Sin fecha, ahora: el caso normal es el paciente que está enfrente.
+  const inicio = cuando
+    ? horaLocalAInstante(
+        Number(cuando.slice(0, 4)),
+        Number(cuando.slice(5, 7)),
+        Number(cuando.slice(8, 10)),
+        Number(cuando.slice(11, 13)),
+        Number(cuando.slice(14, 16)),
+        profesional.timezone,
+      )
+    : new Date()
+
+  const duracion = profesional.slot_duration ?? 30
+  const fin = new Date(inicio.getTime() + duracion * 60_000)
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('appointments')
+    .insert({
+      professional_id: profesional.id,
+      patient_id: pacienteId,
+      starts_at: inicio.toISOString(),
+      ends_at: fin.toISOString(),
+      status: 'completed',
+    })
+    .select('id')
+    .single<{ id: string }>()
+
+  if (error || !data) return
+
+  redirect(`/admin/consulta/${data.id}`)
 }
