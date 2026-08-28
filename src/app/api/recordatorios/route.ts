@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { enviarCorreo } from '@/lib/correo/enviar'
 import { armarRecordatorio, correoParaAvisar } from '@/lib/correo/recordatorio'
 import { anotarFalloDeCorreo } from '@/lib/correo/anotar-fallo'
+import { armarAviso } from '@/lib/correo/aviso'
 import type { AppointmentStatus } from '@/lib/database.types'
 
 export const dynamic = 'force-dynamic'
@@ -171,13 +172,93 @@ export async function GET(request: Request) {
     enviados++
   }
 
+  const avisos = await mandarAvisos(supabase)
+
   return NextResponse.json({
     revisadas: citas.length,
     enviados,
     sin_correo: sinCorreo,
     fallidos,
+    avisos,
     ...(errores.length ? { errores } : {}),
   })
+}
+
+type FilaAviso = {
+  id: string
+  titulo: string
+  mensaje: string | null
+  patients: {
+    name: string
+    email: string | null
+    is_minor: boolean | null
+    tutor_name: string | null
+    tutor_email: string | null
+  } | null
+  professionals: { name: string; slug: string } | null
+}
+
+/**
+ * Los avisos programados que vencen hoy o antes.
+ *
+ * Van en la misma corrida que los recordatorios: es el mismo trabajo —mirar
+ * qué toca hoy y mandarlo— y un segundo cron sería otra cosa que puede fallar
+ * en silencio.
+ */
+async function mandarAvisos(supabase: ReturnType<typeof createAdminClient>) {
+  const hoy = new Date().toISOString().slice(0, 10)
+  const sitio = process.env.NEXT_PUBLIC_SITE_URL ?? ''
+
+  const { data } = await supabase
+    .from('patient_alerts')
+    .select(
+      `id, titulo, mensaje,
+       patients(name, email, is_minor, tutor_name, tutor_email),
+       professionals(name, slug)`,
+    )
+    .eq('status', 'pendiente')
+    .lte('due_on', hoy)
+    .limit(200)
+    .returns<FilaAviso[]>()
+
+  let enviados = 0
+  let fallidos = 0
+
+  for (const aviso of data ?? []) {
+    if (!aviso.patients || !aviso.professionals) continue
+
+    const destinatario = correoParaAvisar(aviso.patients)
+    // Sin correo no se marca: sigue en la lista para que alguien lo mande por
+    // WhatsApp. Al revés que los recordatorios, aquí no hay una cita que se
+    // pierda si esperamos.
+    if (!destinatario) continue
+
+    const envio = await enviarCorreo(
+      armarAviso({
+        destinatario,
+        paciente: aviso.patients.name,
+        esMenor: Boolean(aviso.patients.is_minor),
+        doctor: aviso.professionals.name,
+        titulo: aviso.titulo,
+        mensaje: aviso.mensaje,
+        pagina: `${sitio}/${aviso.professionals.slug}`,
+      }),
+    )
+
+    if (!envio.ok) {
+      fallidos++
+      await anotarFalloDeCorreo('aviso', envio.error)
+      continue
+    }
+
+    await supabase
+      .from('patient_alerts')
+      .update({ status: 'enviado', sent_at: new Date().toISOString() })
+      .eq('id', aviso.id)
+    enviados++
+  }
+
+  return { enviados, fallidos }
 }
 
 /** Un recordatorio de muestra, con datos inventados y sin tocar la base. */

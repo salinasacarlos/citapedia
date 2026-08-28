@@ -534,6 +534,27 @@ los consultorios de los que quien pregunta ya es miembro.
 login y la confirmación de correo se vuelven un trampolín para mandar gente a
 dominios de terceros.
 
+## Avisos programados
+
+`patient_alerts` es la fase 3 del post-venta. La diferencia con el recordatorio
+de cita es la que ordena el diseño: **un recordatorio cuelga de una cita y su
+fecha ya existe; un aviso cuelga del paciente y su fecha se elige.** Mezclarlos
+en la misma tabla obligaría a inventarle una cita a cada aviso.
+
+- Es de **equipo** (`is_member`), no solo del dueño: el asistente es quien va a
+  trabajar la lista y mandar los mensajes.
+- El cron los manda en la misma corrida que los recordatorios: es el mismo
+  trabajo, y un segundo cron sería otra cosa que puede fallar en silencio.
+- Un aviso sin correo **no se marca**: se queda en la lista para que alguien lo
+  mande por WhatsApp. Al revés que el recordatorio, aquí no hay una cita que se
+  pierda por esperar.
+- La lista en Inicio existe aunque el cron los mande solo: mientras no haya
+  dominio verificado el correo no sale, y sin ella el módulo no serviría de
+  nada hasta entonces.
+- El correo **no inventa contexto clínico**: dice lo que escribió el médico y
+  ofrece agendar. Que CitaPedia agregue "es momento de tu vacuna" sería
+  afirmar algo médico que nadie revisó.
+
 ## El seguimiento post-consulta
 
 "Te veo en tres meses" se dice en casi todas las consultas y vivía en la
