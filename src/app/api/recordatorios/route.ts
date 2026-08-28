@@ -92,8 +92,17 @@ export async function GET(request: Request) {
   }
 
   const citas = data ?? []
+  // Los avisos van aunque no haya una sola cita que recordar: cuelgan del
+  // paciente, no de la agenda. Salir antes de mandarlos hacía que en un día sin
+  // citas no saliera ninguno, y en silencio.
   if (citas.length === 0) {
-    return NextResponse.json({ revisadas: 0, enviados: 0, sin_correo: 0, fallidos: 0 })
+    return NextResponse.json({
+      revisadas: 0,
+      enviados: 0,
+      sin_correo: 0,
+      fallidos: 0,
+      avisos: await mandarAvisos(supabase),
+    })
   }
 
   // Cada consultorio decide con cuánta anticipación avisa.
