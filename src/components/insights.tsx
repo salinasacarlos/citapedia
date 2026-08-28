@@ -98,7 +98,7 @@ export function Insights({ m, periodo }: { m: Metricas; periodo: string }) {
             etiqueta="Por cerrar"
             valor={m.por_cerrar}
             nota={m.por_cerrar > 0 ? 'Ya pasaron, falta decir qué ocurrió' : 'Al día'}
-            href="/admin"
+            href="/admin/agenda"
             urgente
           />
           <Numero
@@ -109,7 +109,7 @@ export function Insights({ m, periodo }: { m: Metricas; periodo: string }) {
                 ? `${m.sin_confirmar_7d} sin confirmar todavía`
                 : 'Todas confirmadas'
             }
-            href="/admin"
+            href="/admin/agenda"
           />
           <Numero
             etiqueta="Agenda ocupada"

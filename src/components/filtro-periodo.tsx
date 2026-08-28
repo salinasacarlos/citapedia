@@ -21,7 +21,7 @@ export function FiltroPeriodo({ exportar }: { exportar: string }) {
       if (v) nuevos.set(k, v)
       else nuevos.delete(k)
     }
-    iniciar(() => router.replace(`/admin/inicio?${nuevos}`, { scroll: false }))
+    iniciar(() => router.replace(`/admin?${nuevos}`, { scroll: false }))
   }
 
   return (

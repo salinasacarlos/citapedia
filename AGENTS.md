@@ -473,10 +473,17 @@ dominios de terceros.
 
 ## Inicio
 
-`/admin/inicio` es la primera pestaña: los primeros pasos, los números del
-consultorio y de dónde llegan sus pacientes, todo en un lugar. La Agenda sigue
-siendo `/admin` y no se movió: es lo que el médico abre todos los días, y
-meterle un tablero antes le costaría un clic diario para siempre.
+`/admin` **es** Inicio: los primeros pasos, los números del consultorio y de
+dónde llegan sus pacientes. La agenda vive en `/admin/agenda`.
+
+Al principio fue al revés —la agenda en `/admin`, con el argumento de que es lo
+que se abre todos los días— y se cambió a propósito: al entrar conviene ver
+primero qué pide atención, no la lista de citas. El costo es un clic diario
+para llegar a la agenda, y es un costo aceptado, no un descuido.
+
+`esActiva` trata `/admin/calendario` como parte de Agenda: el calendario es la
+agenda vista de otra forma, no una sección aparte. E Inicio se compara exacto,
+porque con `startsWith` se prendería en todas las demás.
 
 `metricas_consultorio` va con **SECURITY INVOKER**: son los datos del propio
 médico y RLS ya sabe cuáles son suyos. Elevarse le daría la capacidad de ver

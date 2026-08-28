@@ -3,7 +3,7 @@ import Link from 'next/link'
 /** Cambio entre la agenda como lista y como calendario. */
 export function VistaAgenda({ actual }: { actual: 'lista' | 'calendario' }) {
   const opciones = [
-    { id: 'lista', etiqueta: 'Lista', href: '/admin' },
+    { id: 'lista', etiqueta: 'Lista', href: '/admin/agenda' },
     { id: 'calendario', etiqueta: 'Calendario', href: '/admin/calendario' },
   ] as const
 
