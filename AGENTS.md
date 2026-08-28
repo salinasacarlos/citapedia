@@ -802,9 +802,10 @@ dos columnas los repartía celda por celda y las secciones caían en zigzag
 —Estudios bajo Contacto, la bitácora enfrente—: eso era lo que hacía que la
 ficha se sintiera desordenada, no la falta de secciones.
 
-Las acciones del encabezado tampoco pesan igual: agendar es lo de todos los
-días, editar es de vez en cuando, y el Excel casi nunca — así que va como liga
-y no como botón.
+En el encabezado va **solo lo que aplica al paciente entero**: agendar y
+descargar. Editar es de cada tarjeta —una liga discreta en su esquina—, porque
+quien va a corregir un teléfono lo está mirando en Contacto, no en un botón
+lejos de ahí. Cuatro botones arriba hacían que ninguno destacara.
 
 La ficha separa **Próximas citas** de la bitácora: una cita que no ha ocurrido
 no es una visita con algo anotado ese día, y mezclarlas hacía que la línea de

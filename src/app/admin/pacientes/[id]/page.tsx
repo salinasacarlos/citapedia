@@ -215,9 +215,9 @@ export default async function FichaPaciente({
             </p>
           )}
         </div>
-        {/* Tres botones del mismo peso hacen que ninguno destaque. Agendar es
-            lo que se hace todos los días; editar, de vez en cuando; y bajar el
-            Excel, casi nunca. */}
+        {/* Aquí arriba solo lo que aplica al paciente entero. Editar es de
+            cada tarjeta: quien va a corregir un teléfono lo está mirando en
+            Contacto, no en un botón lejos de ahí. */}
         <div className="flex flex-wrap items-center gap-2">
           <Link
             href={`/admin/agendar?paciente=${paciente.id}`}
@@ -225,23 +225,12 @@ export default async function FichaPaciente({
           >
             Agendar cita
           </Link>
-          <Link href={`/admin/pacientes/${paciente.id}/editar`} className="boton boton-suave">
-            Editar datos
-          </Link>
-          {esDueño && (
-            <Link
-              href={`/admin/pacientes/${paciente.id}/expediente`}
-              className="boton boton-suave"
-            >
-              Editar expediente
-            </Link>
-          )}
           <a
             href={`/admin/pacientes/${paciente.id}/exportar`}
-            className="text-sm font-medium text-acento hover:underline"
+            className="boton boton-suave"
             download
           >
-            Excel
+            Descargar
           </a>
         </div>
       </header>
@@ -310,7 +299,15 @@ export default async function FichaPaciente({
       <div className="grid gap-5 lg:grid-cols-[25rem_1fr] lg:items-start">
         <div className="space-y-5">
           <section className="tarjeta p-4 sm:p-5">
-            <h2 className="mb-1 font-semibold text-ink">Contacto</h2>
+            <div className="mb-1 flex items-start justify-between gap-3">
+              <h2 className="font-semibold text-ink">Contacto</h2>
+              <Link
+                href={`/admin/pacientes/${paciente.id}/editar`}
+                className="shrink-0 text-xs font-medium text-acento hover:underline"
+              >
+                Editar
+              </Link>
+            </div>
             {/* Decir de quién es cada dato: el enredo de antes venía de que un
                 teléfono suelto no dice si es del paciente o de quien agenda. */}
             <p className="mb-3 text-xs text-muted">
@@ -443,7 +440,15 @@ export default async function FichaPaciente({
         <div className="space-y-8">
         {esDueño && (
           <section className="tarjeta p-4 sm:p-5">
-              <h2 className="mb-3 font-semibold text-ink">Expediente</h2>
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <h2 className="font-semibold text-ink">Expediente</h2>
+                <Link
+                  href={`/admin/pacientes/${paciente.id}/expediente`}
+                  className="shrink-0 text-xs font-medium text-acento hover:underline"
+                >
+                  Editar
+                </Link>
+              </div>
               {expediente ? (
                 <dl className="space-y-3">
                   <Dato etiqueta="Medicamentos" valor={expediente.medications} />
