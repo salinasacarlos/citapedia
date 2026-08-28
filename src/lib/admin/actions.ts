@@ -549,3 +549,16 @@ export async function deshacerConfirmacion(datos: FormData) {
     .eq('id', String(datos.get('id')))
   revalidatePath('/admin', 'layout')
 }
+
+/** Para quien ya sabe usarla y no quiere la guía, aunque le falte algún paso. */
+export async function ocultarPrimerosPasos(): Promise<void> {
+  const { profesional } = await exigirConsultorio()
+  const supabase = await createClient()
+
+  await supabase
+    .from('professionals')
+    .update({ onboarding_hidden_at: new Date().toISOString() })
+    .eq('id', profesional.id)
+
+  revalidatePath('/admin')
+}

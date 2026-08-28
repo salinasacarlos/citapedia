@@ -24,6 +24,8 @@ export type Professional = {
   /** Cuenta desactivada por la plataforma. Null = activa. */
   suspended_at: string | null
   suspended_reason: string | null
+  /** Cuándo pidió no ver más los primeros pasos. */
+  onboarding_hidden_at?: string | null
   id: string
   name: string
   email: string

@@ -4,6 +4,7 @@ import { exigirConsultorio } from '@/lib/consultorio'
 import { marcarCompletada, marcarNoAsistio } from '@/lib/admin/actions'
 import { AccionesCita } from '@/components/acciones-cita'
 import { CancelarCita } from '@/components/cancelar-cita'
+import { PrimerosPasos, type Paso } from '@/components/primeros-pasos'
 import { ConfirmarAsistencia, type DatosConfirmacion } from '@/components/confirmar-asistencia'
 import { contactoParaConfirmar } from '@/lib/whatsapp'
 import { EstadoVacio } from '@/components/estado-vacio'
@@ -160,6 +161,53 @@ export default async function AgendaPage({
     supabase.from('availability').select('id', { count: 'exact', head: true }),
   ])
 
+  // Los primeros pasos miran el estado real, no una bandera de "ya vio el
+  // tour": así se tachan solos y no piden nada que ya esté hecho.
+  const guiaVisible = !profesional.onboarding_hidden_at
+  const [{ count: pacientes }, { count: miembros }] = guiaVisible
+    ? await Promise.all([
+        supabase.from('patients').select('id', { count: 'exact', head: true }),
+        supabase.from('memberships').select('id', { count: 'exact', head: true }),
+      ])
+    : [{ count: null }, { count: null }]
+
+  const pasos: Paso[] = guiaVisible
+    ? [
+        {
+          titulo: 'Publica tu horario',
+          porque: 'Sin él tu página no puede ofrecer ni un hueco: la liga se ve, pero no deja agendar.',
+          href: '/admin/horario',
+          accion: 'Definirlo',
+          hecho: (franjas ?? 0) > 0,
+        },
+        {
+          titulo: 'Completa tu página',
+          porque: 'Es lo que ve alguien que no te conoce antes de decidir si agenda.',
+          href: '/admin/perfil',
+          accion: 'Completarla',
+          hecho: Boolean(profesional.bio) && Boolean(profesional.specialty),
+        },
+        {
+          titulo: 'Da de alta a tu primer paciente',
+          porque: 'Puedes agendarle tú, sin esperar a que alguien use tu liga.',
+          href: '/admin/pacientes/nuevo',
+          accion: 'Agregarlo',
+          hecho: (pacientes ?? 0) > 0,
+        },
+        ...(esDueño
+          ? [
+              {
+                titulo: 'Invita a tu asistente',
+                porque: 'Podrá mover la agenda y contestar solicitudes, pero no verá el expediente.',
+                href: '/admin/equipo',
+                accion: 'Invitarla',
+                hecho: (miembros ?? 0) > 1,
+              },
+            ]
+          : []),
+      ]
+    : []
+
   const { data: recordatorios } = await supabase
     .from('reminder_settings')
     .select('message_template')
@@ -222,7 +270,11 @@ export default async function AgendaPage({
         placeholder="Buscar paciente por nombre o teléfono"
       />
 
-      {(franjas ?? 0) === 0 && (
+      {pasos.length > 0 && <PrimerosPasos pasos={pasos} />}
+
+      {/* La guía ya trae el paso del horario con su porqué: repetirlo aquí
+          sería decir dos veces lo mismo en la misma pantalla. */}
+      {pasos.length === 0 && (franjas ?? 0) === 0 && (
         <div className="mb-6 rounded-marca border border-alerta/30 bg-alerta-suave px-5 py-4">
           <p className="text-sm font-semibold text-alerta">Todavía no defines tu horario</p>
           <p className="mt-1 text-sm text-muted">
