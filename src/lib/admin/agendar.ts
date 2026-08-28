@@ -25,6 +25,7 @@ export async function crearPacienteRapido(
 
   const paraOtro = datos.get('is_minor') === '1'
   const telefono = String(datos.get('phone') ?? '').trim() || null
+  const correo = String(datos.get('email') ?? '').trim().toLowerCase() || null
   const tutor = String(datos.get('tutor_name') ?? '').trim() || null
 
   if (paraOtro && !tutor) {
@@ -40,9 +41,14 @@ export async function crearPacienteRapido(
       is_minor: paraOtro,
       // El teléfono es de quien contesta: del tutor si lo hay, del paciente si no.
       phone: paraOtro ? null : telefono,
+      email: paraOtro ? null : correo,
       tutor_name: tutor,
       tutor_phone: paraOtro ? telefono : null,
+      // Igual que el teléfono: el correo es de quien contesta.
+      tutor_email: paraOtro ? correo : null,
       tutor_relationship: String(datos.get('tutor_relationship') ?? '').trim() || null,
+      source: String(datos.get('source') ?? '').trim() || null,
+      referred_by: String(datos.get('referred_by') ?? '').trim() || null,
     })
     .select('id')
     .single<{ id: string }>()

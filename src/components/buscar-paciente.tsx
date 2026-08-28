@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useActionState, useEffect, useRef, useState, useTransition } from 'react'
 import { crearPacienteRapido, type ResultadoAgendar } from '@/lib/admin/agendar'
 import { CampoTelefono } from '@/components/campo-telefono'
+import { CampoOrigen } from '@/components/campo-origen'
 
 export type PacienteBreve = {
   id: string
@@ -185,6 +186,20 @@ function PacienteNuevo({
             }
           />
         </div>
+
+        <div className="sm:col-span-2">
+          <label htmlFor="email" className="block text-sm font-medium text-ink">
+            Correo <span className="font-normal text-muted">opcional</span>
+          </label>
+          <input id="email" name="email" type="email" className="campo mt-1.5" />
+          <p className="mt-1 text-xs text-muted">
+            {paraOtro
+              ? 'De quien responde. Es a donde llega el recordatorio.'
+              : 'Es a donde llega el recordatorio de su cita.'}
+          </p>
+        </div>
+
+        <CampoOrigen />
       </div>
 
       {estado.error && (

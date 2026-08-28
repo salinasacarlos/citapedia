@@ -8,6 +8,7 @@ import {
 } from '@/lib/pacientes/actions'
 import { CampoTelefono } from '@/components/campo-telefono'
 import type { Patient } from '@/lib/database.types'
+import { CampoOrigen } from '@/components/campo-origen'
 
 const PARENTESCOS = ['Madre', 'Padre', 'Tutor', 'Hijo', 'Hija', 'Cónyuge', 'Cuidador']
 
@@ -221,6 +222,13 @@ export function FormularioPaciente({ paciente }: { paciente?: Patient }) {
             label="Seguro o aseguradora"
             defaultValue={paciente?.insurance ?? ''}
           />
+          <div className="sm:col-span-2 grid gap-4 sm:grid-cols-2">
+            <CampoOrigen
+              valorInicial={paciente?.source ?? ''}
+              referidoInicial={paciente?.referred_by ?? ''}
+            />
+          </div>
+
           <Campo name="notes" label="Notas de recepción">
             <textarea
               id="notes"

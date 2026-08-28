@@ -6,6 +6,7 @@ import { SelectorHueco, etiquetaDia, etiquetaHora } from '@/components/selector-
 import { DeclararDatos } from '@/components/declarar-datos'
 import { CampoTelefono } from '@/components/campo-telefono'
 import type { DiaConHuecos } from '@/lib/slots'
+import { CampoOrigen } from '@/components/campo-origen'
 
 export function Reservar({
   slug,
@@ -181,6 +182,16 @@ export function Reservar({
                 inputMode="email"
                 defaultValue={estado.valores?.email}
                 className="campo mt-1.5"
+              />
+            </div>
+            {/* Preguntado aquí y no por teléfono: el paciente lo sabe de
+                primera mano, y la recepcionista no tiene que acordarse. */}
+            <div className="sm:col-span-2 grid gap-4 sm:grid-cols-2">
+              <CampoOrigen
+                label="¿Cómo nos encontraste?"
+                incluirRecurrente
+                valorInicial={estado.valores?.source ?? ''}
+                referidoInicial={estado.valores?.referred_by ?? ''}
               />
             </div>
             <div className="sm:col-span-2">

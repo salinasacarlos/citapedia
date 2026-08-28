@@ -29,6 +29,11 @@ function traducir(mensaje: string): string {
   if (mensaje.includes('saturacion_razonable')) return 'La saturación va de 50 a 100.'
   if (mensaje.includes('peso_razonable')) return 'Ese peso no es posible.'
   if (mensaje.includes('talla_razonable')) return 'Esa talla no es posible.'
+  // Último recurso: la pantalla ya avisa al escribir, pero si algo llegara
+  // igual, que no salga el error crudo de Postgres.
+  if (mensaje.includes('numeric field overflow')) {
+    return 'Alguno de los signos vitales es demasiado grande. Revisa las unidades.'
+  }
   if (mensaje.includes('row-level security')) {
     return 'No tienes permiso para ese cambio. El expediente clínico es del médico.'
   }
@@ -52,6 +57,8 @@ function datosDePaciente(datos: FormData) {
     emergency_contact_phone: texto(datos, 'emergency_contact_phone'),
     emergency_contact_relationship: texto(datos, 'emergency_contact_relationship'),
     insurance: texto(datos, 'insurance'),
+    source: texto(datos, 'source'),
+    referred_by: texto(datos, 'referred_by'),
     notes: texto(datos, 'notes'),
   }
 }

@@ -6,6 +6,7 @@ import { EstadoVacio } from '@/components/estado-vacio'
 import { Estudios, type EstudioVisible } from '@/components/estudios'
 import { aceptarDeclarados } from '@/lib/pacientes/actions'
 import { edad, fechaCorta, fechaSuelta, hora } from '@/lib/fechas'
+import { describirOrigen } from '@/lib/origen'
 import type {
   AppointmentStatus,
   ClinicalRecord,
@@ -297,6 +298,11 @@ export default async function FichaPaciente({
                 valor={paciente.email}
               />
               <Dato etiqueta="Seguro" valor={paciente.insurance} />
+              {/* Sirve para saber a quién agradecerle y en qué invertir. */}
+              <Dato
+                etiqueta="Cómo llegó"
+                valor={describirOrigen(paciente.source, paciente.referred_by)}
+              />
               <Dato etiqueta="Notas de recepción" valor={paciente.notes} />
             </dl>
             {!paciente.phone && !paciente.email && !paciente.tutor_phone && (

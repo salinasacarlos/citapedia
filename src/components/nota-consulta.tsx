@@ -4,13 +4,60 @@ import { useActionState, useState } from 'react'
 import { guardarConsulta, type ResultadoPaciente } from '@/lib/pacientes/actions'
 import type { ConsultationNote } from '@/lib/database.types'
 
+/**
+ * Los rangos son los mismos que la base ya exige. Están aquí también porque
+ * enterarse al guardar, después de haber capturado toda la consulta, es tarde:
+ * el aviso tiene que llegar mientras el cursor sigue en el campo.
+ */
 const VITALES = [
-  { name: 'weight_kg', label: 'Peso', unidad: 'kg', step: '0.1' },
-  { name: 'height_cm', label: 'Talla', unidad: 'cm', step: '0.1' },
-  { name: 'temperature_c', label: 'Temp.', unidad: '°C', step: '0.1' },
-  { name: 'heart_rate', label: 'Pulso', unidad: 'lpm', step: '1' },
-  { name: 'oxygen_saturation', label: 'Sat. O₂', unidad: '%', step: '1' },
+  {
+    name: 'weight_kg',
+    label: 'Peso',
+    unidad: 'kg',
+    step: '0.1',
+    min: 0.2,
+    max: 500,
+    // El error más común, y el más caro de descubrir al final: en pediatría el
+    // peso del recién nacido se dice en gramos.
+    pista: (v: number) =>
+      v >= 500 && v <= 300000 ? `¿Son gramos? ${v} g son ${(v / 1000).toFixed(2)} kg.` : null,
+  },
+  { name: 'height_cm', label: 'Talla', unidad: 'cm', step: '0.1', min: 20, max: 300,
+    pista: (v: number) => (v > 0 && v < 3 ? `¿Son metros? ${v} m son ${v * 100} cm.` : null) },
+  { name: 'temperature_c', label: 'Temp.', unidad: '°C', step: '0.1', min: 25, max: 45 },
+  { name: 'heart_rate', label: 'Pulso', unidad: 'lpm', step: '1', min: 20, max: 300 },
+  { name: 'oxygen_saturation', label: 'Sat. O₂', unidad: '%', step: '1', min: 50, max: 100 },
 ] as const
+
+type Vital = (typeof VITALES)[number]
+
+type Aviso = { mensaje: string; bloquea: boolean }
+
+/**
+ * Qué decirle, y si hay que impedirle guardar.
+ *
+ * La pista de unidades reemplaza al mensaje de rango porque explica mejor lo
+ * mismo, pero no lo ablanda: 3500 kg sigue siendo imposible y el guardado
+ * sigue bloqueado. Un aviso que no impide guardar termina siendo un dato malo
+ * en el expediente.
+ */
+function revisar(v: Vital, valor: string): Aviso | null {
+  if (valor.trim() === '') return null
+  const n = Number(valor.replace(',', '.'))
+  if (!Number.isFinite(n)) return { mensaje: 'Escribe solo números.', bloquea: true }
+
+  const pista = 'pista' in v ? v.pista(n) : null
+  const fuera = n < v.min || n > v.max
+
+  if (fuera) {
+    return {
+      mensaje: pista ?? `Fuera de rango: va de ${v.min} a ${v.max} ${v.unidad}.`,
+      bloquea: true,
+    }
+  }
+  // Dentro de rango pero sospechoso: se dice y se deja pasar.
+  return pista ? { mensaje: pista, bloquea: false } : null
+}
 
 /**
  * El mismo formulario en dos lugares: plegado dentro de la bitácora, y abierto
@@ -32,6 +79,8 @@ export function FormularioConsulta({
     guardarConsulta,
     {},
   )
+  const [avisos, setAvisos] = useState<Record<string, Aviso | null>>({})
+  const hayImposibles = Object.values(avisos).some((a) => a?.bloquea)
 
   return (
     <form action={formAction} className="rounded-marca border border-border p-3">
@@ -52,8 +101,28 @@ export function FormularioConsulta({
               step={v.step}
               inputMode="decimal"
               defaultValue={(nota?.[v.name] as number | null) ?? ''}
-              className="campo mt-1 tabular-nums"
+              onChange={(e) =>
+                setAvisos((a) => ({ ...a, [v.name]: revisar(v, e.target.value) }))
+              }
+              aria-invalid={Boolean(avisos[v.name])}
+              className={`campo mt-1 tabular-nums ${
+                avisos[v.name]?.bloquea
+                  ? 'border-peligro'
+                  : avisos[v.name]
+                    ? 'border-alerta'
+                    : ''
+              }`}
             />
+            {avisos[v.name] && (
+              <p
+                role="alert"
+                className={`mt-1 text-xs ${
+                  avisos[v.name]?.bloquea ? 'text-peligro' : 'text-alerta'
+                }`}
+              >
+                {avisos[v.name]?.mensaje}
+              </p>
+            )}
           </div>
         ))}
       </div>
@@ -124,7 +193,10 @@ export function FormularioConsulta({
       )}
 
       <div className="mt-3 flex gap-2">
-        <button disabled={pendiente} className="boton boton-primario px-3 py-1.5 text-xs">
+        <button
+          disabled={pendiente || hayImposibles}
+          className="boton boton-primario px-3 py-1.5 text-xs"
+        >
           {pendiente ? 'Guardando…' : 'Guardar nota'}
         </button>
         {onCerrar && (
