@@ -534,6 +534,28 @@ los consultorios de los que quien pregunta ya es miembro.
 login y la confirmación de correo se vuelven un trampolín para mandar gente a
 dominios de terceros.
 
+## El seguimiento post-consulta
+
+"Te veo en tres meses" se dice en casi todas las consultas y vivía en la
+memoria de dos personas, que es donde se pierde.
+
+`consultation_notes.follow_up_at` guarda cuándo debe volver. Va en la **nota** y
+no en el paciente a propósito: es una indicación de ESA consulta, así que la de
+la visita siguiente no borra esta y cada una queda con su historia.
+
+Los botones de plazo (1, 3, 6 meses, 1 año) están porque nadie va a abrir un
+calendario y contar noventa días con el paciente enfrente. Si cuesta, no se
+llena; y un campo que no se llena no existe.
+
+`controles_pendientes()` es la lista que trabaja la recepcionista, y **excluye a
+quien ya tiene cita agendada**. No es un detalle: llamarle a alguien que ya
+viene el jueves quema la confianza en la lista, y una lista en la que no se
+confía se deja de abrir. Va con quince días de gracia, porque alguien a quien
+"le tocaba el martes" sigue siendo una llamada que vale la pena el jueves.
+
+Aparece en Inicio **antes que los números**: son llamadas que se pueden hacer
+hoy, no información para mirar.
+
 ## Inicio
 
 `/admin` **es** Inicio: los primeros pasos, los números del consultorio y de

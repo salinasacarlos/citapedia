@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from 'react'
 import { guardarConsulta, type ResultadoPaciente } from '@/lib/pacientes/actions'
+import { ProximoControl } from '@/components/proximo-control'
 import type { ConsultationNote } from '@/lib/database.types'
 
 /**
@@ -180,6 +181,12 @@ export function FormularioConsulta({
           />
         </div>
       </div>
+
+      <ProximoControl
+        citaId={citaId}
+        valorInicial={nota?.follow_up_at ?? null}
+        motivoInicial={nota?.follow_up_reason ?? null}
+      />
 
       {estado.error && (
         <p role="alert" className="mt-3 text-sm text-peligro">

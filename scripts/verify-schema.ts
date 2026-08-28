@@ -1354,6 +1354,69 @@ async function main() {
   // cualquiera puede empujar sin sesión.
   // NOM-004: lo escrito no se altera en silencio.
   // NOM-004: cerrar un consultorio no puede llevarse cinco años de expedientes.
+  // Fase 2 del post-venta: la lista que trabaja la recepcionista.
+  console.log('\nControles pendientes')
+
+  const pacControl = (
+    await db.query<{ id: string }>(
+      `insert into patients (professional_id, name, phone)
+       values ($1, 'Paciente Que Debe Volver', '+52 55 3333 0000') returning id`,
+      [proA2],
+    )
+  ).rows[0].id
+  const citaControl = (
+    await db.query<{ id: string }>(
+      `insert into appointments (professional_id, patient_id, starts_at, ends_at, status)
+       values ($1, $2, now() - interval '40 days', now() - interval '40 days' + interval '30 min', 'completed')
+       returning id`,
+      [proA2, pacControl],
+    )
+  ).rows[0].id
+  await db.query(
+    `insert into consultation_notes (appointment_id, patient_id, professional_id,
+                                     follow_up_at, follow_up_reason)
+     values ($1, $2, $3, current_date - 3, 'Control de peso')`,
+    [citaControl, pacControl, proA2],
+  )
+
+  const toca = await como<{ paciente: string; motivo: string }>(
+    drA,
+    `select paciente, motivo from controles_pendientes(15)`,
+  )
+  check(
+    'quien quedó de volver y no tiene cita aparece en la lista',
+    toca.rows.some((r) => r.paciente === 'Paciente Que Debe Volver'),
+  )
+  check(
+    'con el motivo que dejó el médico',
+    toca.rows.find((r) => r.paciente === 'Paciente Que Debe Volver')?.motivo ===
+      'Control de peso',
+  )
+
+  // La regla que sostiene la confianza en la lista.
+  await db.query(
+    `insert into appointments (professional_id, patient_id, starts_at, ends_at, status)
+     values ($1, $2, now() + interval '5 days', now() + interval '5 days' + interval '30 min', 'confirmed')`,
+    [proA2, pacControl],
+  )
+  const yaNoToca = await como<{ paciente: string }>(
+    drA,
+    `select paciente from controles_pendientes(15)`,
+  )
+  check(
+    'y desaparece en cuanto se le agenda: no se le llama a quien ya viene',
+    !yaNoToca.rows.some((r) => r.paciente === 'Paciente Que Debe Volver'),
+  )
+
+  const ajenoNoVe = await como<{ n: number }>(
+    drB,
+    `select count(*)::int as n from controles_pendientes(15)`,
+  )
+  check('un médico no ve los controles de otro consultorio', Number(ajenoNoVe.rows[0].n) === 0)
+
+  await db.query(`delete from appointments where patient_id = $1`, [pacControl])
+  await db.query(`delete from patients where id = $1`, [pacControl])
+
   console.log('\nArchivar en vez de borrar')
 
   const proCierra = (

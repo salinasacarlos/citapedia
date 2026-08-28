@@ -168,6 +168,8 @@ export async function guardarConsulta(
       heart_rate: numero(datos, 'heart_rate'),
       oxygen_saturation: numero(datos, 'oxygen_saturation'),
       blood_pressure: texto(datos, 'blood_pressure'),
+      follow_up_at: texto(datos, 'follow_up_at'),
+      follow_up_reason: texto(datos, 'follow_up_reason'),
     },
     { onConflict: 'appointment_id' },
   )

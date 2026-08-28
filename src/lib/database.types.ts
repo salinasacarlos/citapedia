@@ -156,6 +156,9 @@ export type ConsultationNote = {
   oxygen_saturation: number | null
   diagnosis: string | null
   treatment: string | null
+  /** Cuándo debería volver. Es la indicación de ESTA consulta. */
+  follow_up_at: string | null
+  follow_up_reason: string | null
   created_at: string | null
   updated_at: string | null
 }
