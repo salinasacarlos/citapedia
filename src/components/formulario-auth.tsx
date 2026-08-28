@@ -26,22 +26,35 @@ export function FormularioAuth({
   cta,
   pie,
   ocultos,
+  distintivo,
 }: {
   accion: (estado: EstadoFormulario, datos: FormData) => Promise<EstadoFormulario>
   titulo: string
   descripcion: string
   campos: Campo[]
   cta: string
-  pie: { texto: string; enlace: string; href: string }
+  /** No todas las puertas ofrecen crear cuenta: la de plataforma no. */
+  pie?: { texto: string; enlace: string; href: string }
   /** Campos que viajan con el formulario sin que el usuario los vea. */
   ocultos?: Record<string, string>
+  /** Para que se note de entrada a qué puerta llegaste. */
+  distintivo?: string
 }) {
   const [estado, formAction, pendiente] = useActionState(accion, {})
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-4 py-12 sm:px-6 sm:py-16">
       <Marca href="/" />
-      <h1 className="mt-6 text-2xl font-bold tracking-tight text-ink">{titulo}</h1>
+      {distintivo && (
+        <span className="mt-6 w-fit rounded-full bg-ink px-2.5 py-1 text-xs font-bold text-surface">
+          {distintivo}
+        </span>
+      )}
+      <h1
+        className={`text-2xl font-bold tracking-tight text-ink ${distintivo ? 'mt-3' : 'mt-6'}`}
+      >
+        {titulo}
+      </h1>
       <p className="mt-2 text-sm text-muted">{descripcion}</p>
 
       <form action={formAction} className="mt-8 space-y-4">
@@ -88,12 +101,14 @@ export function FormularioAuth({
         </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-muted">
-        {pie.texto}{' '}
-        <Link href={pie.href} className="font-medium text-acento hover:underline">
-          {pie.enlace}
-        </Link>
-      </p>
+      {pie && (
+        <p className="mt-6 text-center text-sm text-muted">
+          {pie.texto}{' '}
+          <Link href={pie.href} className="font-medium text-acento hover:underline">
+            {pie.enlace}
+          </Link>
+        </p>
+      )}
     </main>
   )
 }
