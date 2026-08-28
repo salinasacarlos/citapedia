@@ -792,6 +792,21 @@ Lo clínico vive aparte porque **RLS filtra filas, no columnas**: no existe una
 política que deje al asistente ver el teléfono pero no las alergias.
 `clinical_records` y `consultation_notes` son de solo dueño.
 
+La ficha se lee en dos columnas con un papel claro cada una: a la **izquierda**
+con quién se habla y cuándo se le ve —contacto, próximas citas, avisos
+programados—; a la **derecha**, lo que es del paciente: su expediente, sus
+estudios y su bitácora.
+
+Cada columna necesita su propio contenedor. Con los hijos sueltos, el grid de
+dos columnas los repartía celda por celda y las secciones caían en zigzag
+—Estudios bajo Contacto, la bitácora enfrente—: eso era lo que hacía que la
+ficha se sintiera desordenada, no la falta de secciones.
+
+En el encabezado va **solo lo que aplica al paciente entero**: agendar y
+descargar. Editar es de cada tarjeta —una liga discreta en su esquina—, porque
+quien va a corregir un teléfono lo está mirando en Contacto, no en un botón
+lejos de ahí. Cuatro botones arriba hacían que ninguno destacara.
+
 La ficha separa **Próximas citas** de la bitácora: una cita que no ha ocurrido
 no es una visita con algo anotado ese día, y mezclarlas hacía que la línea de
 tiempo del paciente empezara en el futuro. Cuando no hay ninguna agendada pero

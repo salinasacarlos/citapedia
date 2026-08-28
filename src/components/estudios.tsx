@@ -69,7 +69,7 @@ export function Estudios({
               type="file"
               accept="image/jpeg,image/png,image/webp,image/heic,application/pdf"
               onChange={(e) => setNombre(e.currentTarget.files?.[0]?.name ?? null)}
-              className="campo mt-1 file:mr-3 file:rounded-full file:border-0 file:bg-brand-suave file:px-3 file:py-1 file:text-xs file:font-semibold file:text-brand"
+              className="campo mt-1 text-xs file:mr-3 file:rounded-full file:border-0 file:bg-brand-suave file:px-3 file:py-1 file:text-xs file:font-semibold file:text-brand"
             />
           </div>
           <div className="@md:w-44">

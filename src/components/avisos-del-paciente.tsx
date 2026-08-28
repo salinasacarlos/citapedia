@@ -54,7 +54,7 @@ export function AvisosDelPaciente({
   const hoy = new Date().toISOString().slice(0, 10)
 
   return (
-    <section className="mb-8">
+    <section>
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="font-semibold text-ink">Avisos programados</h2>
