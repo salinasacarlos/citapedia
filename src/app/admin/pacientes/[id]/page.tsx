@@ -155,7 +155,21 @@ export default async function FichaPaciente({
     }),
   )
 
-  const bitacora = citas ?? []
+  // Una cita que no ha ocurrido no es una visita con algo anotado ese día:
+  // mezclarla en la bitácora hacía que la línea de tiempo empezara en el
+  // futuro. Se separan.
+  const ahora = new Date().toISOString()
+  const todas = citas ?? []
+  const proximas = todas
+    .filter((c) => c.starts_at >= ahora && (c.status === 'confirmed' || c.status === 'requested'))
+    .reverse()
+  const bitacora = todas.filter((c) => !proximas.includes(c))
+
+  // Lo que el médico dejó dicho en la última consulta y todavía no se agenda.
+  const control = (consultas ?? [])
+    .filter((n) => n.follow_up_at)
+    .sort((a, b) => (a.follow_up_at! < b.follow_up_at! ? 1 : -1))[0]
+  const controlPendiente = control && proximas.length === 0 ? control : null
   const notas = consultas ?? []
   const notaPorCita = new Map(notas.map((n) => [n.appointment_id, n]))
   const años = edad(paciente.birth_date)
@@ -357,6 +371,80 @@ export default async function FichaPaciente({
             </section>
           )}
         </div>
+
+        <section className="mb-8">
+          <h2 className="font-semibold text-ink">Próximas citas</h2>
+          <p className="mb-3 text-sm text-muted">
+            Lo que tiene agendado hacia adelante.
+          </p>
+
+          {proximas.length > 0 ? (
+            <ul className="space-y-2">
+              {proximas.map((cita) => {
+                const desenlace = DESENLACE[cita.status]
+                return (
+                  <li
+                    key={cita.id}
+                    className="tarjeta flex flex-wrap items-center justify-between gap-3 p-4"
+                  >
+                    <div>
+                      <p className="font-medium">
+                        <span className="first-letter:uppercase">
+                          {fechaCorta(cita.starts_at, zona)}
+                        </span>
+                        <span className="mx-2 text-border">·</span>
+                        <span className="tabular-nums text-muted">
+                          {hora(cita.starts_at, zona)}
+                        </span>
+                      </p>
+                      {cita.notes && (
+                        <p className="mt-0.5 text-sm text-muted">{cita.notes}</p>
+                      )}
+                    </div>
+                    {desenlace && (
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap ${desenlace.clase}`}
+                      >
+                        {desenlace.texto}
+                      </span>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+          ) : controlPendiente ? (
+            /* Sin cita pero con indicación de volver: es exactamente a quien
+               hay que llamar, y la ficha es donde se está mirando. */
+            <div className="tarjeta flex flex-wrap items-center justify-between gap-3 border-alerta/30 bg-alerta-suave/40 p-4">
+              <div>
+                <p className="text-sm font-medium text-ink">
+                  Quedó de volver el {fechaSuelta(controlPendiente.follow_up_at)}
+                </p>
+                {controlPendiente.follow_up_reason && (
+                  <p className="mt-0.5 text-sm text-muted">
+                    {controlPendiente.follow_up_reason}
+                  </p>
+                )}
+              </div>
+              <Link
+                href={`/admin/agendar?paciente=${paciente.id}`}
+                className="boton boton-primario px-3 py-1.5 text-xs"
+              >
+                Agendarle
+              </Link>
+            </div>
+          ) : (
+            <div className="tarjeta flex flex-wrap items-center justify-between gap-3 p-4">
+              <p className="text-sm text-muted">No tiene ninguna cita agendada.</p>
+              <Link
+                href={`/admin/agendar?paciente=${paciente.id}`}
+                className="boton boton-suave px-3 py-1.5 text-xs"
+              >
+                Agendarle una
+              </Link>
+            </div>
+          )}
+        </section>
 
         {esDueño && (
           <section className="mb-8">
