@@ -186,6 +186,23 @@ que nunca tuvo una no lleva a ningún lado.
 - "No tiene horario publicado" va arriba y en rojo: es la causa número uno de
   "mi liga no deja agendar", y verlo de inmediato ahorra la conversación.
 
+## El tope de solicitudes
+
+Ya había un tope de 3 pendientes por contacto, pero se apoya en el teléfono y
+el correo que teclea quien agenda: cambiarlos en cada intento lo salta.
+
+El tope nuevo es **por hueco** (5), y la elección importa: un tope global por
+consultorio sería un arma —quien quisiera hacer daño lo llenaría y dejaría al
+médico sin poder recibir citas de verdad, con la defensa convertida en el
+ataque—. Por hueco, el daño queda acotado a (huecos publicados × 5) y un
+paciente real siempre puede pedir otro horario. Hay una prueba que verifica
+justo eso: llenar un hueco no bloquea los demás.
+
+Esto **acota el daño, no detiene a alguien decidido**. Un ataque en serio se
+para antes de llegar a la base, con límites por IP en el borde (el firewall de
+Vercel o BotID). Lo que evita es que un script tonto o un formulario en bucle
+inutilicen la pantalla de Solicitudes.
+
 ## Permisos de las funciones
 
 En Postgres **toda función nace con `EXECUTE` para `PUBLIC`**. Los
