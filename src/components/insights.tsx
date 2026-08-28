@@ -2,14 +2,15 @@ import Link from 'next/link'
 
 export type Metricas = {
   pacientes: number
-  pacientes_30d: number
+  pacientes_periodo: number
   por_revisar: number
   por_cerrar: number
   proximas_7d: number
   sin_confirmar_7d: number
-  atendidas_30d: number
-  inasistencias_30d: number
-  canceladas_30d: number
+  atendidas: number
+  inasistencias: number
+  canceladas: number
+  agendadas: number
   cerradas_con_confirmacion: number
   faltaron_con_confirmacion: number
   cerradas_sin_confirmacion: number
@@ -63,8 +64,8 @@ function Numero({
   )
 }
 
-export function Insights({ m }: { m: Metricas }) {
-  const cerradas30 = m.atendidas_30d + m.inasistencias_30d
+export function Insights({ m, periodo }: { m: Metricas; periodo: string }) {
+  const cerradas = m.atendidas + m.inasistencias
   const ocupacion =
     m.minutos_semana > 0
       ? Math.round((m.minutos_agendados_7d / m.minutos_semana) * 100)
@@ -124,21 +125,25 @@ export function Insights({ m }: { m: Metricas }) {
       </section>
 
       <section className="mb-6">
-        <h2 className="mb-3 text-sm font-semibold text-muted">Últimos 30 días</h2>
+        <h2 className="mb-3 text-sm font-semibold text-muted">{periodo}</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Numero etiqueta="Consultas atendidas" valor={m.atendidas_30d} />
+          <Numero
+            etiqueta="Consultas atendidas"
+            valor={m.atendidas}
+            nota={m.agendadas > 0 ? `de ${m.agendadas} citas agendadas` : undefined}
+          />
           <Numero
             etiqueta="Pacientes nuevos"
-            valor={m.pacientes_30d}
+            valor={m.pacientes_periodo}
             nota={`${m.pacientes} en total`}
             href="/admin/pacientes"
           />
           <Numero
             etiqueta="No asistieron"
-            valor={m.inasistencias_30d}
-            nota={cerradas30 > 0 ? `de ${cerradas30} citas cerradas` : undefined}
+            valor={m.inasistencias}
+            nota={cerradas > 0 ? `de ${cerradas} citas cerradas` : undefined}
           />
-          <Numero etiqueta="Canceladas" valor={m.canceladas_30d} />
+          <Numero etiqueta="Canceladas" valor={m.canceladas} />
         </div>
       </section>
 
