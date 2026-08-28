@@ -471,6 +471,26 @@ los consultorios de los que quien pregunta ya es miembro.
 login y la confirmación de correo se vuelven un trampolín para mandar gente a
 dominios de terceros.
 
+## Inicio
+
+`/admin/inicio` es la primera pestaña: los primeros pasos, los números del
+consultorio y de dónde llegan sus pacientes, todo en un lugar. La Agenda sigue
+siendo `/admin` y no se movió: es lo que el médico abre todos los días, y
+meterle un tablero antes le costaría un clic diario para siempre.
+
+`metricas_consultorio` va con **SECURITY INVOKER**: son los datos del propio
+médico y RLS ya sabe cuáles son suyos. Elevarse le daría la capacidad de ver
+consultorios ajenos sin ninguna razón para tenerla.
+
+Devuelve **conteos crudos, no porcentajes**. Un "33% de inasistencia" sobre
+tres citas es ruido con aspecto de dato; que la pantalla vea el denominador es
+lo que le permite callarse cuando no hay de dónde concluir — y por eso el
+comparativo de confirmación exige al menos 10 citas cerradas de cada lado
+antes de mostrarse.
+
+Las tarjetas de "ahora mismo" son ligas: un número que pide acción tiene que
+llevar al lugar donde se actúa.
+
 ## Primeros pasos
 
 Un tour de flechitas se hace clic para quitárselo de encima y no enseña nada.
@@ -628,9 +648,9 @@ separados aunque los tres cabrían en "recomendación".
   ya es paciente. Contarlo como captación nueva inflaría cualquier medición.
 - `null` significa "no se preguntó", que es distinto de `otro`.
 - Se muestra en dos lados y responden preguntas distintas: en la **ficha** el
-  dato dice cómo tratar a esa persona; en **Pacientes**, el corte "De dónde
-  llegan" responde en qué invertir y a quién agradecerle. El corte mira a todos
-  los pacientes, no a la página que se está viendo.
+  dato dice cómo tratar a esa persona; en **Inicio**, el corte "De dónde
+  llegan" responde en qué invertir y a quién agradecerle. Está ahí y no en
+  Pacientes porque es una pregunta del consultorio, no de una lista.
 - El origen se guarda **solo al crear la ficha**. A quien vuelve a agendar no
   se le reescribe de dónde vino la primera vez.
 - `create or replace function` con distinta cantidad de parámetros no

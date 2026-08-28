@@ -260,6 +260,26 @@ export type Database = {
     Functions: {
       es_superadmin: { Args: Record<string, never>; Returns: boolean }
       puede_recuperar: { Args: { p_email: string }; Returns: boolean }
+      metricas_consultorio: {
+        Args: Record<string, never>
+        Returns: {
+          pacientes: number
+          pacientes_30d: number
+          por_revisar: number
+          por_cerrar: number
+          proximas_7d: number
+          sin_confirmar_7d: number
+          atendidas_30d: number
+          inasistencias_30d: number
+          canceladas_30d: number
+          cerradas_con_confirmacion: number
+          faltaron_con_confirmacion: number
+          cerradas_sin_confirmacion: number
+          faltaron_sin_confirmacion: number
+          minutos_semana: number
+          minutos_agendados_7d: number
+        }[]
+      }
       plataforma_correos_fallidos: {
         Args: { p_dias?: number }
         Returns: { kind: string; reason: string; cuantos: number; ultimo: string }[]

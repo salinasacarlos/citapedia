@@ -270,11 +270,7 @@ export default async function AgendaPage({
         placeholder="Buscar paciente por nombre o teléfono"
       />
 
-      {pasos.length > 0 && <PrimerosPasos pasos={pasos} />}
-
-      {/* La guía ya trae el paso del horario con su porqué: repetirlo aquí
-          sería decir dos veces lo mismo en la misma pantalla. */}
-      {pasos.length === 0 && (franjas ?? 0) === 0 && (
+      {(franjas ?? 0) === 0 && (
         <div className="mb-6 rounded-marca border border-alerta/30 bg-alerta-suave px-5 py-4">
           <p className="text-sm font-semibold text-alerta">Todavía no defines tu horario</p>
           <p className="mt-1 text-sm text-muted">
