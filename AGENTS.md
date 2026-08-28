@@ -480,6 +480,25 @@ por reflejo, y esto borra la agenda completa sin vuelta atrás. Borra el
 `professional` (cascada), no el usuario de auth: esa cuenta queda viva y cae en
 `/sin-acceso`.
 
+Recuperar la contraseña (`/recuperar`) sale por Resend con
+`admin.generateLink`, no por el SMTP de Supabase: misma plantilla, mismo
+remitente, y no depende de un canal que no está configurado. Tres cosas que no
+son negociables ahí:
+
+- **La respuesta es siempre la misma**, exista o no la cuenta. Decir "no hay
+  nadie con ese correo" dejaría averiguar qué médicos usan CitaPedia probando
+  direcciones.
+- El correo **no saluda por su nombre** ni menciona el consultorio: quien pide
+  recuperar puede no ser el dueño, y no hay por qué confirmarle a un extraño
+  de quién es la dirección que tecleó.
+- `generateLink` **no pasa por los límites de Supabase**, así que hay un freno
+  de 60 segundos por correo leído de `recovery_sent_at`. Sin él, cualquiera
+  que sepa el correo de un médico puede llenarle el buzón.
+
+La consola de plataforma **no ofrece recuperación**: la operan dos personas
+contadas y si alguna se atora se arregla desde Supabase. Sería una puerta más
+a la parte más sensible del sistema a cambio de casi nada.
+
 Cambiar el correo de acceso está pendiente a propósito: exige confirmar el
 nuevo por mensaje, y sin SMTP el médico se quedaría fuera de su propia cuenta.
 Ojo además con que `professionals.email` y el correo de `auth.users` son campos

@@ -30,6 +30,7 @@ export function FormularioAuth({
   pie,
   ocultos,
   distintivo,
+  extra,
 }: {
   accion: (estado: EstadoFormulario, datos: FormData) => Promise<EstadoFormulario>
   titulo: string
@@ -42,6 +43,8 @@ export function FormularioAuth({
   ocultos?: Record<string, string>
   /** Para que se note de entrada a qué puerta llegaste. */
   distintivo?: string
+  /** Una salida más, debajo del botón. Hoy: recuperar la contraseña. */
+  extra?: { texto: string; href: string }
 }) {
   const [estado, formAction, pendiente] = useActionState(accion, {})
 
@@ -123,6 +126,14 @@ export function FormularioAuth({
           {pendiente ? 'Un momento…' : cta}
         </button>
       </form>
+
+      {extra && (
+        <p className="mt-4 text-center text-sm">
+          <Link href={extra.href} className="font-medium text-acento hover:underline">
+            {extra.texto}
+          </Link>
+        </p>
+      )}
 
       {pie && (
         <p className="mt-6 text-center text-sm text-muted">

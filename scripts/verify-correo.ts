@@ -7,6 +7,7 @@ import { armarInvitacion } from '../src/lib/correo/invitacion'
 import { traducirResend } from '../src/lib/correo/enviar'
 import { armarCitaAceptada } from '../src/lib/correo/cita-aceptada'
 import { armarCitaRechazada } from '../src/lib/correo/cita-rechazada'
+import { armarRecuperacion } from '../src/lib/correo/recuperar'
 
 let fallos = 0
 function check(etiqueta: string, ok: boolean, detalle = '') {
@@ -265,6 +266,31 @@ check(
   'el asunto no dice "rechazada" en la bandeja',
   !/rechaz/i.test(rechazada.asunto),
   rechazada.asunto,
+)
+
+console.log('\nLa liga para volver a entrar')
+
+const recupera = armarRecuperacion({
+  para: 'medico@example.com',
+  liga: 'https://citapedia.vercel.app/auth/confirm?token_hash=abc&type=recovery',
+  minutos: 60,
+})
+
+check('va a quien lo pidió', recupera.para === 'medico@example.com')
+check('lleva la liga', recupera.html.includes('token_hash=abc'))
+check('dice cuánto dura', recupera.texto.includes('60 minutos'))
+check('y que sirve una sola vez', recupera.texto.includes('una sola vez'))
+check(
+  'dice qué hacer si no fuiste tú',
+  recupera.texto.includes('tu contraseña sigue como estaba'),
+)
+check(
+  'no saluda por su nombre: quien lo pide puede no ser el dueño',
+  !/^Hola/.test(recupera.texto),
+)
+check(
+  'y no revela nada de la cuenta más que la dirección',
+  !recupera.html.includes('consultorio') && !/Dr\.|Dra\./.test(recupera.html),
 )
 
 console.log('\nLo que se le dice al médico cuando falla el envío')
