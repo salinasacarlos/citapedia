@@ -108,6 +108,9 @@ export default async function Consulta({
       supabase
         .from('consultation_files')
         .select('*')
+        // Los archivados se conservan por la norma, pero no se muestran: para
+        // el médico están borrados.
+        .is('archived_at', null)
         .eq('patient_id', paciente.id)
         .order('created_at', { ascending: false })
         .returns<ConsultationFile[]>(),

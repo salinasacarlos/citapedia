@@ -214,7 +214,12 @@ No había agujero abierto, porque cada función revisa `es_operador()` por
 dentro. Pero el modelo estaba al revés: la seguridad dependía de que nadie
 olvidara nunca la revisión, en vez de depender de que nadie tuviera el permiso.
 
-Ahora se revoca todo y se concede nombre por nombre. **Al agregar una función
+Ahora se revoca todo y se concede nombre por nombre. **Ojo al agregar una
+función: hay que mirar también dónde se USA, no solo quién la llama desde la
+aplicación.** Las restricciones CHECK se evalúan con los privilegios de quien
+escribe, así que `slug_reservado` —que vive dentro de un CHECK— necesita
+EXECUTE de `authenticated` o cambiar el slug del perfil revienta. Los triggers
+no tienen ese problema: su permiso se revisa al crearlos, no al dispararse. **Al agregar una función
 nueva hay que concederla explícitamente**, o no la va a poder llamar nadie —
 que es el lado seguro del olvido. Una prueba del esquema falla si `anon`
 alcanza algo que no sea `solicitar_cita` o `ver_cita`.
@@ -807,8 +812,15 @@ que cada versión anterior se guarda antes de perderse, en
   encuentra filas que tocar. Las pruebas verifican el efecto, no esperan una
   excepción que nunca llega.
 
-Falta de la norma: la conservación por cinco años choca con el borrado en
-cascada al eliminar un consultorio. Es decisión de producto, no un descuido.
+**Nada se borra de verdad.** Cerrar el consultorio ya no hace `delete` —la
+cascada se llevaba pacientes, citas, expedientes, notas, estudios y hasta este
+mismo historial—: lo archiva. Para el médico el efecto es el mismo (su agenda
+se apaga y su página desaparece) pero los datos siguen ahí, y `archived_at` es
+la fecha desde la que corren los cinco años. Borrar un estudio también lo
+archiva, y el archivo se queda en su lugar.
+
+Archivado y suspendido son cosas distintas con el mismo efecto: uno lo decide
+el médico, el otro la plataforma, y cada uno manda a su propia pantalla.
 
 ## Estudios y documentos
 

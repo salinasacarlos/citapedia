@@ -24,6 +24,9 @@ export type Professional = {
   /** Cuenta desactivada por la plataforma. Null = activa. */
   suspended_at: string | null
   suspended_reason: string | null
+  /** Consultorio cerrado. Los datos se conservan cinco años. */
+  archived_at?: string | null
+  archived_reason?: string | null
   /** Cuándo pidió no ver más los primeros pasos. */
   onboarding_hidden_at?: string | null
   id: string
@@ -168,6 +171,7 @@ export type ConsultationFile = {
   mime: string
   size_bytes: number
   kind: string | null
+  archived_at: string | null
   uploaded_by: string | null
   created_at: string | null
 }
@@ -260,6 +264,23 @@ export type Database = {
     Functions: {
       es_superadmin: { Args: Record<string, never>; Returns: boolean }
       puede_recuperar: { Args: { p_email: string }; Returns: boolean }
+      archivar_consultorio: {
+        Args: { p_id: string; p_motivo?: string | null }
+        Returns: undefined
+      }
+      controles_pendientes: {
+        Args: { p_dias_de_gracia?: number }
+        Returns: {
+          patient_id: string
+          paciente: string
+          telefono: string | null
+          es_menor: boolean
+          tutor: string | null
+          toca_el: string
+          motivo: string | null
+          ultima_visita: string | null
+        }[]
+      }
       historial_de_nota: {
         Args: { p_cita: string }
         Returns: {

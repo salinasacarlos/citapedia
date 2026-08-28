@@ -1353,6 +1353,63 @@ async function main() {
   // Un hueco no puede acumular solicitudes sin fin: es la única puerta que
   // cualquiera puede empujar sin sesión.
   // NOM-004: lo escrito no se altera en silencio.
+  // NOM-004: cerrar un consultorio no puede llevarse cinco años de expedientes.
+  console.log('\nArchivar en vez de borrar')
+
+  const proCierra = (
+    await db.query<{ id: string }>(
+      `insert into auth.users (email, raw_user_meta_data)
+       values ('cierra@clinica.com', '{"name":"Dr. Que Cierra"}') returning id`,
+    )
+  ).rows[0].id
+  const consultorioCierra = (
+    await db.query<{ id: string }>(
+      `select professional_id as id from memberships where user_id = $1`,
+      [proCierra],
+    )
+  ).rows[0].id
+  const pacCierra = (
+    await db.query<{ id: string }>(
+      `insert into patients (professional_id, name) values ($1, 'Paciente Que Queda')
+       returning id`,
+      [consultorioCierra],
+    )
+  ).rows[0].id
+
+  await como(proCierra, `select archivar_consultorio($1, 'me retiro')`, [consultorioCierra])
+
+  const trasArchivar = await db.query<{ n: number }>(
+    `select count(*)::int as n from patients where id = $1`,
+    [pacCierra],
+  )
+  check('cerrar el consultorio NO borra a sus pacientes', Number(trasArchivar.rows[0].n) === 1)
+
+  const sigueEnPublico = await db.query<{ n: number }>(
+    `select count(*)::int as n from public_professionals where id = $1`,
+    [consultorioCierra],
+  )
+  check('pero su página pública desaparece', Number(sigueEnPublico.rows[0].n) === 0)
+
+  let citaEnCerrado = false
+  try {
+    await db.query(
+      `insert into appointments (professional_id, starts_at, ends_at, status)
+       values ($1, now() + interval '90 days', now() + interval '90 days' + interval '30 min', 'requested')`,
+      [consultorioCierra],
+    )
+  } catch (err) {
+    citaEnCerrado = String(err).includes('ya no está en servicio')
+  }
+  check('y deja de recibir citas', citaEnCerrado)
+
+  let ajenoNoArchiva = false
+  try {
+    await como(drB, `select archivar_consultorio($1)`, [consultorioCierra])
+  } catch (err) {
+    ajenoNoArchiva = String(err).includes('Solo el dueño')
+  }
+  check('nadie puede cerrar el consultorio de otro', ajenoNoArchiva)
+
   console.log('\nHistorial del expediente')
 
   const citaNota = (
