@@ -7,6 +7,7 @@ import { Estudios, type EstudioVisible } from '@/components/estudios'
 import { aceptarDeclarados } from '@/lib/pacientes/actions'
 import { edad, fechaCorta, fechaSuelta, hora } from '@/lib/fechas'
 import { describirOrigen } from '@/lib/origen'
+import { RegistrarConsulta } from '@/components/registrar-consulta'
 import type {
   AppointmentStatus,
   ClinicalRecord,
@@ -372,12 +373,18 @@ export default async function FichaPaciente({
             la cita con lo que el médico anotó ese día. Es la línea de tiempo del
             paciente, y así la nombra quien la usa.
           */}
-          <h2 className="font-semibold text-ink">
-            Bitácora del paciente ({bitacora.length})
-          </h2>
-          <p className="mb-3 text-sm text-muted">
-            Cada visita, en orden, con lo que se anotó ese día.
-          </p>
+          <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="font-semibold text-ink">
+                Bitácora del paciente ({bitacora.length})
+              </h2>
+              <p className="text-sm text-muted">
+                Cada visita, en orden, con lo que se anotó ese día.
+              </p>
+            </div>
+            {/* Una consulta sin cita previa: el paciente que llegó de pronto. */}
+            {esDueño && <RegistrarConsulta pacienteId={paciente.id} />}
+          </div>
 
           {bitacora.length === 0 ? (
             <EstadoVacio titulo="Sin citas todavía" />

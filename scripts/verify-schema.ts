@@ -811,6 +811,32 @@ async function main() {
 
   await db.query(`delete from appointments where id = any($1)`, [[citaConf, solicitud]])
 
+  // Una consulta registrada a mano —el paciente que llegó sin cita— nace
+  // 'completed'. La restricción de solape solo mira las 'confirmed', así que
+  // no puede ser rechazada por chocar con algo que ya estaba agendado.
+  const ocupado = `${y}-${m}-${d}T19:00:00Z`
+  await db.query(
+    `insert into appointments (professional_id, starts_at, ends_at, status)
+     values ($1, $2::timestamptz, $2::timestamptz + interval '30 minutes', 'confirmed')`,
+    [proId, ocupado],
+  )
+  let sinCitaPrevia = false
+  try {
+    await db.query(
+      `insert into appointments (professional_id, starts_at, ends_at, status)
+       values ($1, $2::timestamptz, $2::timestamptz + interval '30 minutes', 'completed')`,
+      [proId, ocupado],
+    )
+    sinCitaPrevia = true
+  } catch (err) {
+    console.log(`      ${String(err).slice(0, 100)}`)
+  }
+  check(
+    'una consulta sin cita previa entra aunque el horario esté ocupado',
+    sinCitaPrevia,
+  )
+  await db.query(`delete from appointments where starts_at = $1::timestamptz`, [ocupado])
+
   console.log('\nMáquina de estados')
 
   async function transicion(desde: string, hacia: string) {
