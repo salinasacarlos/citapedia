@@ -263,6 +263,28 @@ React 19 resetea los formularios después de cada acción. Donde perder lo
 escrito sea molesto, los campos van controlados y se limpian solo al tener
 éxito (`Formulario` acepta `onExito`).
 
+## Texto con formato
+
+La bio y la información de consulta se guardan como **Markdown de un
+subconjunto mínimo** —negritas, cursivas y listas— y `TextoRico` las convierte
+en nodos de React. Nunca se inyecta HTML: lo que el médico escribe termina en
+nodos de texto, así que un `<script>` en su perfil no puede llegar a la página
+pública. Esa es la razón de no usar un editor WYSIWYG sobre `contenteditable`,
+no ahorrar una dependencia.
+
+`EditorTexto` es un textarea con barra: la selección se envuelve en `**`, `*` o
+se le anteponen guiones, y hay vista previa. Cuando la previa está abierta el
+textarea no existe, así que va un `input` oculto con el mismo `name` — sin él
+el formulario se enviaría sin el campo.
+
+`TextoExpandible` recorta y ofrece "Ver más". El recorte puede partir un
+marcador a la mitad y dejar el asterisco crudo a la vista, así que
+`cerrarMarcadores` cierra lo que quedó abierto antes de renderizar.
+
+La especialidad va con `datalist`: lista sugerida, no catálogo cerrado. Sirve
+para que quien encuentre la suya la escriba igual que los demás y después se
+puedan agrupar sin adivinar.
+
 ## Responsive
 
 Mobile-first: el layout base es de una columna y las variantes van en `sm:`.
