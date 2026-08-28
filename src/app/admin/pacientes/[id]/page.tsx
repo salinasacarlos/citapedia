@@ -215,25 +215,34 @@ export default async function FichaPaciente({
             </p>
           )}
         </div>
-        <div className="flex flex-wrap gap-2">
-          <a
-            href={`/admin/pacientes/${paciente.id}/exportar`}
-            className="boton boton-suave"
-            download
+        {/* Tres botones del mismo peso hacen que ninguno destaque. Agendar es
+            lo que se hace todos los días; editar, de vez en cuando; y bajar el
+            Excel, casi nunca. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href={`/admin/agendar?paciente=${paciente.id}`}
+            className="boton boton-primario"
           >
-            Excel
-          </a>
+            Agendar cita
+          </Link>
           <Link href={`/admin/pacientes/${paciente.id}/editar`} className="boton boton-suave">
             Editar datos
           </Link>
           {esDueño && (
             <Link
               href={`/admin/pacientes/${paciente.id}/expediente`}
-              className="boton boton-primario"
+              className="boton boton-suave"
             >
               Editar expediente
             </Link>
           )}
+          <a
+            href={`/admin/pacientes/${paciente.id}/exportar`}
+            className="text-sm font-medium text-acento hover:underline"
+            download
+          >
+            Excel
+          </a>
         </div>
       </header>
 
@@ -292,7 +301,13 @@ export default async function FichaPaciente({
         </section>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_1.4fr]">
+      {/*
+        Dos columnas con un papel claro cada una: a la izquierda quién es y a
+        quién se le habla, a la derecha qué sigue y qué ha pasado. Cada columna
+        necesita su propio contenedor: con los hijos sueltos, el grid los
+        repartía en zigzag y la ficha se leía desordenada.
+      */}
+      <div className="grid gap-5 lg:grid-cols-[25rem_1fr] lg:items-start">
         <div className="space-y-5">
           <section className="tarjeta p-4 sm:p-5">
             <h2 className="mb-1 font-semibold text-ink">Contacto</h2>
@@ -348,8 +363,86 @@ export default async function FichaPaciente({
             </section>
           )}
 
-          {esDueño && (
-            <section className="tarjeta p-4 sm:p-5">
+        <section>
+            <h2 className="font-semibold text-ink">Próximas citas</h2>
+            <p className="mb-3 text-sm text-muted">
+              Lo que tiene agendado hacia adelante.
+            </p>
+
+            {proximas.length > 0 ? (
+              <ul className="space-y-2">
+                {proximas.map((cita) => {
+                  const desenlace = DESENLACE[cita.status]
+                  return (
+                    <li
+                      key={cita.id}
+                      className="tarjeta flex flex-wrap items-center justify-between gap-3 p-4"
+                    >
+                      <div>
+                        <p className="font-medium">
+                          <span className="first-letter:uppercase">
+                            {fechaCorta(cita.starts_at, zona)}
+                          </span>
+                          <span className="mx-2 text-border">·</span>
+                          <span className="tabular-nums text-muted">
+                            {hora(cita.starts_at, zona)}
+                          </span>
+                        </p>
+                        {cita.notes && (
+                          <p className="mt-0.5 text-sm text-muted">{cita.notes}</p>
+                        )}
+                      </div>
+                      {desenlace && (
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap ${desenlace.clase}`}
+                        >
+                          {desenlace.texto}
+                        </span>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
+            ) : controlPendiente ? (
+              /* Sin cita pero con indicación de volver: es exactamente a quien
+                 hay que llamar, y la ficha es donde se está mirando. */
+              <div className="tarjeta flex flex-wrap items-center justify-between gap-3 border-alerta/30 bg-alerta-suave/40 p-4">
+                <div>
+                  <p className="text-sm font-medium text-ink">
+                    Quedó de volver el {fechaSuelta(controlPendiente.follow_up_at)}
+                  </p>
+                  {controlPendiente.follow_up_reason && (
+                    <p className="mt-0.5 text-sm text-muted">
+                      {controlPendiente.follow_up_reason}
+                    </p>
+                  )}
+                </div>
+                <Link
+                  href={`/admin/agendar?paciente=${paciente.id}`}
+                  className="boton boton-primario px-3 py-1.5 text-xs"
+                >
+                  Agendarle
+                </Link>
+              </div>
+            ) : (
+              <div className="tarjeta flex flex-wrap items-center justify-between gap-3 p-4">
+                <p className="text-sm text-muted">No tiene ninguna cita agendada.</p>
+                <Link
+                  href={`/admin/agendar?paciente=${paciente.id}`}
+                  className="boton boton-suave px-3 py-1.5 text-xs"
+                >
+                  Agendarle una
+                </Link>
+              </div>
+            )}
+          </section>
+
+          <AvisosDelPaciente pacienteId={paciente.id} avisos={avisos ?? []} />
+        </div>
+
+        <div className="space-y-8">
+        {esDueño && (
+          <section className="tarjeta p-4 sm:p-5">
               <h2 className="mb-3 font-semibold text-ink">Expediente</h2>
               {expediente ? (
                 <dl className="space-y-3">
@@ -379,86 +472,13 @@ export default async function FichaPaciente({
               )}
             </section>
           )}
-        </div>
 
-        <section className="mb-8">
-          <h2 className="font-semibold text-ink">Próximas citas</h2>
-          <p className="mb-3 text-sm text-muted">
-            Lo que tiene agendado hacia adelante.
-          </p>
 
-          {proximas.length > 0 ? (
-            <ul className="space-y-2">
-              {proximas.map((cita) => {
-                const desenlace = DESENLACE[cita.status]
-                return (
-                  <li
-                    key={cita.id}
-                    className="tarjeta flex flex-wrap items-center justify-between gap-3 p-4"
-                  >
-                    <div>
-                      <p className="font-medium">
-                        <span className="first-letter:uppercase">
-                          {fechaCorta(cita.starts_at, zona)}
-                        </span>
-                        <span className="mx-2 text-border">·</span>
-                        <span className="tabular-nums text-muted">
-                          {hora(cita.starts_at, zona)}
-                        </span>
-                      </p>
-                      {cita.notes && (
-                        <p className="mt-0.5 text-sm text-muted">{cita.notes}</p>
-                      )}
-                    </div>
-                    {desenlace && (
-                      <span
-                        className={`rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap ${desenlace.clase}`}
-                      >
-                        {desenlace.texto}
-                      </span>
-                    )}
-                  </li>
-                )
-              })}
-            </ul>
-          ) : controlPendiente ? (
-            /* Sin cita pero con indicación de volver: es exactamente a quien
-               hay que llamar, y la ficha es donde se está mirando. */
-            <div className="tarjeta flex flex-wrap items-center justify-between gap-3 border-alerta/30 bg-alerta-suave/40 p-4">
-              <div>
-                <p className="text-sm font-medium text-ink">
-                  Quedó de volver el {fechaSuelta(controlPendiente.follow_up_at)}
-                </p>
-                {controlPendiente.follow_up_reason && (
-                  <p className="mt-0.5 text-sm text-muted">
-                    {controlPendiente.follow_up_reason}
-                  </p>
-                )}
-              </div>
-              <Link
-                href={`/admin/agendar?paciente=${paciente.id}`}
-                className="boton boton-primario px-3 py-1.5 text-xs"
-              >
-                Agendarle
-              </Link>
-            </div>
-          ) : (
-            <div className="tarjeta flex flex-wrap items-center justify-between gap-3 p-4">
-              <p className="text-sm text-muted">No tiene ninguna cita agendada.</p>
-              <Link
-                href={`/admin/agendar?paciente=${paciente.id}`}
-                className="boton boton-suave px-3 py-1.5 text-xs"
-              >
-                Agendarle una
-              </Link>
-            </div>
-          )}
-        </section>
 
-        <AvisosDelPaciente pacienteId={paciente.id} avisos={avisos ?? []} />
+
 
         {esDueño && (
-          <section className="mb-8">
+          <section>
             <h2 className="font-semibold text-ink">Estudios y documentos</h2>
             <p className="mb-3 text-sm text-muted">
               Laboratorios, imágenes o recetas. Llegan en consulta o entre una y otra.
@@ -565,6 +585,7 @@ export default async function FichaPaciente({
             </ul>
           )}
         </section>
+        </div>
       </div>
     </>
   )
