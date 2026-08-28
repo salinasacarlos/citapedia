@@ -70,11 +70,14 @@ export function FormularioConsulta({
   pacienteId,
   nota,
   onCerrar,
+  yaTieneCita = false,
 }: {
   citaId: string
   pacienteId: string
   nota: ConsultationNote | undefined
   onCerrar?: () => void
+  /** Para no ofrecerle agendar a quien ya tiene cita hacia adelante. */
+  yaTieneCita?: boolean
 }) {
   const [estado, formAction, pendiente] = useActionState<ResultadoPaciente, FormData>(
     guardarConsulta,
@@ -184,6 +187,8 @@ export function FormularioConsulta({
 
       <ProximoControl
         citaId={citaId}
+        pacienteId={pacienteId}
+        yaTieneCita={yaTieneCita}
         valorInicial={nota?.follow_up_at ?? null}
         motivoInicial={nota?.follow_up_reason ?? null}
       />

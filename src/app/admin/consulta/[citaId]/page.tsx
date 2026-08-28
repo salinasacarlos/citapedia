@@ -88,6 +88,7 @@ export default async function Consulta({
     { data: declarado },
     { data: archivos },
     { data: versiones },
+    { count: citasFuturas },
   ] = await Promise.all([
       supabase
         .from('clinical_records')
@@ -117,6 +118,14 @@ export default async function Consulta({
       // Lo que decía antes esta nota. Va aquí y no en la bitácora porque es
       // donde alguien la está corrigiendo.
       supabase.rpc('historial_de_nota', { p_cita: cita.id }).returns<Version[]>(),
+      // ¿Ya tiene algo agendado hacia adelante? Cambia lo que se le ofrece al
+      // cerrar la consulta.
+      supabase
+        .from('appointments')
+        .select('id', { count: 'exact', head: true })
+        .eq('patient_id', cita.patient_id)
+        .in('status', ['requested', 'confirmed'])
+        .gte('starts_at', new Date().toISOString()),
     ])
 
   const todas = notas ?? []
@@ -205,6 +214,7 @@ export default async function Consulta({
               citaId={cita.id}
               pacienteId={paciente.id}
               nota={nota}
+              yaTieneCita={(citasFuturas ?? 0) > 0}
             />
             <HistorialDeNota versiones={versiones ?? []} zona={zona} />
           </section>

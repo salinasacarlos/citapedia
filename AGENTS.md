@@ -771,6 +771,13 @@ Lo clínico vive aparte porque **RLS filtra filas, no columnas**: no existe una
 política que deje al asistente ver el teléfono pero no las alergias.
 `clinical_records` y `consultation_notes` son de solo dueño.
 
+La ficha separa **Próximas citas** de la bitácora: una cita que no ha ocurrido
+no es una visita con algo anotado ese día, y mezclarlas hacía que la línea de
+tiempo del paciente empezara en el futuro. Cuando no hay ninguna agendada pero
+el médico dejó dicho que vuelva, ahí sale el control pendiente con su motivo y
+el botón para agendarle — es justo a quien hay que llamar, y la ficha es donde
+se está mirando.
+
 En la ficha, la lista de visitas se llama **Bitácora del paciente**, no
 "historial de citas": cada renglón junta la cita con lo que el médico anotó ese
 día, así que es la línea de tiempo del paciente y no un registro de agenda. El

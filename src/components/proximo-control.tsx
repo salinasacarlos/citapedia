@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState } from 'react'
 
 /** Lo que se dice de verdad al terminar una consulta. */
@@ -26,12 +27,17 @@ function enMeses(meses: number): string {
  */
 export function ProximoControl({
   citaId,
+  pacienteId,
   valorInicial,
   motivoInicial,
+  yaTieneCita,
 }: {
   citaId: string
+  pacienteId: string
   valorInicial: string | null
   motivoInicial: string | null
+  /** Si ya tiene algo agendado, ofrecer agendar otra vez confunde. */
+  yaTieneCita: boolean
 }) {
   const [fecha, setFecha] = useState(valorInicial ?? '')
   const [motivo, setMotivo] = useState(motivoInicial ?? '')
@@ -106,10 +112,26 @@ export function ProximoControl({
       {/* Sin fecha no se manda motivo: un motivo suelto no significa nada. */}
       {!fecha && <input type="hidden" name="follow_up_reason" value="" />}
 
-      {fecha && (
+      {fecha && !yaTieneCita && (
+        <p className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted">
+          <span>
+            Va a aparecer en la lista de controles pendientes ese día. Si el
+            paciente sigue aquí, mejor agéndala ahora:
+          </span>
+          {/* Guardar primero, o el control se pierde al salir de la pantalla. */}
+          <Link
+            href={`/admin/agendar?paciente=${pacienteId}`}
+            className="boton boton-suave px-3 py-1 text-xs"
+          >
+            Agendar la siguiente
+          </Link>
+        </p>
+      )}
+
+      {fecha && yaTieneCita && (
         <p className="mt-2 text-xs text-muted">
-          Va a aparecer en la lista de controles pendientes ese día, si para
-          entonces no tiene otra cita agendada.
+          Ya tiene una cita agendada hacia adelante, así que no va a aparecer en
+          la lista de controles pendientes.
         </p>
       )}
     </div>
