@@ -1352,6 +1352,114 @@ async function main() {
   // Auditoría de permisos: la cerradura de afuera, no solo la de adentro.
   // Un hueco no puede acumular solicitudes sin fin: es la única puerta que
   // cualquiera puede empujar sin sesión.
+  // NOM-004: lo escrito no se altera en silencio.
+  console.log('\nHistorial del expediente')
+
+  const citaNota = (
+    await db.query<{ id: string }>(
+      `insert into appointments (professional_id, starts_at, ends_at, status)
+       values ($1, now() + interval '70 days', now() + interval '70 days' + interval '30 min', 'confirmed')
+       returning id`,
+      [proId],
+    )
+  ).rows[0].id
+  const pacNota = (
+    await db.query<{ id: string }>(
+      `insert into patients (professional_id, name) values ($1, 'Paciente Nota') returning id`,
+      [proId],
+    )
+  ).rows[0].id
+
+  await db.query(
+    `insert into consultation_notes (appointment_id, patient_id, professional_id, diagnosis, note)
+     values ($1, $2, $3, 'Faringitis', 'Dolor de garganta')`,
+    [citaNota, pacNota, proId],
+  )
+  await db.query(
+    `update consultation_notes set diagnosis = 'Amigdalitis' where appointment_id = $1`,
+    [citaNota],
+  )
+
+  const versiones = await db.query<{ diagnosis: string; motivo: string; n: number }>(
+    `select diagnosis, motivo, count(*) over ()::int as n
+       from consultation_note_history where appointment_id = $1`,
+    [citaNota],
+  )
+  check(
+    'corregir una nota guarda lo que decía antes',
+    versiones.rows[0]?.diagnosis === 'Faringitis',
+    `quedó ${versiones.rows[0]?.diagnosis}`,
+  )
+  check('y por qué desapareció', versiones.rows[0]?.motivo === 'update')
+
+  // Un update que no toca lo clínico no debe ensuciar el historial.
+  await db.query(
+    `update consultation_notes set updated_at = now() where appointment_id = $1`,
+    [citaNota],
+  )
+  const sinRuido = await db.query<{ n: number }>(
+    `select count(*)::int as n from consultation_note_history where appointment_id = $1`,
+    [citaNota],
+  )
+  check('un cambio que no toca lo clínico no genera versión', Number(sinRuido.rows[0].n) === 1)
+
+  await db.query(`delete from consultation_notes where appointment_id = $1`, [citaNota])
+  const trasBorrar = await db.query<{ n: number; motivo: string }>(
+    `select count(*)::int as n, max(motivo) as motivo
+       from consultation_note_history where appointment_id = $1 and motivo = 'delete'`,
+    [citaNota],
+  )
+  check(
+    'borrar la nota tampoco la desaparece del historial',
+    Number(trasBorrar.rows[0].n) === 1,
+  )
+
+  // Un historial que se puede corregir no es un historial.
+  //
+  // Ojo con cómo se comprueba: sin política de update, RLS no lanza error —
+  // simplemente no encuentra filas que tocar. Hay que mirar el efecto, no
+  // esperar una excepción que nunca llega.
+  await como(
+    drA,
+    `update consultation_note_history set diagnosis = 'inventado' where appointment_id = $1`,
+    [citaNota],
+  ).catch(() => undefined)
+  const trasIntentarEditar = await db.query<{ n: number }>(
+    `select count(*)::int as n from consultation_note_history
+      where appointment_id = $1 and diagnosis = 'inventado'`,
+    [citaNota],
+  )
+  check('el historial no se puede editar', Number(trasIntentarEditar.rows[0].n) === 0)
+
+  const antesDeBorrar = await db.query<{ n: number }>(
+    `select count(*)::int as n from consultation_note_history where appointment_id = $1`,
+    [citaNota],
+  )
+  await como(drA, `delete from consultation_note_history where appointment_id = $1`, [
+    citaNota,
+  ]).catch(() => undefined)
+  const despuesDeBorrar = await db.query<{ n: number }>(
+    `select count(*)::int as n from consultation_note_history where appointment_id = $1`,
+    [citaNota],
+  )
+  check(
+    'ni borrar',
+    Number(despuesDeBorrar.rows[0].n) === Number(antesDeBorrar.rows[0].n) &&
+      Number(antesDeBorrar.rows[0].n) > 0,
+  )
+
+  const historialAsistente = await como<{ n: number }>(
+    invitado,
+    `select count(*)::int as n from consultation_note_history`,
+  )
+  check(
+    'el asistente no ve el historial clínico, como no ve la nota',
+    Number(historialAsistente.rows[0].n) === 0,
+  )
+
+  await db.query(`delete from appointments where id = $1`, [citaNota])
+  await db.query(`delete from patients where id = $1`, [pacNota])
+
   console.log('\nTope de solicitudes por hueco')
 
   const hueco = `${y}-${m}-${d}T20:00:00Z`

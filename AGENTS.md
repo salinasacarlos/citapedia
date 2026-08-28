@@ -784,6 +784,32 @@ o desde la bitácora de la ficha.
 - El asistente que abra la liga ve un aviso, no un error: la agenda sigue
   siendo suya.
 
+## NOM-004: lo escrito no se altera en silencio
+
+La norma del expediente clínico pide que lo asentado quede íntegro y que cada
+nota diga quién y cuándo. `consultation_notes` se reescribía con un `update`:
+el médico corregía un diagnóstico y la versión anterior desaparecía. Eso no es
+aceptable en un expediente, y tampoco protege al médico — si alguien alega que
+"ahí decía otra cosa", no había con qué responder.
+
+**No se bloquea la edición**: corregir es normal y necesario. Lo que cambia es
+que cada versión anterior se guarda antes de perderse, en
+`consultation_note_history`, por trigger.
+
+- La tabla tiene política de **select y nada más**. Un historial que se puede
+  editar no es un historial, y la ausencia de políticas de update y delete es
+  la que lo garantiza.
+- Guarda lo que decía **antes**, no lo nuevo: lo nuevo ya está en la nota.
+- Un `update` que no toca nada clínico no genera versión: llenaría el historial
+  de renglones idénticos.
+- Borrar la nota también deja constancia (`motivo = 'delete'`).
+- Al probarlo: sin política de update, RLS **no lanza error**, simplemente no
+  encuentra filas que tocar. Las pruebas verifican el efecto, no esperan una
+  excepción que nunca llega.
+
+Falta de la norma: la conservación por cinco años choca con el borrado en
+cascada al eliminar un consultorio. Es decisión de producto, no un descuido.
+
 ## Estudios y documentos
 
 Bucket `expedientes`, en `{professional_id}/{patient_id}/{timestamp}-{archivo}`,
