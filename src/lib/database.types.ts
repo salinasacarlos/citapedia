@@ -15,6 +15,9 @@ export type AppointmentStatus =
   | 'no_show'
   | 'expired'
 
+/** Escala DENTRO de la plataforma, sin relación con la del consultorio. */
+export type PlatformRole = 'fundador' | 'soporte'
+
 export type MemberRole = 'owner' | 'assistant'
 
 export type Professional = {
@@ -245,6 +248,16 @@ export type Database = {
     }
     Functions: {
       es_superadmin: { Args: Record<string, never>; Returns: boolean }
+      es_operador: { Args: Record<string, never>; Returns: boolean }
+      plataforma_operadores: {
+        Args: Record<string, never>
+        Returns: { email: string; rol: PlatformRole; note: string | null; desde: string }[]
+      }
+      plataforma_dar_permiso: {
+        Args: { p_email: string; p_rol: PlatformRole }
+        Returns: undefined
+      }
+      plataforma_quitar_permiso: { Args: { p_email: string }; Returns: undefined }
       plataforma_resumen: {
         Args: Record<string, never>
         Returns: {

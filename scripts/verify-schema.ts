@@ -1258,12 +1258,15 @@ async function main() {
   try {
     await como(drA, `select plataforma_suspender($1, 'porque sí')`, [proA2])
   } catch (err) {
-    suspenderAjeno = String(err).includes('No autorizado')
+    suspenderAjeno = String(err).includes('cosa de un fundador')
   }
   check('ni puede suspender a nadie', suspenderAjeno)
 
-  // Con el alta explícita, sí.
-  await db.query(`insert into platform_admins (user_id) values ($1)`, [drA])
+  // Con el alta explícita, sí. El rol se dice: el default es `soporte`, que ve
+  // pero no opera.
+  await db.query(`insert into platform_admins (user_id, role) values ($1, 'fundador')`, [
+    drA,
+  ])
   const ahoraSi = await como<{ n: number }>(
     drA,
     `select count(*)::int as n from plataforma_consultorios()`,
@@ -1337,6 +1340,41 @@ async function main() {
   )
   check('y el equipo sí, que son las personas con las que trata la plataforma',
     Number(equipoSoporte.rows[0].n) > 0)
+
+  // Soporte ve, pero no cambia nada. Es la razón de que exista la escala.
+  await db.query(`update platform_admins set role = 'soporte' where user_id = $1`, [drA])
+
+  const soporteVe = await como<{ n: number }>(
+    drA,
+    `select count(*)::int as n from plataforma_consultorios()`,
+  )
+  check('soporte sigue viendo la consola', Number(soporteVe.rows[0].n) > 0)
+
+  let soporteSuspende = false
+  try {
+    await como(drA, `select plataforma_suspender($1, 'no debería')`, [proA2])
+  } catch (err) {
+    soporteSuspende = String(err).includes('cosa de un fundador')
+  }
+  check('pero no puede suspender', soporteSuspende)
+
+  let soporteReparte = false
+  try {
+    await como(drA, `select plataforma_dar_permiso('quien@sea.com', 'fundador')`)
+  } catch (err) {
+    soporteReparte = String(err).includes('fundador reparte')
+  }
+  check('ni repartir permisos', soporteReparte)
+
+  await db.query(`update platform_admins set role = 'fundador' where user_id = $1`, [drA])
+
+  let ultimoFundador = false
+  try {
+    await como(drA, `select plataforma_quitar_permiso('ana@clinica.com')`)
+  } catch (err) {
+    ultimoFundador = String(err).includes('único fundador')
+  }
+  check('el último fundador no se puede quitar a sí mismo', ultimoFundador)
 
   await db.query(`delete from platform_admins where user_id = $1`, [drA])
 

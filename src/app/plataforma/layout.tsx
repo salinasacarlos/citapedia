@@ -24,6 +24,9 @@ export default async function PlataformaLayout({
             </span>
           </div>
           <div className="flex items-center gap-3 text-sm">
+            <Link href="/plataforma/operadores" className="text-muted hover:text-foreground">
+              Quién opera
+            </Link>
             <Link href="/admin" className="text-muted hover:text-foreground">
               Mi consultorio
             </Link>

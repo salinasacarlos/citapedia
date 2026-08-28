@@ -56,6 +56,7 @@ function Dato({
 
 export default async function Plataforma() {
   const supabase = await exigirSuperadmin()
+  const { esOperador } = supabase
 
   const [{ data: resumen }, { data: consultorios }] = await Promise.all([
     supabase.rpc('plataforma_resumen').returns<Resumen[]>(),
@@ -71,13 +72,15 @@ export default async function Plataforma() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-ink">Consultorios</h1>
           <p className="mt-1 text-sm text-muted">
-            Uso de la plataforma. Aquí no se ve nada clínico: ni expedientes, ni notas
+              Uso de la plataforma. Aquí no se ve nada clínico: ni expedientes, ni notas
             de consulta, ni estudios.
           </p>
         </div>
-        <div className="sm:shrink-0">
-          <AltaConsultorio />
-        </div>
+        {esOperador && (
+          <div className="sm:shrink-0">
+            <AltaConsultorio />
+          </div>
+        )}
       </header>
 
       {r && (
@@ -145,7 +148,7 @@ export default async function Plataforma() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
-                  {c.suspended_at ? (
+                  {!esOperador ? null : c.suspended_at ? (
                     <form action={reactivarConsultorio}>
                       <input type="hidden" name="id" value={c.id} />
                       <button className="boton boton-primario px-3 py-1.5 text-xs">

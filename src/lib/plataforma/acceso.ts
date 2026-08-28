@@ -13,5 +13,10 @@ export async function exigirSuperadmin() {
   const supabase = await createClient()
   const { data, error } = await supabase.rpc('es_superadmin')
   if (error || data !== true) notFound()
-  return supabase
+
+  // Entrar y poder cambiar cosas son permisos distintos: soporte ve la
+  // consola completa, pero no le apaga el negocio a nadie.
+  const { data: operador } = await supabase.rpc('es_operador')
+
+  return Object.assign(supabase, { esOperador: operador === true })
 }
