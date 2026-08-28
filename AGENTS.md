@@ -186,6 +186,47 @@ que nunca tuvo una no lleva a ningún lado.
 - "No tiene horario publicado" va arriba y en rojo: es la causa número uno de
   "mi liga no deja agendar", y verlo de inmediato ahorra la conversación.
 
+## Permisos de las funciones
+
+En Postgres **toda función nace con `EXECUTE` para `PUBLIC`**. Los
+`grant execute ... to authenticated` que se escribieron durante meses eran
+redundantes: no añadían nada, porque el permiso ya lo tenía todo el mundo.
+`anon` —cuya llave viaja en el HTML— podía llamar `plataforma_suspender`.
+
+No había agujero abierto, porque cada función revisa `es_operador()` por
+dentro. Pero el modelo estaba al revés: la seguridad dependía de que nadie
+olvidara nunca la revisión, en vez de depender de que nadie tuviera el permiso.
+
+Ahora se revoca todo y se concede nombre por nombre. **Al agregar una función
+nueva hay que concederla explícitamente**, o no la va a poder llamar nadie —
+que es el lado seguro del olvido. Una prueba del esquema falla si `anon`
+alcanza algo que no sea `solicitar_cita` o `ver_cita`.
+
+El harness de PGlite ya **no** hace `grant execute on all functions`: lo hacía
+para parecerse a Supabase, y desde este cambio eso lo alejaría de producción
+justo en lo que se quiso cerrar.
+
+## Índices
+
+- Postgres **no indexa las claves foráneas solo**. Sin índice, cada borrado del
+  lado padre recorre la tabla hija entera.
+- Se dejaron a propósito sin índice las columnas de autoría —`author_id`,
+  `uploaded_by`, `reviewed_by`, `actor_id`—: solo se recorren al borrar un
+  usuario de auth, que casi no pasa, y un índice se paga en cada escritura.
+- `appointments_agenda_idx (professional_id, status, starts_at)` es el camino
+  caliente: agenda, solicitudes, historial y métricas preguntan las tres cosas
+  juntas. El índice suelto de `status` se quitó — con `professional_id` al
+  frente queda cubierto, y uno de más cuesta en cada escritura.
+
+## Contar es trabajo de la base
+
+"De dónde llegan" traía **todos** los pacientes a la aplicación para contarlos
+en JavaScript, y la lista de la consola hacía seis subconsultas correlacionadas
+**por consultorio**. Con veinte pacientes y cuatro consultorios no se nota; con
+cinco mil y mil, son cinco mil renglones por carga y seis mil consultas. Los
+dos pasaron a agregados (`origenes_consultorio`, `recomendantes_consultorio`,
+`cobertura_origen`, y CTEs en `plataforma_consultorios`).
+
 ## Despliegue
 
 Vercel construye por su cuenta cada push a cualquier rama como Preview, y

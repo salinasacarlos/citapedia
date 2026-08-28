@@ -1,6 +1,7 @@
 import { ORIGENES } from '@/lib/origen'
 
-export type Conteo = { source: string | null; referred_by: string | null }
+export type PorOrigen = { source: string; cuantos: number }
+export type Recomendante = { quien: string; cuantos: number }
 
 /**
  * De dónde llegaron los pacientes.
@@ -10,41 +11,40 @@ export type Conteo = { source: string | null; referred_by: string | null }
  * En la ficha individual el dato sirve para otra cosa —saber cómo tratarlo— y
  * ahí ya está.
  */
-export function DeDondeLlegan({ pacientes }: { pacientes: Conteo[] }) {
-  const conOrigen = pacientes.filter((p) => p.source)
-  if (conOrigen.length === 0) return null
-
-  const porOrigen = new Map<string, number>()
-  for (const p of conOrigen) {
-    porOrigen.set(p.source!, (porOrigen.get(p.source!) ?? 0) + 1)
-  }
-
-  // Quién recomienda de verdad: solo cuenta a quien mandó a más de uno.
-  const porQuien = new Map<string, number>()
-  for (const p of conOrigen) {
-    if (!p.referred_by) continue
-    const quien = p.referred_by.trim()
-    porQuien.set(quien, (porQuien.get(quien) ?? 0) + 1)
-  }
-  const recomiendan = [...porQuien.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)
-
-  const ordenados = [...porOrigen.entries()].sort((a, b) => b[1] - a[1])
-  const mayor = ordenados[0][1]
+/**
+ * Los conteos llegan ya agrupados desde la base.
+ *
+ * Antes esto recibía la lista entera de pacientes y contaba en JavaScript: con
+ * cinco mil pacientes eran cinco mil renglones viajando en cada carga para
+ * acabar mostrando ocho números.
+ */
+export function DeDondeLlegan({
+  porOrigen,
+  recomiendan,
+  conOrigen,
+  total,
+}: {
+  porOrigen: PorOrigen[]
+  recomiendan: Recomendante[]
+  conOrigen: number
+  total: number
+}) {
+  if (porOrigen.length === 0) return null
+  const mayor = porOrigen[0].cuantos
 
   return (
     <section className="tarjeta mb-5 p-4 sm:p-5">
       <h2 className="font-semibold text-ink">De dónde llegan</h2>
       <p className="mt-0.5 mb-3 text-sm text-muted">
-        {conOrigen.length} de {pacientes.length}{' '}
-        {pacientes.length === 1 ? 'paciente contestó' : 'pacientes contestaron'} de
-        dónde vienen.
+        {conOrigen} de {total} {total === 1 ? 'paciente contestó' : 'pacientes contestaron'}{' '}
+        de dónde vienen.
       </p>
 
       <dl className="space-y-1.5">
-        {ordenados.map(([origen, cuantos]) => (
-          <div key={origen} className="flex items-center gap-3 text-sm">
+        {porOrigen.map(({ source, cuantos }) => (
+          <div key={source} className="flex items-center gap-3 text-sm">
             <dt className="w-44 shrink-0 truncate text-muted">
-              {ORIGENES.find((o) => o.valor === origen)?.etiqueta ?? origen}
+              {ORIGENES.find((o) => o.valor === source)?.etiqueta ?? source}
             </dt>
             {/* La barra es para comparar de un vistazo; el número es el dato. */}
             <dd className="flex min-w-0 flex-1 items-center gap-2">
@@ -63,7 +63,7 @@ export function DeDondeLlegan({ pacientes }: { pacientes: Conteo[] }) {
         <div className="mt-4 border-t border-border pt-3">
           <p className="text-xs font-medium text-muted">Quién te manda pacientes</p>
           <ul className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-            {recomiendan.map(([quien, cuantos]) => (
+            {recomiendan.map(({ quien, cuantos }) => (
               <li key={quien}>
                 {quien}{' '}
                 <span className="tabular-nums text-muted">

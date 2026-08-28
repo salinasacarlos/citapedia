@@ -260,6 +260,18 @@ export type Database = {
     Functions: {
       es_superadmin: { Args: Record<string, never>; Returns: boolean }
       puede_recuperar: { Args: { p_email: string }; Returns: boolean }
+      origenes_consultorio: {
+        Args: Record<string, never>
+        Returns: { source: string; cuantos: number }[]
+      }
+      recomendantes_consultorio: {
+        Args: { p_limite?: number }
+        Returns: { quien: string; cuantos: number }[]
+      }
+      cobertura_origen: {
+        Args: Record<string, never>
+        Returns: { con_origen: number; total: number }[]
+      }
       metricas_consultorio: {
         Args: { p_desde?: string | null; p_hasta?: string | null }
         Returns: {
