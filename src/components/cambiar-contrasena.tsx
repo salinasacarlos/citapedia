@@ -2,6 +2,7 @@
 
 import { useActionState, useRef, useEffect } from 'react'
 import { cambiarContrasena, type ResultadoCuenta } from '@/lib/cuenta/actions'
+import { CampoContrasena } from '@/components/campo-contrasena'
 
 export function CambiarContrasena() {
   const [estado, formAction, pendiente] = useActionState<ResultadoCuenta, FormData>(
@@ -29,15 +30,13 @@ export function CambiarContrasena() {
             <label htmlFor={campo.name} className="block text-sm font-medium text-ink">
               {campo.label}
             </label>
-            <input
-              id={campo.name}
-              name={campo.name}
-              type="password"
-              required
-              minLength={campo.name === 'actual' ? undefined : 8}
-              autoComplete={campo.autoComplete}
-              className="campo mt-1.5"
-            />
+            <div className="mt-1.5">
+              <CampoContrasena
+                name={campo.name}
+                minLength={campo.name === 'actual' ? undefined : 8}
+                autoComplete={campo.autoComplete}
+              />
+            </div>
           </div>
         ))}
       </div>

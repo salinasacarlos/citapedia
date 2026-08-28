@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react'
 import { definirContrasena, type ResultadoDefinir } from '@/lib/auth/definir'
+import { CampoContrasena } from '@/components/campo-contrasena'
 
 export function DefinirContrasena() {
   const [estado, formAction, pendiente] = useActionState<ResultadoDefinir, FormData>(
@@ -15,15 +16,9 @@ export function DefinirContrasena() {
         <label htmlFor="password" className="block text-sm font-medium text-ink">
           Tu contraseña
         </label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          required
-          minLength={8}
-          autoComplete="new-password"
-          className="campo mt-1.5"
-        />
+        <div className="mt-1.5">
+          <CampoContrasena name="password" minLength={8} autoComplete="new-password" />
+        </div>
         <p className="mt-1 text-xs text-muted">Al menos 8 caracteres.</p>
       </div>
 
@@ -31,15 +26,9 @@ export function DefinirContrasena() {
         <label htmlFor="password2" className="block text-sm font-medium text-ink">
           Otra vez, para estar seguros
         </label>
-        <input
-          id="password2"
-          name="password2"
-          type="password"
-          required
-          minLength={8}
-          autoComplete="new-password"
-          className="campo mt-1.5"
-        />
+        <div className="mt-1.5">
+          <CampoContrasena name="password2" minLength={8} autoComplete="new-password" />
+        </div>
       </div>
 
       {estado.error && (
