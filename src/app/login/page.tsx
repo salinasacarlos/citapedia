@@ -16,6 +16,10 @@ function comoEntrar(next: string) {
       descripcion:
         'Para dar de alta consultorios, activarlos o desactivarlos y ver cómo va el uso. Aquí no se ve nada clínico.',
       pie: undefined,
+      // La consola la operan dos personas contadas; si alguna se atora, se
+      // arregla desde Supabase. Ofrecer recuperación aquí sería una puerta más
+      // a la parte más sensible del sistema, a cambio de casi nada.
+      olvide: false,
     }
   }
   return {
@@ -23,6 +27,7 @@ function comoEntrar(next: string) {
     titulo: 'Entra a tu consultorio',
     descripcion: 'Para revisar solicitudes de cita y administrar tu agenda.',
     pie: { texto: '¿Todavía no tienes consultorio?', enlace: 'Créalo', href: '/registro' },
+    olvide: true,
   }
 }
 
@@ -53,6 +58,9 @@ export default async function LoginPage({
         },
       ]}
       pie={copy.pie}
+      extra={
+        copy.olvide ? { texto: '¿Olvidaste tu contraseña?', href: '/recuperar' } : undefined
+      }
     />
   )
 }
