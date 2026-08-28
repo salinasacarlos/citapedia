@@ -73,12 +73,16 @@ async function main() {
     check(file, true)
   }
 
-  // Supabase otorga estos permisos a anon/authenticated por defecto; RLS es
-  // lo que filtra, no la falta de grant. Replicarlo hace fiel la prueba.
+  // Supabase otorga los permisos de TABLA a anon/authenticated por defecto;
+  // RLS es lo que filtra, no la falta de grant. Replicarlo hace fiel la prueba.
+  //
+  // Las FUNCIONES ya no: desde la auditoría, las migraciones revocan el EXECUTE
+  // que Postgres regala a PUBLIC y conceden nombre por nombre. Volver a abrirlas
+  // aquí haría que la prueba dejara de parecerse a producción justo en lo que
+  // se quiso cerrar.
   await db.exec(`
     grant select, insert, update, delete on all tables in schema public to authenticated;
     grant select on all tables in schema public to anon;
-    grant execute on all functions in schema public to anon, authenticated;
   `)
 
   console.log('\nFixture de prueba')
@@ -1144,13 +1148,15 @@ async function main() {
   }
   check('una invitación vencida se rechaza', vencidaBloqueada)
 
-  // Sin sesión.
+  // Sin sesión. Desde la auditoría lo detiene el permiso, antes de llegar a la
+  // revisión de adentro: las dos cerraduras cuentan, y se acepta cualquiera.
   let anonBloqueado = false
   try {
     const t = await invitar('anon@clinica.com', '7 days')
     await como(null, `select aceptar_invitacion($1)`, [t])
   } catch (err) {
-    anonBloqueado = String(err).includes('iniciar sesión')
+    const e = String(err)
+    anonBloqueado = e.includes('iniciar sesión') || e.includes('permission denied')
   }
   check('sin sesión no se puede aceptar', anonBloqueado)
 
@@ -1341,6 +1347,26 @@ async function main() {
 
   await db.query(
     `update auth.users set recovery_sent_at = null where email = 'ana@clinica.com'`,
+  )
+
+  // Auditoría de permisos: la cerradura de afuera, no solo la de adentro.
+  console.log('\nPermisos de las funciones')
+
+  const permisos = await db.query<{ f: string; anon: boolean }>(
+    `select p.oid::regprocedure::text as f,
+            has_function_privilege('anon', p.oid, 'execute') as anon
+       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' and p.proname in
+        ('plataforma_suspender','plataforma_dar_permiso','metricas_consultorio',
+         'miembros_del_consultorio','puede_recuperar','solicitar_cita','ver_cita')`,
+  )
+  const abiertas = permisos.rows.filter((r) => r.anon).map((r) => r.f.split('(')[0])
+  const debenAbrir = ['solicitar_cita', 'ver_cita']
+  check(
+    'un anónimo solo alcanza lo que es público',
+    abiertas.every((f) => debenAbrir.includes(f)) &&
+      debenAbrir.every((f) => abiertas.includes(f)),
+    abiertas.join(', ') || 'ninguna',
   )
 
   console.log('\nCorreos que no salieron')

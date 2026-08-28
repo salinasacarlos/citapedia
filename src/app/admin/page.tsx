@@ -2,7 +2,11 @@ import { createClient } from '@/lib/supabase/server'
 import { exigirConsultorio } from '@/lib/consultorio'
 import { Insights, type Metricas } from '@/components/insights'
 import { PrimerosPasos, type Paso } from '@/components/primeros-pasos'
-import { DeDondeLlegan } from '@/components/de-donde-llegan'
+import {
+  DeDondeLlegan,
+  type PorOrigen,
+  type Recomendante,
+} from '@/components/de-donde-llegan'
 import { FiltroPeriodo } from '@/components/filtro-periodo'
 import { leerPeriodo } from '@/lib/periodo'
 import { nombreDePila } from '@/lib/fechas'
@@ -19,17 +23,24 @@ export default async function Inicio({
   const supabase = await createClient()
   const periodo = leerPeriodo(await searchParams, profesional.timezone)
 
-  const [{ data: metricas }, { count: franjas }, { count: miembros }, { data: origenes }] =
-    await Promise.all([
+  const [
+    { data: metricas },
+    { count: franjas },
+    { count: miembros },
+    { data: origenes },
+    { data: recomiendan },
+    { data: cobertura },
+  ] = await Promise.all([
       supabase
         .rpc('metricas_consultorio', { p_desde: periodo.desde, p_hasta: periodo.hasta })
         .returns<Metricas[]>(),
       supabase.from('availability').select('id', { count: 'exact', head: true }),
       supabase.from('memberships').select('id', { count: 'exact', head: true }),
-      supabase
-        .from('patients')
-        .select('source, referred_by')
-        .returns<{ source: string | null; referred_by: string | null }[]>(),
+      // Agregados en la base: traer los pacientes para contarlos aquí crecía
+      // con cada alta y no aportaba nada que SQL no supiera hacer mejor.
+      supabase.rpc('origenes_consultorio').returns<PorOrigen[]>(),
+      supabase.rpc('recomendantes_consultorio', { p_limite: 5 }).returns<Recomendante[]>(),
+      supabase.rpc('cobertura_origen').returns<{ con_origen: number; total: number }[]>(),
     ])
 
   const m = metricas?.[0]
@@ -90,7 +101,12 @@ export default async function Inicio({
 
       {/* De dónde llegan cierra la pantalla: es la única que mira hacia
           afuera, y la que dice en qué vale la pena invertir. */}
-      <DeDondeLlegan pacientes={origenes ?? []} />
+      <DeDondeLlegan
+        porOrigen={origenes ?? []}
+        recomiendan={recomiendan ?? []}
+        conOrigen={cobertura?.[0]?.con_origen ?? 0}
+        total={cobertura?.[0]?.total ?? 0}
+      />
     </>
   )
 }
