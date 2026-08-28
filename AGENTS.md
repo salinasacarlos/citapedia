@@ -249,6 +249,26 @@ respuesta que nunca llega.
   asistente, enterarse de cada una es justo el ruido que tener asistente vino
   a quitarle.
 
+## Los correos que nadie mira
+
+Casi todos los envíos tienen a alguien enfrente: la invitación y los avisos de
+aceptar o rechazar fallan en pantalla, frente a la recepcionista. Dos no: la
+**recuperación de contraseña**, que se calla a propósito para no delatar qué
+cuentas existen, y el **cron de recordatorios**, que corre de madrugada sin
+nadie leyendo su respuesta. Si Resend deja de entregar un martes, esos dos
+fallan en silencio hasta que alguien no puede entrar o un paciente no llega.
+
+`email_failures` los recoge y la consola de plataforma los muestra agrupados
+por motivo. **No se guarda el destinatario**: en recuperación la dirección
+sería una lista de quién tiene cuenta, y en recordatorios es el correo de un
+paciente. Lo accionable es el motivo, que además casi siempre es global — "no
+hay dominio verificado" no se arregla paciente por paciente. Una prueba revisa
+las columnas para que nadie agregue la dirección de pasada.
+
+`anotarFalloDeCorreo` nunca recibe la liga: es una credencial, y escribirla en
+una tabla o en un log la vuelve reutilizable por quien lea cualquiera de los
+dos.
+
 ## El cron de recordatorios
 
 `GET /api/recordatorios`, disparado por el cron de Vercel una vez al día

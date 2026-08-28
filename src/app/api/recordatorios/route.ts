@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { enviarCorreo } from '@/lib/correo/enviar'
 import { armarRecordatorio, correoParaAvisar } from '@/lib/correo/recordatorio'
+import { anotarFalloDeCorreo } from '@/lib/correo/anotar-fallo'
 import type { AppointmentStatus } from '@/lib/database.types'
 
 export const dynamic = 'force-dynamic'
@@ -156,6 +157,10 @@ export async function GET(request: Request) {
       // recordatorio repetido molesta; uno que nunca sale, cuesta la cita.
       fallidos++
       if (errores.length < 5) errores.push(envio.error)
+      // Este cron corre de madrugada y nadie lee su respuesta: sin dejar
+      // constancia, que los recordatorios dejen de salir es invisible hasta
+      // que un paciente no llega.
+      await anotarFalloDeCorreo('recordatorio', envio.error)
       continue
     }
 

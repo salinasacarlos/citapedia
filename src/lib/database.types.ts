@@ -230,6 +230,12 @@ export type Database = {
       declared_records: Table<DeclaredRecord>
       consultation_notes: Table<ConsultationNote>
       consultation_files: Table<ConsultationFile>
+      email_failures: Table<{
+        id: string
+        kind: string
+        reason: string
+        created_at: string | null
+      }>
       appointments: Table<Appointment>
       reminder_settings: Table<ReminderSettings>
     }
@@ -252,6 +258,10 @@ export type Database = {
     Functions: {
       es_superadmin: { Args: Record<string, never>; Returns: boolean }
       puede_recuperar: { Args: { p_email: string }; Returns: boolean }
+      plataforma_correos_fallidos: {
+        Args: { p_dias?: number }
+        Returns: { kind: string; reason: string; cuantos: number; ultimo: string }[]
+      }
       es_operador: { Args: Record<string, never>; Returns: boolean }
       plataforma_operadores: {
         Args: Record<string, never>

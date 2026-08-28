@@ -1343,6 +1343,23 @@ async function main() {
     `update auth.users set recovery_sent_at = null where email = 'ana@clinica.com'`,
   )
 
+  console.log('\nCorreos que no salieron')
+
+  await db.query(
+    `insert into email_failures (kind, reason) values
+       ('recordatorio', 'Sin dominio verificado'),
+       ('recordatorio', 'Sin dominio verificado'),
+       ('recuperacion', 'Sin dominio verificado')`,
+  )
+  const columnasFallo = (
+    await db.query(`select * from email_failures limit 1`)
+  ).fields.map((f) => f.name)
+  check(
+    'no se guarda a quién iba dirigido',
+    !columnasFallo.some((c) => ['email', 'para', 'to', 'destinatario'].includes(c)),
+    columnasFallo.join(', '),
+  )
+
   console.log('\nLa consola de plataforma')
 
   // Un médico normal es exactamente quien no debe poder asomarse.
@@ -1413,6 +1430,15 @@ async function main() {
     [proA2],
   )
   check('reactivar lo devuelve tal cual', Number(devuelto.rows[0].n) === 1)
+
+  const agrupados = await como<{ kind: string; cuantos: number }>(
+    drA,
+    `select kind, cuantos from plataforma_correos_fallidos(7) order by cuantos desc`,
+  )
+  check(
+    'los fallos se agrupan por motivo: doscientos iguales son un problema',
+    Number(agrupados.rows[0]?.cuantos) === 2 && agrupados.rows[0]?.kind === 'recordatorio',
+  )
 
   // La ficha de soporte: operación sí, contenido no.
   const ficha = await como<{ franjas: number; pacientes: number; name: string }>(

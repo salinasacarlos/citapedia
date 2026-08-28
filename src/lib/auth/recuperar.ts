@@ -3,6 +3,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { enviarCorreo } from '@/lib/correo/enviar'
 import { armarRecuperacion } from '@/lib/correo/recuperar'
+import { anotarFalloDeCorreo } from '@/lib/correo/anotar-fallo'
 
 export type ResultadoRecuperar = { error?: string; listo?: boolean }
 
@@ -53,15 +54,20 @@ export async function pedirRecuperacion(
     // Cuenta inexistente: se calla y responde igual que en el caso bueno.
     if (error || !enlace?.properties?.hashed_token) return { listo: true }
 
-    await enviarCorreo(
+    const envio = await enviarCorreo(
       armarRecuperacion({
         para: email,
         liga: `${sitio}/auth/confirm?token_hash=${enlace.properties.hashed_token}&type=recovery&next=%2Fdefinir-contrasena`,
         minutos: VIGENCIA_MINUTOS,
       }),
     )
-  } catch {
-    // Tampoco aquí se distingue: un fallo de envío no debe revelar nada.
+
+    // Al usuario se le sigue diciendo lo mismo pase lo que pase, pero el
+    // fallo deja de ser invisible: sin esto, que Resend rechace es algo que
+    // nadie descubre hasta que alguien se queda sin poder entrar.
+    if (!envio.ok) await anotarFalloDeCorreo('recuperacion', envio.error)
+  } catch (err) {
+    await anotarFalloDeCorreo('recuperacion', String(err).slice(0, 200))
   }
 
   return { listo: true }
