@@ -8,6 +8,7 @@ import { salir } from '@/lib/auth/actions'
 import type { MemberRole } from '@/lib/database.types'
 
 const SECCIONES = [
+  { href: '/admin/inicio', etiqueta: 'Inicio' },
   { href: '/admin', etiqueta: 'Agenda' },
   { href: '/admin/solicitudes', etiqueta: 'Solicitudes' },
   { href: '/admin/pacientes', etiqueta: 'Pacientes' },

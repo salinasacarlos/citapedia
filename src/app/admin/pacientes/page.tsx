@@ -6,7 +6,6 @@ import { Filtros } from '@/components/filtros'
 import { Paginacion } from '@/components/paginacion'
 import { POR_PAGINA, hayFiltros, inicioDelDia, finDelDia, leerFiltros } from '@/lib/filtros'
 import { edad, fechaCorta } from '@/lib/fechas'
-import { DeDondeLlegan } from '@/components/de-donde-llegan'
 import type { PatientResumen } from '@/lib/database.types'
 
 export const dynamic = 'force-dynamic'
@@ -42,13 +41,6 @@ export default async function PacientesPage({
   const pacientes = data ?? []
   const total = count ?? 0
 
-  // El corte mira a TODOS los pacientes, no solo la página que se está viendo:
-  // "de dónde llegan" es una pregunta del consultorio, no de estos 25.
-  const { data: origenes } = await supabase
-    .from('patients')
-    .select('source, referred_by')
-    .returns<{ source: string | null; referred_by: string | null }[]>()
-
   const paramsExport = new URLSearchParams()
   for (const [k, v] of Object.entries(params)) {
     const valor = Array.isArray(v) ? v[0] : v
@@ -79,8 +71,6 @@ export default async function PacientesPage({
           </Link>
         </div>
       </header>
-
-      <DeDondeLlegan pacientes={origenes ?? []} />
 
       <Filtros
         ruta="/admin/pacientes"
