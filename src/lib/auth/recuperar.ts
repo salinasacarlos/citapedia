@@ -6,8 +6,8 @@ import { armarRecuperacion } from '@/lib/correo/recuperar'
 
 export type ResultadoRecuperar = { error?: string; listo?: boolean }
 
-/** Cuánto hay que esperar entre una liga y la siguiente, para el mismo correo. */
-const ESPERA_SEGUNDOS = 60
+// Cuánto hay que esperar entre una liga y la siguiente vive en la base, en
+// `puede_recuperar`: es donde está el dato que hay que mirar.
 
 /** Lo que dura la liga del lado de Supabase. */
 const VIGENCIA_MINUTOS = 60
@@ -38,6 +38,13 @@ export async function pedirRecuperacion(
   const sitio = process.env.NEXT_PUBLIC_SITE_URL ?? ''
 
   try {
+    // El freno va ANTES de generar: `generateLink` invalida el token anterior
+    // en cuanto se llama, así que frenar después dejaría muerta la liga que ya
+    // se mandó sin poner otra en su lugar. La función de la base contesta lo
+    // mismo para un correo inexistente, así que preguntarle no revela nada.
+    const { data: puede } = await admin.rpc('puede_recuperar', { p_email: email })
+    if (puede === false) return { listo: true }
+
     const { data: enlace, error } = await admin.auth.admin.generateLink({
       type: 'recovery',
       email,
@@ -45,17 +52,6 @@ export async function pedirRecuperacion(
 
     // Cuenta inexistente: se calla y responde igual que en el caso bueno.
     if (error || !enlace?.properties?.hashed_token) return { listo: true }
-
-    // Freno simple contra el bombardeo: `generateLink` no pasa por los límites
-    // de Supabase, así que sin esto alguien podría llenarle el buzón a un
-    // médico con solo saber su correo. La marca la escribe el propio Supabase.
-    const anterior = enlace.user?.recovery_sent_at
-    if (anterior) {
-      const desde = (Date.now() - new Date(anterior).getTime()) / 1000
-      // La liga que acabamos de generar ya movió la marca, así que un valor
-      // muy fresco solo puede venir de una petición anterior a esta.
-      if (desde > 1 && desde < ESPERA_SEGUNDOS) return { listo: true }
-    }
 
     await enviarCorreo(
       armarRecuperacion({

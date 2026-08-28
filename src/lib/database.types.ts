@@ -251,6 +251,7 @@ export type Database = {
     }
     Functions: {
       es_superadmin: { Args: Record<string, never>; Returns: boolean }
+      puede_recuperar: { Args: { p_email: string }; Returns: boolean }
       es_operador: { Args: Record<string, never>; Returns: boolean }
       plataforma_operadores: {
         Args: Record<string, never>

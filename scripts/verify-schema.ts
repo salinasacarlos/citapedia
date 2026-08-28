@@ -34,7 +34,10 @@ async function main() {
       created_at timestamptz default now(),
       -- La consola de plataforma la lee para saber a quién ayudar: una cuenta
       -- que nadie ha vuelto a abrir es justo la que hay que mirar.
-      last_sign_in_at timestamptz
+      last_sign_in_at timestamptz,
+      -- La escribe Supabase al generar una liga de recuperación; el freno
+      -- contra el bombardeo se apoya en ella.
+      recovery_sent_at timestamptz
     );
     -- Igual que en Supabase: auth.uid() sale del claim 'sub' del JWT.
     create or replace function auth.uid() returns uuid
@@ -1308,6 +1311,37 @@ async function main() {
     `select count(*)::int as n from patients`,
   )
   check('un médico no ve los pacientes de otro consultorio', Number(ajeno.rows[0].n) === 0)
+
+  console.log('\nRecuperar contraseña')
+
+  await db.query(
+    `update auth.users set recovery_sent_at = now() where email = 'ana@clinica.com'`,
+  )
+  const recienPedida = await db.query<{ p: boolean }>(
+    `select puede_recuperar('ana@clinica.com') as p`,
+  )
+  check('recién pedida, no se manda otra', recienPedida.rows[0].p === false)
+
+  await db.query(
+    `update auth.users set recovery_sent_at = now() - interval '61 seconds'
+      where email = 'ana@clinica.com'`,
+  )
+  const pasadoElMinuto = await db.query<{ p: boolean }>(
+    `select puede_recuperar('ana@clinica.com') as p`,
+  )
+  check('pasado el minuto, sí', pasadoElMinuto.rows[0].p === true)
+
+  const inexistente = await db.query<{ p: boolean }>(
+    `select puede_recuperar('nadie@ningunlado.com') as p`,
+  )
+  check(
+    'y un correo inexistente contesta lo mismo que uno válido: no delata a nadie',
+    inexistente.rows[0].p === true,
+  )
+
+  await db.query(
+    `update auth.users set recovery_sent_at = null where email = 'ana@clinica.com'`,
+  )
 
   console.log('\nLa consola de plataforma')
 

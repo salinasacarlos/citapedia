@@ -492,8 +492,13 @@ son negociables ahí:
   recuperar puede no ser el dueño, y no hay por qué confirmarle a un extraño
   de quién es la dirección que tecleó.
 - `generateLink` **no pasa por los límites de Supabase**, así que hay un freno
-  de 60 segundos por correo leído de `recovery_sent_at`. Sin él, cualquiera
-  que sepa el correo de un médico puede llenarle el buzón.
+  de 60 segundos por correo. Sin él, cualquiera que sepa el correo de un médico
+  puede llenarle el buzón.
+- El freno se consulta **antes** de generar (`puede_recuperar`), y esto es lo
+  importante: `generateLink` invalida el token anterior en cuanto se llama, así
+  que frenar después dejaba muerta la liga ya enviada sin poner otra en su
+  lugar. La función contesta lo mismo para un correo inexistente que para uno
+  que ya esperó, así que preguntarle no delata a nadie.
 
 La consola de plataforma **no ofrece recuperación**: la operan dos personas
 contadas y si alguna se atora se arregla desde Supabase. Sería una puerta más
