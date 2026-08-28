@@ -249,6 +249,26 @@ respuesta que nunca llega.
   asistente, enterarse de cada una es justo el ruido que tener asistente vino
   a quitarle.
 
+## Los correos que nadie mira
+
+Casi todos los envíos tienen a alguien enfrente: la invitación y los avisos de
+aceptar o rechazar fallan en pantalla, frente a la recepcionista. Dos no: la
+**recuperación de contraseña**, que se calla a propósito para no delatar qué
+cuentas existen, y el **cron de recordatorios**, que corre de madrugada sin
+nadie leyendo su respuesta. Si Resend deja de entregar un martes, esos dos
+fallan en silencio hasta que alguien no puede entrar o un paciente no llega.
+
+`email_failures` los recoge y la consola de plataforma los muestra agrupados
+por motivo. **No se guarda el destinatario**: en recuperación la dirección
+sería una lista de quién tiene cuenta, y en recordatorios es el correo de un
+paciente. Lo accionable es el motivo, que además casi siempre es global — "no
+hay dominio verificado" no se arregla paciente por paciente. Una prueba revisa
+las columnas para que nadie agregue la dirección de pasada.
+
+`anotarFalloDeCorreo` nunca recibe la liga: es una credencial, y escribirla en
+una tabla o en un log la vuelve reutilizable por quien lea cualquiera de los
+dos.
+
 ## El cron de recordatorios
 
 `GET /api/recordatorios`, disparado por el cron de Vercel una vez al día
@@ -492,8 +512,13 @@ son negociables ahí:
   recuperar puede no ser el dueño, y no hay por qué confirmarle a un extraño
   de quién es la dirección que tecleó.
 - `generateLink` **no pasa por los límites de Supabase**, así que hay un freno
-  de 60 segundos por correo leído de `recovery_sent_at`. Sin él, cualquiera
-  que sepa el correo de un médico puede llenarle el buzón.
+  de 60 segundos por correo. Sin él, cualquiera que sepa el correo de un médico
+  puede llenarle el buzón.
+- El freno se consulta **antes** de generar (`puede_recuperar`), y esto es lo
+  importante: `generateLink` invalida el token anterior en cuanto se llama, así
+  que frenar después dejaba muerta la liga ya enviada sin poner otra en su
+  lugar. La función contesta lo mismo para un correo inexistente que para uno
+  que ya esperó, así que preguntarle no delata a nadie.
 
 La consola de plataforma **no ofrece recuperación**: la operan dos personas
 contadas y si alguna se atora se arregla desde Supabase. Sería una puerta más

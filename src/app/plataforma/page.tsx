@@ -25,6 +25,8 @@ type Consultorio = {
   ultimo_ingreso: string | null
 }
 
+type FalloDeCorreo = { kind: string; reason: string; cuantos: number; ultimo: string }
+
 type Resumen = {
   consultorios: number
   activos: number
@@ -58,9 +60,10 @@ export default async function Plataforma() {
   const supabase = await exigirSuperadmin()
   const { esOperador } = supabase
 
-  const [{ data: resumen }, { data: consultorios }] = await Promise.all([
+  const [{ data: resumen }, { data: consultorios }, { data: fallos }] = await Promise.all([
     supabase.rpc('plataforma_resumen').returns<Resumen[]>(),
     supabase.rpc('plataforma_consultorios').returns<Consultorio[]>(),
+    supabase.rpc('plataforma_correos_fallidos', { p_dias: 7 }).returns<FalloDeCorreo[]>(),
   ])
 
   const r = resumen?.[0]
@@ -102,6 +105,33 @@ export default async function Plataforma() {
             nota={`${r.solicitudes_abiertas} solicitudes esperando respuesta`}
           />
         </div>
+      )}
+
+      {/*
+        Los correos que fallan en pantalla ya los ve la recepcionista. Estos
+        son los dos que nadie mira: el cron de madrugada y la recuperación de
+        contraseña, que se calla a propósito.
+      */}
+      {fallos && fallos.length > 0 && (
+        <section className="mb-8 rounded-marca border border-alerta/30 bg-alerta-suave px-4 py-4 sm:px-5">
+          <h2 className="text-sm font-semibold text-alerta">
+            Correos que no salieron (7 días)
+          </h2>
+          <ul className="mt-2 space-y-1.5 text-sm">
+            {fallos.map((f) => (
+              <li key={f.kind + f.reason} className="flex flex-wrap gap-x-2">
+                <span className="font-medium text-ink">
+                  {f.cuantos} de {f.kind === 'recordatorio' ? 'recordatorio' : 'recuperación'}
+                </span>
+                <span className="text-muted">· {f.reason}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-muted">
+            Sin destinatarios a propósito: en recuperación la dirección diría quién
+            tiene cuenta, y en recordatorios es el correo de un paciente.
+          </p>
+        </section>
       )}
 
       {lista.length === 0 ? (
