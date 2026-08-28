@@ -471,6 +471,26 @@ los consultorios de los que quien pregunta ya es miembro.
 login y la confirmación de correo se vuelven un trampolín para mandar gente a
 dominios de terceros.
 
+## Primeros pasos
+
+Un tour de flechitas se hace clic para quitárselo de encima y no enseña nada.
+`PrimerosPasos` mira el **estado real** —¿hay franjas?, ¿hay bio?, ¿hay
+pacientes?, ¿hay más de un miembro?— y cada paso se tacha solo cuando de
+verdad está hecho. La lista entera desaparece cuando no queda ninguno.
+
+Cada paso dice **por qué** importa, no solo qué hacer: sin el porqué, "publica
+tu horario" es una tarea; con él, es la razón de que tu liga todavía no sirva.
+
+- El aviso suelto de "todavía no defines tu horario" se esconde mientras la
+  guía esté visible: ya lo dice, y repetirlo sería decir dos veces lo mismo en
+  la misma pantalla.
+- "Invita a tu asistente" solo le sale al dueño.
+- `onboarding_hidden_at` es para el caso que no se puede deducir: quien ya sabe
+  usarla y nunca va a completar algún paso a propósito —un médico que trabaja
+  solo y no piensa invitar a nadie.
+- La explicación de qué hay en cada sección va plegada dentro de la misma
+  tarjeta. Es lo que un tour intentaría contar, sin tapar la pantalla.
+
 ## Navegación del admin
 
 Seis secciones no caben en una barra de pestañas en 375 px, y una barra que
