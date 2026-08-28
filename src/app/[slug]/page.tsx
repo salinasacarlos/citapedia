@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { cargarPaginaPublica, huecosDe } from '@/lib/publico/datos'
 import { Reservar } from '@/components/reservar'
 import { Marca } from '@/components/marca'
+import { TextoExpandible } from '@/components/texto-expandible'
 import { nombreDePila } from '@/lib/fechas'
 
 export const dynamic = 'force-dynamic'
@@ -73,16 +74,22 @@ export default async function PaginaPublica({ params }: Props) {
         {perfil.bio && (
           <section className="mt-8">
             <h2 className="font-bold text-ink">Sobre {nombreDePila(perfil.name)}</h2>
-            <p className="mt-2 leading-relaxed whitespace-pre-line text-muted">{perfil.bio}</p>
+            {/* Quien llega aquí viene a agendar: un texto largo no debe empujar
+                el calendario fuera de la pantalla. */}
+            <TextoExpandible
+              texto={perfil.bio}
+              className="mt-2 leading-relaxed text-muted"
+            />
           </section>
         )}
 
         {perfil.consultation_info && (
           <section className="tarjeta mt-6 p-5">
             <h2 className="font-bold text-ink">Antes de tu visita</h2>
-            <p className="mt-2 text-sm leading-relaxed whitespace-pre-line text-muted">
-              {perfil.consultation_info}
-            </p>
+            <TextoExpandible
+              texto={perfil.consultation_info}
+              className="mt-2 text-sm leading-relaxed text-muted"
+            />
           </section>
         )}
 

@@ -1,5 +1,7 @@
 import { exigirConsultorio } from '@/lib/consultorio'
 import { guardarPerfil } from '@/lib/admin/actions'
+import { EditorTexto } from '@/components/editor-texto'
+import { ESPECIALIDADES } from '@/lib/especialidades'
 import { Campo, Formulario } from '@/components/formulario'
 import { CampoTelefono } from '@/components/campo-telefono'
 import { FotoPerfil } from '@/components/foto-perfil'
@@ -54,7 +56,19 @@ export default async function PerfilPage() {
             label="Especialidad"
             defaultValue={p.specialty ?? ''}
             placeholder="Pediatría"
+            list="especialidades"
+            ayuda="Elige de la lista si está; si no, escríbela."
           />
+          {/*
+            Lista sugerida, no catálogo cerrado: el campo acepta lo que sea.
+            Sirve para que quien encuentre la suya la escriba igual que los
+            demás y después se puedan agrupar sin adivinar.
+          */}
+          <datalist id="especialidades">
+            {ESPECIALIDADES.map((e) => (
+              <option key={e} value={e} />
+            ))}
+          </datalist>
 
           <div className="sm:col-span-2">
             <label htmlFor="slug" className="block text-sm font-medium text-ink">
@@ -92,13 +106,10 @@ export default async function PerfilPage() {
 
           <div className="sm:col-span-2">
             <Campo name="bio" label="Sobre ti">
-              <textarea
-                id="bio"
+              <EditorTexto
                 name="bio"
-                rows={4}
                 defaultValue={p.bio ?? ''}
                 placeholder="Formación, años de experiencia, qué atiendes…"
-                className="campo mt-1.5 resize-y"
               />
             </Campo>
           </div>
@@ -109,12 +120,10 @@ export default async function PerfilPage() {
               label="Información de consulta"
               ayuda="Qué llevar, duración, estacionamiento, formas de pago."
             >
-              <textarea
-                id="consultation_info"
+              <EditorTexto
                 name="consultation_info"
-                rows={3}
                 defaultValue={p.consultation_info ?? ''}
-                className="campo mt-1.5 resize-y"
+                placeholder="Qué llevar, duración, estacionamiento, formas de pago…"
               />
             </Campo>
           </div>
