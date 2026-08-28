@@ -549,6 +549,10 @@ separados aunque los tres cabrían en "recomendación".
 - `recurrente` solo se ofrece en la página pública: es la respuesta de quien
   ya es paciente. Contarlo como captación nueva inflaría cualquier medición.
 - `null` significa "no se preguntó", que es distinto de `otro`.
+- Se muestra en dos lados y responden preguntas distintas: en la **ficha** el
+  dato dice cómo tratar a esa persona; en **Pacientes**, el corte "De dónde
+  llegan" responde en qué invertir y a quién agradecerle. El corte mira a todos
+  los pacientes, no a la página que se está viendo.
 - El origen se guarda **solo al crear la ficha**. A quien vuelve a agendar no
   se le reescribe de dónde vino la primera vez.
 - `create or replace function` con distinta cantidad de parámetros no
@@ -638,6 +642,18 @@ para operar la agenda?**
 - Sí → `patients` (contacto, tutor, contacto de emergencia, seguro). Si un
   paciente se pone mal en la sala, la asistente tiene que poder llamar.
 - No → `clinical_records` o `consultation_notes`, de solo dueño.
+
+Los signos vitales avisan **al escribir**, no al guardar: enterarse después de
+haber capturado toda la consulta es tarde. Y el aviso conoce el error de
+verdad —"¿son gramos? 3500 g son 3.50 kg"— porque en pediatría el peso del
+recién nacido se dice en gramos. La pista reemplaza al mensaje de rango pero
+no lo ablanda: sigue bloqueando el guardado, porque un aviso que se puede
+ignorar termina siendo un dato malo en el expediente.
+
+Las columnas se ensancharon (`numeric(6,2)`) por una razón de orden: el
+desbordamiento ocurre al convertir el valor, **antes** de evaluar el CHECK, así
+que con la precisión justa salía "numeric field overflow" en vez del mensaje
+que sí explica el problema.
 
 La presión arterial va como **texto** en el Excel: '100/65' como número Excel
 lo convierte en fecha.
