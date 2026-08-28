@@ -261,17 +261,18 @@ export type Database = {
       es_superadmin: { Args: Record<string, never>; Returns: boolean }
       puede_recuperar: { Args: { p_email: string }; Returns: boolean }
       metricas_consultorio: {
-        Args: Record<string, never>
+        Args: { p_desde?: string | null; p_hasta?: string | null }
         Returns: {
           pacientes: number
-          pacientes_30d: number
+          pacientes_periodo: number
           por_revisar: number
           por_cerrar: number
           proximas_7d: number
           sin_confirmar_7d: number
-          atendidas_30d: number
-          inasistencias_30d: number
-          canceladas_30d: number
+          atendidas: number
+          inasistencias: number
+          canceladas: number
+          agendadas: number
           cerradas_con_confirmacion: number
           faltaron_con_confirmacion: number
           cerradas_sin_confirmacion: number

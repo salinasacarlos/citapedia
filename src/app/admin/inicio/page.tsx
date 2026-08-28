@@ -3,18 +3,27 @@ import { exigirConsultorio } from '@/lib/consultorio'
 import { Insights, type Metricas } from '@/components/insights'
 import { PrimerosPasos, type Paso } from '@/components/primeros-pasos'
 import { DeDondeLlegan } from '@/components/de-donde-llegan'
+import { FiltroPeriodo } from '@/components/filtro-periodo'
+import { leerPeriodo } from '@/lib/periodo'
 import { nombreDePila } from '@/lib/fechas'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Inicio' }
 
-export default async function Inicio() {
+export default async function Inicio({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
   const { profesional, esDueño } = await exigirConsultorio()
   const supabase = await createClient()
+  const periodo = leerPeriodo(await searchParams, profesional.timezone)
 
   const [{ data: metricas }, { count: franjas }, { count: miembros }, { data: origenes }] =
     await Promise.all([
-      supabase.rpc('metricas_consultorio').returns<Metricas[]>(),
+      supabase
+        .rpc('metricas_consultorio', { p_desde: periodo.desde, p_hasta: periodo.hasta })
+        .returns<Metricas[]>(),
       supabase.from('availability').select('id', { count: 'exact', head: true }),
       supabase.from('memberships').select('id', { count: 'exact', head: true }),
       supabase
@@ -75,7 +84,9 @@ export default async function Inicio() {
 
       {pasos.length > 0 && <PrimerosPasos pasos={pasos} />}
 
-      {m && <Insights m={m} />}
+      <FiltroPeriodo exportar="/admin/inicio/exportar" />
+
+      {m && <Insights m={m} periodo={periodo.etiqueta} />}
 
       {/* De dónde llegan cierra la pantalla: es la única que mira hacia
           afuera, y la que dice en qué vale la pena invertir. */}

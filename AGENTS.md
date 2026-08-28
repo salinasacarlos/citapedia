@@ -488,6 +488,18 @@ lo que le permite callarse cuando no hay de dónde concluir — y por eso el
 comparativo de confirmación exige al menos 10 citas cerradas de cada lado
 antes de mostrarse.
 
+El periodo vive en la URL (`?periodo=` o `?desde=&hasta=`), como el resto de
+los filtros. Lo que **no** se filtra es "ahora mismo": por revisar, por cerrar,
+las citas de la semana y la ocupación son del presente por definición, y
+mirarlas por un periodo pasado daría números que no piden ninguna acción.
+
+El Excel se lleva **el mismo periodo que está en pantalla**: descargar algo
+distinto de lo que se está viendo es una sorpresa desagradable. Dos hojas —el
+resumen para pegar en un reporte, y el detalle de citas para filtrar por su
+cuenta— sin nada clínico: el expediente tiene su propia exportación. Ojo con
+el nombre del archivo: `hasta` es el inicio del día siguiente porque el fin es
+exclusivo, así que se usa la fecha que eligió el usuario y no esa.
+
 Las tarjetas de "ahora mismo" son ligas: un número que pide acción tiene que
 llevar al lugar donde se actúa.
 
