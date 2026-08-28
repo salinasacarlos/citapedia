@@ -272,10 +272,25 @@ nodos de texto, así que un `<script>` en su perfil no puede llegar a la página
 pública. Esa es la razón de no usar un editor WYSIWYG sobre `contenteditable`,
 no ahorrar una dependencia.
 
-`EditorTexto` es un textarea con barra: la selección se envuelve en `**`, `*` o
-se le anteponen guiones, y hay vista previa. Cuando la previa está abierta el
-textarea no existe, así que va un `input` oculto con el mismo `name` — sin él
-el formulario se enviaría sin el campo.
+`EditorTexto` es WYSIWYG: un `contenteditable` que se ve como va a quedar, sin
+asteriscos a la vista. En cada tecla se serializa el DOM a Markdown
+(`aMarkdown`) y eso es lo que viaja en un `input` oculto. Al abrir, `aHtml`
+hace el camino inverso.
+
+- El serializador solo reconoce negritas, cursivas y las dos listas. Lo demás
+  aporta su texto y nada más, así que lo que llega a la base queda acotado por
+  construcción y no por un saneador que hay que mantener al día.
+- Es **recursivo**: el navegador no promete dónde deja una lista, y mirando
+  solo el primer nivel se aplastaba en una línea sin viñetas.
+- Pegar va como texto plano: lo de Word trae estilos, fuentes y markup entero.
+- El contenido inicial se siembra en un efecto que corre una sola vez. Si React
+  repintara el `contenteditable`, el cursor saltaría al inicio en cada tecla.
+- Usa `execCommand`, obsoleto pero lo único que funciona en todos lados sin
+  traerse un editor entero. El día que desaparezca se cambia esta capa: el
+  formato guardado no se entera.
+- CRLF: en una expresión regular de JS `\r` es fin de línea, así que `.` no lo
+  cruza y `$` no llega. Sin normalizarlo, una viñeta guardada con CRLF dejaba
+  de reconocerse como viñeta.
 
 `TextoExpandible` recorta y ofrece "Ver más". El recorte puede partir un
 marcador a la mitad y dejar el asterisco crudo a la vista, así que

@@ -1,79 +1,81 @@
 'use client'
 
-import { useRef, useState } from 'react'
-import { TextoRico } from '@/lib/texto-rico'
+import { useEffect, useRef, useState } from 'react'
+import { aHtml } from '@/lib/texto-rico'
+import { aMarkdown } from '@/lib/editor/serializar'
 
 type Herramienta = {
+  comando: string
   etiqueta: string
   titulo: string
   clase?: string
-  aplicar: (texto: string, inicio: number, fin: number) => { texto: string; cursor: number }
-}
-
-/** Envuelve lo seleccionado; si no hay nada, deja el cursor entre los marcadores. */
-function envolver(marca: string): Herramienta['aplicar'] {
-  return (texto, inicio, fin) => {
-    const dentro = texto.slice(inicio, fin)
-    const nuevo = `${texto.slice(0, inicio)}${marca}${dentro || ''}${marca}${texto.slice(fin)}`
-    return { texto: nuevo, cursor: inicio + marca.length + dentro.length }
-  }
 }
 
 const HERRAMIENTAS: Herramienta[] = [
-  { etiqueta: 'N', titulo: 'Negritas', clase: 'font-bold', aplicar: envolver('**') },
-  { etiqueta: 'C', titulo: 'Cursivas', clase: 'italic', aplicar: envolver('*') },
-  {
-    etiqueta: '•',
-    titulo: 'Lista',
-    aplicar: (texto, inicio, fin) => {
-      // Toma las líneas completas que toca la selección, no solo el trozo.
-      const desde = texto.lastIndexOf('\n', inicio - 1) + 1
-      const hasta = texto.indexOf('\n', fin) === -1 ? texto.length : texto.indexOf('\n', fin)
-      const bloque = texto.slice(desde, hasta) || ''
-      const conVinetas = bloque
-        .split('\n')
-        .map((l) => (l.trim().startsWith('- ') ? l : `- ${l}`))
-        .join('\n')
-      return {
-        texto: texto.slice(0, desde) + conVinetas + texto.slice(hasta),
-        cursor: desde + conVinetas.length,
-      }
-    },
-  },
+  { comando: 'bold', etiqueta: 'N', titulo: 'Negritas', clase: 'font-bold' },
+  { comando: 'italic', etiqueta: 'C', titulo: 'Cursivas', clase: 'italic' },
+  { comando: 'insertUnorderedList', etiqueta: '•', titulo: 'Lista con viñetas' },
+  { comando: 'insertOrderedList', etiqueta: '1.', titulo: 'Lista numerada' },
 ]
 
 /**
- * Editor de texto con lo justo: negritas, cursivas y listas.
+ * Editor de texto con formato: se ve como queda mientras se escribe.
  *
- * Escribe Markdown en un textarea normal en vez de HTML en un contenteditable.
- * Así lo que se guarda es texto plano —imposible de convertir en `<script>` en
- * la página pública— y el médico puede escribir directo si ya sabe la notación.
+ * Lo que se GUARDA sigue siendo Markdown, no el HTML del editor. El DOM se
+ * serializa a un subconjunto conocido en cada tecla, así que lo que llega a la
+ * base es texto plano y acotado — guardar el HTML tal cual sería el camino
+ * corto al XSS en la página pública del médico.
+ *
+ * Usa `execCommand`, que está marcado como obsoleto pero es lo único que
+ * funciona en todos los navegadores sin traerse un editor entero. El día que
+ * deje de existir, lo que se cambia es esta capa: el formato guardado no se
+ * entera.
  */
 export function EditorTexto({
   name,
   defaultValue = '',
-  rows = 8,
   placeholder,
 }: {
   name: string
   defaultValue?: string
-  rows?: number
   placeholder?: string
 }) {
-  const [texto, setTexto] = useState(defaultValue)
-  const [previa, setPrevia] = useState(false)
-  const campo = useRef<HTMLTextAreaElement>(null)
+  const [markdown, setMarkdown] = useState(defaultValue)
+  const [vacio, setVacio] = useState(defaultValue.trim() === '')
+  const [activos, setActivos] = useState<Record<string, boolean>>({})
+  const area = useRef<HTMLDivElement>(null)
 
-  function aplicar(h: Herramienta) {
-    const el = campo.current
-    if (!el) return
-    const { texto: nuevo, cursor } = h.aplicar(texto, el.selectionStart, el.selectionEnd)
-    setTexto(nuevo)
-    // Devolver el foco después de pintar: si no, el médico pierde dónde iba.
-    requestAnimationFrame(() => {
-      el.focus()
-      el.setSelectionRange(cursor, cursor)
-    })
+  // El contenido inicial se siembra una sola vez: React no debe repintar el
+  // contenteditable, o el cursor salta al principio en cada tecla.
+  useEffect(() => {
+    if (area.current) area.current.innerHTML = aHtml(defaultValue)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  function sincronizar() {
+    if (!area.current) return
+    setMarkdown(aMarkdown(area.current))
+    setVacio((area.current.textContent ?? '').trim() === '')
+  }
+
+  /** Para prender el botón cuando el cursor está dentro de una negrita. */
+  function revisarEstado() {
+    const estado: Record<string, boolean> = {}
+    for (const h of HERRAMIENTAS) {
+      try {
+        estado[h.comando] = document.queryCommandState(h.comando)
+      } catch {
+        estado[h.comando] = false
+      }
+    }
+    setActivos(estado)
+  }
+
+  function aplicar(comando: string) {
+    area.current?.focus()
+    document.execCommand(comando)
+    sincronizar()
+    revisarEstado()
   }
 
   return (
@@ -81,54 +83,55 @@ export function EditorTexto({
       <div className="flex flex-wrap items-center gap-1 rounded-t-marca border border-b-0 border-border bg-surface-2 px-2 py-1.5">
         {HERRAMIENTAS.map((h) => (
           <button
-            key={h.etiqueta}
+            key={h.comando}
             type="button"
             title={h.titulo}
             aria-label={h.titulo}
-            onClick={() => aplicar(h)}
-            className={`size-7 rounded text-sm transition hover:bg-surface ${h.clase ?? ''}`}
+            aria-pressed={activos[h.comando] ?? false}
+            // El mousedown se cancela para no perder la selección al pulsar.
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => aplicar(h.comando)}
+            className={`h-7 min-w-7 rounded px-1.5 text-sm transition ${h.clase ?? ''} ${
+              activos[h.comando] ? 'bg-brand-suave text-brand' : 'hover:bg-surface'
+            }`}
           >
             {h.etiqueta}
           </button>
         ))}
-        <button
-          type="button"
-          onClick={() => setPrevia((v) => !v)}
-          className="ml-auto rounded px-2 py-0.5 text-xs font-medium text-acento hover:underline"
-        >
-          {previa ? 'Seguir escribiendo' : 'Vista previa'}
-        </button>
       </div>
 
-      {previa ? (
-        <div className="min-h-32 rounded-b-marca border border-border p-3 text-sm leading-relaxed text-muted">
-          {texto.trim() ? (
-            <TextoRico texto={texto} />
-          ) : (
-            <p className="opacity-60">Nada escrito todavía.</p>
-          )}
-        </div>
-      ) : (
-        <textarea
-          ref={campo}
+      <div className="relative">
+        <div
+          ref={area}
           id={name}
-          name={name}
-          rows={rows}
-          value={texto}
-          onChange={(e) => setTexto(e.target.value)}
-          placeholder={placeholder}
-          className="campo resize-y rounded-t-none"
+          contentEditable
+          suppressContentEditableWarning
+          role="textbox"
+          aria-multiline="true"
+          aria-label={placeholder}
+          onInput={sincronizar}
+          onBlur={sincronizar}
+          onKeyUp={revisarEstado}
+          onMouseUp={revisarEstado}
+          // Pegar va como texto plano: lo que viene de Word trae estilos,
+          // fuentes y a veces markup entero que no queremos guardar.
+          onPaste={(e) => {
+            e.preventDefault()
+            const plano = e.clipboardData.getData('text/plain')
+            document.execCommand('insertText', false, plano)
+            sincronizar()
+          }}
+          className="campo min-h-40 space-y-3 overflow-y-auto rounded-t-none text-left [&_li]:ml-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-5"
         />
-      )}
+        {vacio && placeholder && (
+          <p className="pointer-events-none absolute top-3 left-3 text-sm text-muted opacity-60">
+            {placeholder}
+          </p>
+        )}
+      </div>
 
-      {/* Cuando está en vista previa el textarea no existe, y sin esto el
-          formulario se enviaría sin el campo. */}
-      {previa && <input type="hidden" name={name} value={texto} />}
-
-      <p className="mt-1 text-xs text-muted">
-        Puedes escribir <strong>**negritas**</strong>, <em>*cursivas*</em> y listas con
-        un guion al inicio.
-      </p>
+      {/* Lo que viaja en el formulario es el Markdown, no el HTML. */}
+      <input type="hidden" name={name} value={markdown} />
     </div>
   )
 }

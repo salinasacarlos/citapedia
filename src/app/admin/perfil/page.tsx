@@ -108,7 +108,6 @@ export default async function PerfilPage() {
             <Campo name="bio" label="Sobre ti">
               <EditorTexto
                 name="bio"
-                rows={8}
                 defaultValue={p.bio ?? ''}
                 placeholder="Formación, años de experiencia, qué atiendes…"
               />
@@ -123,9 +122,8 @@ export default async function PerfilPage() {
             >
               <EditorTexto
                 name="consultation_info"
-                rows={8}
                 defaultValue={p.consultation_info ?? ''}
-                placeholder={'Qué llevar\n- Estudios previos\n- Identificación\n\nAceptamos transferencia y efectivo.'}
+                placeholder="Qué llevar, duración, estacionamiento, formas de pago…"
               />
             </Campo>
           </div>
