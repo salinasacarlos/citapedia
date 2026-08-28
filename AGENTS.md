@@ -83,6 +83,39 @@ medianoche a medianoche del día siguiente: el fin es exclusivo, y
 Bloquear un rango donde ya hay citas `confirmed` se rechaza con el conteo, en
 vez de dejar citas prometidas dentro de un bloqueo.
 
+## Las dos jerarquías
+
+Son dos escalas separadas y sin relación entre sí. Ser dueño de un consultorio
+no da nada en la plataforma, y ser operador no mete a nadie en ningún
+consultorio.
+
+| Dónde | Roles | Dónde vive |
+| --- | --- | --- |
+| Dentro de un consultorio | `owner`, `assistant` | `memberships.role`, aplicado por RLS |
+| Sobre la plataforma | `fundador`, `soporte` | `platform_admins.role` |
+
+Supabase Auth **no tiene roles**: solo guarda identidades. Que en su panel se
+vean todos los usuarios iguales es lo esperado; la autorización es nuestra.
+
+`es_superadmin()` responde "puede entrar a la consola"; `es_operador()`
+responde "puede cambiar algo". Soporte ve la consola completa para poder
+ayudar, pero no suspende, no reactiva, no da de alta y no reparte permisos:
+quien contesta el WhatsApp no tiene por qué poder apagarle el negocio a nadie.
+
+Detalles:
+
+- El rol por defecto es `soporte`. Dar de más es más fácil de hacer sin querer
+  que dar de menos.
+- No se puede quitar al **último fundador**: quedarse sin ninguno dejaría la
+  plataforma sin quien la opere, y el arreglo sería entrar a la base a mano.
+- Una cuenta de operador **no debe tener consultorio**. `handle_new_user` le
+  arma uno a cualquier usuario nuevo, así que al crear un operador desde el
+  panel de Supabase hay que borrárselo. La consola lo crea bien, con
+  `signup_kind` distinto de `professional`.
+- El mensaje de "no puedes" no menciona los roles: decirle a un médico
+  cualquiera "soporte puede ver, no suspender" lo confunde y de paso le cuenta
+  cómo está organizada la plataforma.
+
 ## La consola de plataforma
 
 `/plataforma` es la consola de operación: dar de alta consultorios, activarlos

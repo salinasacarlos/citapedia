@@ -6,24 +6,34 @@ export const dynamic = 'force-dynamic'
 
 const PASOS = [
   {
-    titulo: 'Tu página, tu cara',
-    texto:
-      'Una liga propia con tu foto, tu formación y cómo es tu consulta. La mandas por WhatsApp y quien agenda ya sabe quién eres.',
-  },
-  {
     titulo: 'Tú decides cada cita',
     texto:
-      'Los pacientes solicitan; tú aceptas o rechazas. Nada entra a tu agenda sin que lo apruebes.',
+      'Los pacientes solicitan desde tu página; tú aceptas o rechazas. Nada entra a tu agenda sin que lo apruebes.',
   },
   {
     titulo: 'Los horarios se calculan solos',
     texto:
-      'Defines tu semana una vez. Los huecos salen de restarle a tu horario las citas confirmadas y tus bloqueos.',
+      'Defines tu semana una vez. Los huecos salen de restarle a tu horario las citas confirmadas y tus bloqueos, así que no hay dos citas encimadas.',
+  },
+  {
+    titulo: 'Cada paciente con su liga',
+    texto:
+      'Confirma que va a venir, la mueve si algo se le atravesó, o avisa que no puede. Sin que nadie conteste el teléfono.',
   },
   {
     titulo: 'Nadie se olvida',
     texto:
-      'Recordatorios automáticos por correo antes de cada cita, con el texto y la anticipación que tú elijas.',
+      'Recordatorio por correo antes de cada cita, con el texto y la anticipación que elijas. Y el botón de WhatsApp cuando prefieras escribirle tú.',
+  },
+  {
+    titulo: 'El expediente, donde lo necesitas',
+    texto:
+      'Notas de consulta, signos vitales, estudios y documentos. Todo junto a la cita, y a mano cuando el paciente vuelve.',
+  },
+  {
+    titulo: 'Tu asistente, sin abrirle el expediente',
+    texto:
+      'Invítala y verá la agenda: acepta, mueve y confirma citas. Lo clínico se queda contigo.',
   },
 ]
 
@@ -59,9 +69,9 @@ export default async function Home() {
             La agenda de tu consultorio, sin llamadas ni libreta
           </h1>
           <p className="mt-5 max-w-xl text-lg text-muted">
-            CitaPedia le da a tu consultorio una página propia donde tus pacientes
-            —o quien los acompaña— ven tus horarios y solicitan cita. Tú apruebas
-            cada una, desde el celular, entre paciente y paciente.
+            Tus pacientes —o quien los acompaña— ven tus horarios y piden cita desde
+            tu propia página. Tú apruebas cada una desde el celular, entre paciente y
+            paciente, y el expediente te espera abierto cuando entran al consultorio.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Link href="/registro" className="boton boton-primario px-5 py-3">
@@ -76,7 +86,7 @@ export default async function Home() {
           </p>
         </section>
 
-        <section className="grid gap-4 pb-20 sm:grid-cols-2">
+        <section className="grid gap-4 pb-20 sm:grid-cols-2 lg:grid-cols-3">
           {PASOS.map((paso) => (
             <div key={paso.titulo} className="tarjeta p-6">
               <h2 className="font-bold text-ink">{paso.titulo}</h2>

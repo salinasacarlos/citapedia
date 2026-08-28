@@ -19,11 +19,14 @@ export default async function PlataformaLayout({
           <div className="flex items-center gap-3">
             <Marca href="/plataforma" />
             {/* Que se note de un vistazo que aquí se ven cuentas ajenas. */}
-            <span className="rounded-full bg-ink px-2.5 py-1 text-xs font-bold text-white">
+            <span className="rounded-full bg-ink px-2.5 py-1 text-xs font-bold text-surface">
               Plataforma
             </span>
           </div>
           <div className="flex items-center gap-3 text-sm">
+            <Link href="/plataforma/operadores" className="text-muted hover:text-foreground">
+              Quién opera
+            </Link>
             <Link href="/admin" className="text-muted hover:text-foreground">
               Mi consultorio
             </Link>

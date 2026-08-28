@@ -78,6 +78,7 @@ export default async function FichaConsultorio({
 }) {
   const { id } = await params
   const supabase = await exigirSuperadmin()
+  const { esOperador } = supabase
 
   const [{ data: fichas }, { data: equipo }, { data: citas }, { data: bitacora }] =
     await Promise.all([
@@ -135,7 +136,7 @@ export default async function FichaConsultorio({
           </p>
         </div>
         <div className="sm:shrink-0">
-          {c.suspended_at ? (
+          {!esOperador ? null : c.suspended_at ? (
             <form action={reactivarConsultorio}>
               <input type="hidden" name="id" value={c.id} />
               <button className="boton boton-primario px-3 py-1.5 text-xs">
