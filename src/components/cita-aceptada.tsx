@@ -83,7 +83,7 @@ export function CitaAceptada({
           </a>
         )}
         <CopiarLiga liga={liga} />
-        <Link href="/admin" className="text-xs font-medium text-acento hover:underline">
+        <Link href="/admin/agenda" className="text-xs font-medium text-acento hover:underline">
           Ver en la agenda
         </Link>
       </div>

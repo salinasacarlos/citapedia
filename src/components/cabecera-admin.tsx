@@ -8,8 +8,8 @@ import { salir } from '@/lib/auth/actions'
 import type { MemberRole } from '@/lib/database.types'
 
 const SECCIONES = [
-  { href: '/admin/inicio', etiqueta: 'Inicio' },
-  { href: '/admin', etiqueta: 'Agenda' },
+  { href: '/admin', etiqueta: 'Inicio' },
+  { href: '/admin/agenda', etiqueta: 'Agenda' },
   { href: '/admin/solicitudes', etiqueta: 'Solicitudes' },
   { href: '/admin/pacientes', etiqueta: 'Pacientes' },
   { href: '/admin/horario', etiqueta: 'Horario' },
@@ -19,7 +19,13 @@ const SECCIONES = [
 ] as const
 
 function esActiva(ruta: string, href: string) {
-  return href === '/admin' ? ruta === '/admin' : ruta.startsWith(href)
+  // Inicio es exacta: si no, se prendería en todas las demás.
+  if (href === '/admin') return ruta === '/admin'
+  // El calendario es la agenda vista de otra forma, no una sección aparte.
+  if (href === '/admin/agenda') {
+    return ruta.startsWith('/admin/agenda') || ruta.startsWith('/admin/calendario')
+  }
+  return ruta.startsWith(href)
 }
 
 function Hamburguesa({ abierto }: { abierto: boolean }) {
