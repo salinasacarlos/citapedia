@@ -535,6 +535,27 @@ La tagline "Cuidarlos es primero" se queda: es marca, no promesa de
 especialidad. Los placeholders de especialidad ("Pediatría") también, porque
 son ejemplos de qué escribir, no una afirmación.
 
+## De dónde llegó el paciente
+
+`patients.source` y `patients.referred_by`. Las opciones son las que se pueden
+accionar distinto, no las que suenan bien en un reporte: a un colega que
+refiere se le llama, a un paciente que recomienda se le agradece, y un
+directorio se paga. Por eso `medico`, `paciente` y `directorio` están
+separados aunque los tres cabrían en "recomendación".
+
+- La pregunta "¿quién?" solo aparece con `paciente` y `medico`. Preguntársela
+  a alguien que llegó por Google es ruido, y un campo que casi siempre sobra
+  se deja vacío también cuando importa.
+- `recurrente` solo se ofrece en la página pública: es la respuesta de quien
+  ya es paciente. Contarlo como captación nueva inflaría cualquier medición.
+- `null` significa "no se preguntó", que es distinto de `otro`.
+- El origen se guarda **solo al crear la ficha**. A quien vuelve a agendar no
+  se le reescribe de dónde vino la primera vez.
+- `create or replace function` con distinta cantidad de parámetros no
+  reemplaza: **crea una sobrecarga**. Al agregarle `p_origen` y `p_referido` a
+  `solicitar_cita` quedaron dos, y toda llamada con la firma vieja se volvió
+  ambigua. Hubo que borrar la anterior a mano.
+
 ## Pacientes y expediente
 
 `patients` tiene dueño (`professional_id`) y las políticas se apoyan en eso,

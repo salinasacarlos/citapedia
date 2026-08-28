@@ -24,10 +24,21 @@ export async function solicitarCita(
   const paraOtro = datos.get('para_otro') === '1'
   const tutor = String(datos.get('tutor') ?? '').trim()
   const parentesco = String(datos.get('parentesco') ?? '').trim()
+  const origen = String(datos.get('source') ?? '').trim()
+  const referido = String(datos.get('referred_by') ?? '').trim()
   const medico = String(datos.get('medico') ?? '')
   const cuando = String(datos.get('cuando') ?? '')
 
-  const valores = { nombre, telefono, email, notas, tutor, parentesco }
+  const valores = {
+    nombre,
+    telefono,
+    email,
+    notas,
+    tutor,
+    parentesco,
+    source: origen,
+    referred_by: referido,
+  }
 
   if (!inicio) return { error: 'Elige un horario primero.', valores }
   if (!nombre) return { error: 'Necesitamos el nombre del paciente.', valores }
@@ -51,6 +62,8 @@ export async function solicitarCita(
     p_notas: notas || null,
     p_tutor: paraOtro ? tutor : null,
     p_parentesco: paraOtro ? parentesco || null : null,
+    p_origen: origen || null,
+    p_referido: referido || null,
   })
 
   if (error) {

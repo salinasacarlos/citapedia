@@ -52,6 +52,8 @@ function datosDePaciente(datos: FormData) {
     emergency_contact_phone: texto(datos, 'emergency_contact_phone'),
     emergency_contact_relationship: texto(datos, 'emergency_contact_relationship'),
     insurance: texto(datos, 'insurance'),
+    source: texto(datos, 'source'),
+    referred_by: texto(datos, 'referred_by'),
     notes: texto(datos, 'notes'),
   }
 }

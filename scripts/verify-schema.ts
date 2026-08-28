@@ -269,6 +269,47 @@ async function main() {
     `phone=${p?.phone}`,
   )
 
+  // De dónde llegó: se guarda al crear la ficha y no se toca después.
+  const conOrigen = await db.query<{ solicitar_cita: string }>(
+    `select public.solicitar_cita('dra-reserva', $1::timestamptz, 'Vino Por Recomendacion',
+       '+52 55 4444 0000', null, null, null, null, 'paciente', 'La señora Robles')`,
+    [`${y}-${m}-${d}T15:30:00Z`],
+  )
+  check('se puede agendar diciendo de dónde llegó', Boolean(conOrigen.rows[0].solicitar_cita))
+
+  const origen = await db.query<{ source: string; referred_by: string }>(
+    `select source, referred_by from patients where name = 'Vino Por Recomendacion'`,
+  )
+  check('el origen queda en la ficha', origen.rows[0]?.source === 'paciente')
+  check('y con quién lo recomendó', origen.rows[0]?.referred_by === 'La señora Robles')
+
+  // El mismo teléfono: `solicitar_cita` lo reconoce y reusa su ficha.
+  await db.query(
+    `select public.solicitar_cita('dra-reserva', $1::timestamptz, 'Vino Por Recomendacion',
+       '+52 55 4444 0000', null, null, null, null, 'internet', null)`,
+    [`${y}-${m}-${d}T16:30:00Z`],
+  )
+  const trasVolver = await db.query<{ source: string; n: number }>(
+    `select source, (select count(*)::int from patients where name = 'Vino Por Recomendacion') as n
+       from patients where name = 'Vino Por Recomendacion'`,
+  )
+  check('volver a agendar no crea otra ficha', Number(trasVolver.rows[0].n) === 1)
+  check(
+    'ni le reescribe de dónde llegó la primera vez',
+    trasVolver.rows[0].source === 'paciente',
+    `quedó ${trasVolver.rows[0].source}`,
+  )
+
+  let origenInventado = false
+  try {
+    await db.query(
+      `update patients set source = 'tiktok' where name = 'Vino Por Recomendacion'`,
+    )
+  } catch (err) {
+    origenInventado = String(err).includes('patients_source_valido')
+  }
+  check('la base no acepta un origen fuera del catálogo', origenInventado)
+
   const cita1 = await pedir(slot, 'Niña Uno', 'uno@example.com', null)
   check('un paciente puede solicitar cita', Boolean(cita1.rows[0].solicitar_cita))
 

@@ -95,6 +95,9 @@ export type Patient = {
   emergency_contact_phone: string | null
   emergency_contact_relationship: string | null
   insurance: string | null
+  /** Cómo llegó. Null = no se preguntó, distinto de 'otro'. */
+  source: string | null
+  referred_by: string | null
   notes: string | null
   created_at: string | null
 }
@@ -441,6 +444,8 @@ export type Database = {
           p_notas?: string | null
           p_tutor?: string | null
           p_parentesco?: string | null
+          p_origen?: string | null
+          p_referido?: string | null
         }
         Returns: string
       }
