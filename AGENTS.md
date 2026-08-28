@@ -908,12 +908,35 @@ que lo pone quien sube.
   el archivo se borra; al borrar, la fila se va primero, para no dejar un
   renglón apuntando a algo que ya no existe.
 
+### Verlos sin bajarlos
+
+`VisorEstudio` abre el archivo en un `<dialog>` con la liga firmada. Bajar un
+estudio para mirarlo deja copias del expediente de alguien regadas en la
+computadora del consultorio, y en consulta lo que se quiere es verlo ya.
+
+- Las imágenes van con escala (`1, 1.5, 2, 3, 4`) y arrastre para moverse
+  dentro del acercamiento. El zoom se actualiza con función
+  (`setZoom((actual) => …)`): dos clics rápidos leían el mismo valor de la
+  clausura y avanzaban un solo paso.
+- Los PDF van en un `<iframe>` y usan el visor del navegador, que ya trae su
+  propio zoom. Reimplementarlo pediría traerse un renderizador entero.
+- HEIC no lo pinta ningún navegador: en vez de un cuadro roto, dice que hay que
+  descargarlo.
+
 ## Exportar a Excel
 
 `.xlsx` de verdad, con `write-excel-file`. CSV parece suficiente hasta que
 Excel se come el `+` de un teléfono, convierte `5550506060` a notación
 científica y rompe los acentos; con datos mexicanos eso pasa siempre. Los
 teléfonos van forzados a texto.
+
+El botón pregunta **qué llevarse** (`DescargarExpediente`): datos, citas,
+expediente y notas son cuatro casillas, y la ruta las recibe como `?hoja=`
+repetido. Sin el parámetro se llevan todas, para que una liga vieja siga
+sirviendo. Si el filtro deja todo fuera se devuelve al menos la hoja del
+paciente: un `.xlsx` sin hojas no abre. Los estudios no caben en un Excel y se
+bajan uno por uno desde su visor; el diálogo lo dice para que no se busquen
+adentro.
 
 Las hojas clínicas **no se arman** si quien exporta es asistente, y las
 consultas ni siquiera se lanzan. Confiar en que RLS las devuelva vacías sería

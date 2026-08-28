@@ -3,6 +3,7 @@
 import { useActionState, useRef, useState } from 'react'
 import { borrarEstudio, subirEstudio, type ResultadoEstudio } from '@/lib/estudios/actions'
 import { BotonQuitar } from '@/components/boton-quitar'
+import { VisorEstudio } from '@/components/visor-estudio'
 import { fechaCorta } from '@/lib/fechas'
 
 export type EstudioVisible = {
@@ -39,6 +40,8 @@ export function Estudios({
     {},
   )
   const [nombre, setNombre] = useState<string | null>(null)
+  // Abrir en otra pestaña obliga a volver; verlo aquí no pierde el expediente.
+  const [viendo, setViendo] = useState<EstudioVisible | null>(null)
   const entrada = useRef<HTMLInputElement>(null)
 
   return (
@@ -124,15 +127,14 @@ export function Estudios({
               className="flex items-center justify-between gap-3 rounded-marca border border-border px-3 py-2"
             >
               <div className="min-w-0">
-                <a
-                  href={e.url ?? '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block truncate text-sm font-medium text-acento hover:underline"
+                <button
+                  type="button"
+                  onClick={() => setViendo(e)}
+                  className="block max-w-full truncate text-left text-sm font-medium text-acento hover:underline"
                 >
                   <span aria-hidden>{e.mime === 'application/pdf' ? '📄' : '🖼️'}</span>{' '}
                   {e.filename}
-                </a>
+                </button>
                 <p className="mt-0.5 text-xs text-muted">
                   {e.kind && <span className="text-brand">{e.kind} · </span>}
                   {peso(e.size_bytes)}
@@ -147,6 +149,8 @@ export function Estudios({
           ))}
         </ul>
       )}
+
+      {viendo && <VisorEstudio estudio={viendo} onCerrar={() => setViendo(null)} />}
     </div>
   )
 }

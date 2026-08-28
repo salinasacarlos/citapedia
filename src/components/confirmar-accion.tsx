@@ -19,6 +19,7 @@ export function ConfirmarAccion({
   onConfirmar,
   pendiente = false,
   confirmarDeshabilitado = false,
+  tono = 'peligro',
 }: {
   abierto: boolean
   titulo: string
@@ -30,6 +31,8 @@ export function ConfirmarAccion({
   pendiente?: boolean
   /** Para cuando el diálogo pide algo antes de dejar continuar. */
   confirmarDeshabilitado?: boolean
+  /** Este diálogo también sirve para elegir, no solo para lo destructivo. */
+  tono?: 'peligro' | 'normal'
 }) {
   const dialogo = useRef<HTMLDialogElement>(null)
 
@@ -64,13 +67,17 @@ export function ConfirmarAccion({
             className="boton boton-suave"
             disabled={pendiente}
           >
-            Mejor no
+            {tono === 'peligro' ? 'Mejor no' : 'Cancelar'}
           </button>
           <button
             type="button"
             onClick={onConfirmar}
             disabled={pendiente || confirmarDeshabilitado}
-            className="boton border border-peligro disabled:opacity-50 disabled:hover:bg-peligro-suave disabled:hover:text-peligro bg-peligro-suave font-semibold text-peligro hover:bg-peligro hover:text-white"
+            className={`boton disabled:opacity-50 ${
+              tono === 'peligro'
+                ? 'border border-peligro bg-peligro-suave font-semibold text-peligro hover:bg-peligro hover:text-white disabled:hover:bg-peligro-suave disabled:hover:text-peligro'
+                : 'boton-primario'
+            }`}
           >
             {pendiente ? 'Un momento…' : confirmar}
           </button>

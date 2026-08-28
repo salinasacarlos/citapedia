@@ -46,6 +46,8 @@ type Datos = {
   expedientes: ClinicalRecord[]
   consultas: ConsultationNote[]
   incluyeClinico: boolean
+  /** Qué hojas llevarse. Sin esto, todas. */
+  hojas?: string[]
 }
 
 const ENCABEZADO = { fontWeight: 'bold' as const, backgroundColor: '#E6F7F5' }
@@ -198,7 +200,16 @@ export async function construirExpediente(datos: Datos) {
       ]
     : []
 
-  return writeXlsxFile([hojaPacientes, hojaCitas, ...hojasClinicas]).toBuffer()
+  // Se arman todas y al final se elige: quien pidió solo el expediente no
+  // tiene por qué llevarse la agenda de un paciente en el mismo archivo.
+  const todas = [hojaPacientes, hojaCitas, ...hojasClinicas]
+  const elegidas = datos.hojas
+    ? todas.filter((h) => datos.hojas!.includes(h.sheet))
+    : todas
+
+  // Un Excel sin hojas no se puede abrir; si el filtro deja todo fuera, se
+  // devuelve al menos quién es el paciente.
+  return writeXlsxFile(elegidas.length > 0 ? elegidas : [hojaPacientes]).toBuffer()
 }
 
 /** 'Dr. Ernesto Peña' → 'dr-ernesto-pena' para el nombre del archivo. */
