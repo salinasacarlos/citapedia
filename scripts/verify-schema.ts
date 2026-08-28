@@ -1350,6 +1350,58 @@ async function main() {
   )
 
   // Auditoría de permisos: la cerradura de afuera, no solo la de adentro.
+  // Un hueco no puede acumular solicitudes sin fin: es la única puerta que
+  // cualquiera puede empujar sin sesión.
+  console.log('\nTope de solicitudes por hueco')
+
+  const hueco = `${y}-${m}-${d}T20:00:00Z`
+  let cabenCinco = true
+  for (let i = 0; i < 5; i++) {
+    try {
+      await db.query(
+        `insert into appointments (professional_id, starts_at, ends_at, status)
+         values ($1, $2::timestamptz, $2::timestamptz + interval '30 minutes', 'requested')`,
+        [proId, hueco],
+      )
+    } catch {
+      cabenCinco = false
+    }
+  }
+  check('varias personas pueden pelearse el mismo hueco', cabenCinco)
+
+  let laSextaNo = false
+  try {
+    await db.query(
+      `insert into appointments (professional_id, starts_at, ends_at, status)
+       values ($1, $2::timestamptz, $2::timestamptz + interval '30 minutes', 'requested')`,
+      [proId, hueco],
+    )
+  } catch (err) {
+    laSextaNo = String(err).includes('varias solicitudes')
+  }
+  check('pero no sin fin: la sexta se rechaza', laSextaNo)
+
+  // El tope es por hueco justamente para no dejar bloquear al consultorio.
+  const otroHueco = `${y}-${m}-${d}T21:00:00Z`
+  let otroSigueLibre = false
+  try {
+    await db.query(
+      `insert into appointments (professional_id, starts_at, ends_at, status)
+       values ($1, $2::timestamptz, $2::timestamptz + interval '30 minutes', 'requested')`,
+      [proId, otroHueco],
+    )
+    otroSigueLibre = true
+  } catch { /* queda en false */ }
+  check(
+    'y llenar un hueco no bloquea los demás: la defensa no se vuelve el ataque',
+    otroSigueLibre,
+  )
+
+  await db.query(
+    `delete from appointments where starts_at in ($1::timestamptz, $2::timestamptz)`,
+    [hueco, otroHueco],
+  )
+
   console.log('\nPermisos de las funciones')
 
   const permisos = await db.query<{ f: string; anon: boolean }>(
