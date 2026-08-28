@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useActionState } from 'react'
 import { Marca } from '@/components/marca'
+import { CampoContrasena } from '@/components/campo-contrasena'
 import type { EstadoFormulario } from '@/lib/auth/actions'
 
 type Campo = {
@@ -66,17 +67,27 @@ export function FormularioAuth({
             <label htmlFor={campo.name} className="block text-sm font-medium text-ink">
               {campo.label}
             </label>
-            <input
-              id={campo.name}
-              name={campo.name}
-              type={campo.type ?? 'text'}
-              required={campo.required ?? true}
-              readOnly={campo.fijo}
-              autoComplete={campo.autoComplete}
-              placeholder={campo.placeholder}
-              defaultValue={estado.valores?.[campo.name] ?? campo.valorInicial}
-              className="campo mt-1.5"
-            />
+            {campo.type === 'password' ? (
+              <div className="mt-1.5">
+                <CampoContrasena
+                  name={campo.name}
+                  required={campo.required ?? true}
+                  autoComplete={campo.autoComplete}
+                />
+              </div>
+            ) : (
+              <input
+                id={campo.name}
+                name={campo.name}
+                type={campo.type ?? 'text'}
+                required={campo.required ?? true}
+                readOnly={campo.fijo}
+                autoComplete={campo.autoComplete}
+                placeholder={campo.placeholder}
+                defaultValue={estado.valores?.[campo.name] ?? campo.valorInicial}
+                className="campo mt-1.5"
+              />
+            )}
             {campo.ayuda && <p className="mt-1 text-xs text-muted">{campo.ayuda}</p>}
           </div>
         ))}
