@@ -61,6 +61,15 @@ esté el archivo oficial va a `public/` y se cambia ahí.
   (SECURITY DEFINER), que es donde vive la validación de verdad. `src/lib/slots.ts`
   solo decide qué ofrecer en pantalla; si los dos difieren, manda la función.
 
+## El dominio en pantalla
+
+El dominio que se le muestra al médico —el pie del admin y el prefijo del campo
+de slug— sale de `dominioPublico()`, que lee `NEXT_PUBLIC_SITE_URL`, la misma
+variable con la que se arman las ligas de los correos. Estaba escrito a mano
+como `citapedia.com`, que todavía no está conectado: la pantalla le daba a la
+recepcionista una dirección que no abre. El día que exista el dominio oficial
+se cambia la variable y se mueven los dos lados juntos.
+
 ## Fotos
 
 Las fotos de perfil van a Supabase Storage, bucket `fotos-perfil`, en la ruta

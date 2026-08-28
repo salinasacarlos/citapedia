@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { dominioPublico } from '@/lib/sitio'
 import { exigirConsultorio } from '@/lib/consultorio'
 import { createClient } from '@/lib/supabase/server'
 import { CabeceraAdmin } from '@/components/cabecera-admin'
@@ -34,7 +35,7 @@ export default async function AdminLayout({
       <footer className="mx-auto max-w-5xl px-4 pb-10 text-xs break-all text-muted sm:px-6">
         Tu página pública:{' '}
         <Link href={`/${profesional.slug}`} className="font-medium text-acento hover:underline">
-          citapedia.com/{profesional.slug}
+          {dominioPublico()}/{profesional.slug}
         </Link>
       </footer>
     </div>

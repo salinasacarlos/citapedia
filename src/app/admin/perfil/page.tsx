@@ -1,3 +1,4 @@
+import { dominioPublico } from '@/lib/sitio'
 import { exigirConsultorio } from '@/lib/consultorio'
 import { guardarPerfil } from '@/lib/admin/actions'
 import { EditorTexto } from '@/components/editor-texto'
@@ -75,7 +76,7 @@ export default async function PerfilPage() {
               Liga de tu página
             </label>
             <div className="mt-1.5 flex items-center gap-1 rounded-[0.625rem] border border-border bg-surface px-3 focus-within:border-brand">
-              <span className="text-sm text-muted">citapedia.com/</span>
+              <span className="text-sm text-muted">{dominioPublico()}/</span>
               <input
                 id="slug"
                 name="slug"
