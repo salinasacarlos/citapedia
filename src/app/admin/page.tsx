@@ -7,6 +7,7 @@ import {
   type PorOrigen,
   type Recomendante,
 } from '@/components/de-donde-llegan'
+import { AvisosPendientes, type AvisoPendiente } from '@/components/avisos-pendientes'
 import { ControlesPendientes, type Control } from '@/components/controles-pendientes'
 import { FiltroPeriodo } from '@/components/filtro-periodo'
 import { leerPeriodo } from '@/lib/periodo'
@@ -32,6 +33,7 @@ export default async function Inicio({
     { data: recomiendan },
     { data: cobertura },
     { data: controles },
+    { data: avisos },
   ] = await Promise.all([
       supabase
         .rpc('metricas_consultorio', { p_desde: periodo.desde, p_hasta: periodo.hasta })
@@ -46,6 +48,7 @@ export default async function Inicio({
       // Quince días de gracia: alguien a quien "le tocaba el martes" sigue
       // siendo una llamada que vale la pena hacer el jueves.
       supabase.rpc('controles_pendientes', { p_dias_de_gracia: 15 }).returns<Control[]>(),
+      supabase.rpc('avisos_pendientes', { p_dias_de_gracia: 15 }).returns<AvisoPendiente[]>(),
     ])
 
   const m = metricas?.[0]
@@ -104,6 +107,8 @@ export default async function Inicio({
 
       {/* Antes de los números: esto son llamadas que se pueden hacer hoy. */}
       <ControlesPendientes controles={controles ?? []} doctor={profesional.name} />
+
+      <AvisosPendientes avisos={avisos ?? []} doctor={profesional.name} />
 
       {m && <Insights m={m} periodo={periodo.etiqueta} />}
 

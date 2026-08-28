@@ -239,6 +239,18 @@ export type Database = {
       declared_records: Table<DeclaredRecord>
       consultation_notes: Table<ConsultationNote>
       consultation_files: Table<ConsultationFile>
+      patient_alerts: Table<{
+        id: string
+        professional_id: string
+        patient_id: string
+        due_on: string
+        titulo: string
+        mensaje: string | null
+        status: 'pendiente' | 'enviado' | 'cancelado'
+        sent_at: string | null
+        created_by: string | null
+        created_at: string | null
+      }>
       email_failures: Table<{
         id: string
         kind: string
@@ -270,6 +282,20 @@ export type Database = {
       archivar_consultorio: {
         Args: { p_id: string; p_motivo?: string | null }
         Returns: undefined
+      }
+      avisos_pendientes: {
+        Args: { p_dias_de_gracia?: number }
+        Returns: {
+          id: string
+          patient_id: string
+          paciente: string
+          telefono: string | null
+          es_menor: boolean
+          tutor: string | null
+          due_on: string
+          titulo: string
+          mensaje: string | null
+        }[]
       }
       controles_pendientes: {
         Args: { p_dias_de_gracia?: number }

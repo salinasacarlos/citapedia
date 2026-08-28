@@ -1355,6 +1355,79 @@ async function main() {
   // NOM-004: lo escrito no se altera en silencio.
   // NOM-004: cerrar un consultorio no puede llevarse cinco años de expedientes.
   // Fase 2 del post-venta: la lista que trabaja la recepcionista.
+  // Fase 3 del post-venta: avisos que cuelgan del paciente, no de una cita.
+  console.log('\nAvisos programados')
+
+  const pacAviso = (
+    await db.query<{ id: string }>(
+      `insert into patients (professional_id, name, phone)
+       values ($1, 'Paciente Con Aviso', '+52 55 1212 0000') returning id`,
+      [proA2],
+    )
+  ).rows[0].id
+
+  await como(
+    drA,
+    `insert into patient_alerts (professional_id, patient_id, due_on, titulo, mensaje)
+     values ($1, $2, current_date - 1, 'Vacuna de los 6 meses', 'Es momento de la siguiente dosis')`,
+    [proA2, pacAviso],
+  )
+
+  const vencidos = await como<{ titulo: string; paciente: string }>(
+    drA,
+    `select titulo, paciente from avisos_pendientes(15)`,
+  )
+  check(
+    'un aviso vencido aparece para mandarse',
+    vencidos.rows.some((r) => r.titulo === 'Vacuna de los 6 meses'),
+  )
+
+  // No hace falta una cita: es lo que distingue un aviso de un recordatorio.
+  const sinCita = await db.query<{ n: number }>(
+    `select count(*)::int as n from appointments where patient_id = $1`,
+    [pacAviso],
+  )
+  check('sin necesidad de inventarle una cita', Number(sinCita.rows[0].n) === 0)
+
+  const ajenoNoVeAvisos = await como<{ n: number }>(
+    drB,
+    `select count(*)::int as n from avisos_pendientes(15)`,
+  )
+  check('un médico no ve los avisos de otro consultorio', Number(ajenoNoVeAvisos.rows[0].n) === 0)
+
+  // El asistente sí: es quien va a mandarlos.
+  const asistenteVeAvisos = await como<{ n: number }>(
+    invitado,
+    `select count(*)::int as n from patient_alerts`,
+  )
+  check(
+    'el asistente sí los ve, porque es quien los manda',
+    Number(asistenteVeAvisos.rows[0].n) > 0,
+  )
+
+  await como(
+    drA,
+    `update patient_alerts set status = 'enviado' where patient_id = $1`,
+    [pacAviso],
+  )
+  const yaMandado = await como<{ n: number }>(
+    drA,
+    `select count(*)::int as n from avisos_pendientes(15)`,
+  )
+  check('y sale de la lista al marcarlo enviado', Number(yaMandado.rows[0].n) === 0)
+
+  let estadoInventado = false
+  try {
+    await db.query(`update patient_alerts set status = 'quizas' where patient_id = $1`, [
+      pacAviso,
+    ])
+  } catch (err) {
+    estadoInventado = String(err).includes('patient_alerts_status_valido')
+  }
+  check('la base no acepta un estado fuera del catálogo', estadoInventado)
+
+  await db.query(`delete from patients where id = $1`, [pacAviso])
+
   console.log('\nControles pendientes')
 
   const pacControl = (

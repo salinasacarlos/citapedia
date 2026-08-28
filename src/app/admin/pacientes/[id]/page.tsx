@@ -8,6 +8,7 @@ import { aceptarDeclarados } from '@/lib/pacientes/actions'
 import { edad, fechaCorta, fechaSuelta, hora } from '@/lib/fechas'
 import { describirOrigen } from '@/lib/origen'
 import { RegistrarConsulta } from '@/components/registrar-consulta'
+import { AvisosDelPaciente, type Aviso } from '@/components/avisos-del-paciente'
 import type {
   AppointmentStatus,
   ClinicalRecord,
@@ -97,6 +98,7 @@ export default async function FichaPaciente({
     { data: consultas },
     { data: declarado },
     { data: archivos },
+    { data: avisos },
   ] = await Promise.all([
     supabase
       .from('appointments')
@@ -135,6 +137,13 @@ export default async function FichaPaciente({
           .order('created_at', { ascending: false })
           .returns<ConsultationFile[]>()
       : Promise.resolve({ data: [] as ConsultationFile[] }),
+    supabase
+      .from('patient_alerts')
+      .select('id, due_on, titulo, mensaje, status')
+      .eq('patient_id', id)
+      .eq('status', 'pendiente')
+      .order('due_on')
+      .returns<Aviso[]>(),
   ])
 
   // El bucket es privado: cada archivo se abre con una liga firmada que vence.
@@ -445,6 +454,8 @@ export default async function FichaPaciente({
             </div>
           )}
         </section>
+
+        <AvisosDelPaciente pacienteId={paciente.id} avisos={avisos ?? []} />
 
         {esDueño && (
           <section className="mb-8">
