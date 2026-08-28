@@ -6,6 +6,7 @@ import { armarRecordatorio, correoParaAvisar } from '../src/lib/correo/recordato
 import { armarInvitacion } from '../src/lib/correo/invitacion'
 import { traducirResend } from '../src/lib/correo/enviar'
 import { armarCitaAceptada } from '../src/lib/correo/cita-aceptada'
+import { armarCitaRechazada } from '../src/lib/correo/cita-rechazada'
 
 let fallos = 0
 function check(etiqueta: string, ok: boolean, detalle = '') {
@@ -233,6 +234,38 @@ const aceptadaAdulto = armarCitaAceptada({
 })
 check('para un adulto el asunto habla de "Tu cita"', aceptadaAdulto.asunto.startsWith('Tu cita'))
 check('y no inventa dirección cuando no hay', !aceptadaAdulto.texto.includes('Dirección:'))
+
+console.log('\nEl aviso de solicitud rechazada')
+
+const rechazada = armarCitaRechazada({
+  destinatario: { nombre: 'Adriana Robles', correo: 'adriana@example.com' },
+  paciente: 'Ximena Robles',
+  esMenor: true,
+  doctor: 'Dr. Ernesto Peña',
+  telefono: '+52 55 8899 1122',
+  inicio: '2026-09-01T16:00:00Z',
+  zona: MX,
+  pagina: 'https://citapedia.vercel.app/dr-ernesto-pena',
+})
+
+check('le llega a quien pidió la cita', rechazada.para === 'adriana@example.com')
+check('dice de qué cita habla', rechazada.texto.includes('la cita de Ximena Robles'))
+check('con su fecha y hora', rechazada.texto.includes('10:00 a.m.'))
+check(
+  'ofrece otros horarios, que es lo único útil',
+  rechazada.html.includes('Ver otros horarios') &&
+    rechazada.html.includes('href="https://citapedia.vercel.app/dr-ernesto-pena"'),
+)
+check('y el teléfono del consultorio', rechazada.texto.includes('+52 55 8899 1122'))
+check(
+  'no inventa un motivo que nadie capturó',
+  !/porque|debido a|motivo/i.test(rechazada.texto),
+)
+check(
+  'el asunto no dice "rechazada" en la bandeja',
+  !/rechaz/i.test(rechazada.asunto),
+  rechazada.asunto,
+)
 
 console.log('\nLo que se le dice al médico cuando falla el envío')
 

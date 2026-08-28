@@ -3,6 +3,7 @@
 import { useActionState, useState } from 'react'
 import { crearConsultorio, type ResultadoPlataforma } from '@/lib/plataforma/actions'
 import { CopiarLiga } from '@/components/copiar-liga'
+import { ESPECIALIDADES } from '@/lib/especialidades'
 
 /**
  * Alta de un consultorio desde la consola.
@@ -53,8 +54,15 @@ export function AltaConsultorio() {
             id="especialidad"
             name="especialidad"
             placeholder="Pediatría"
+            list="especialidades-alta"
             className="campo mt-1"
           />
+          {/* Mismo catálogo que en el perfil: sugiere, no obliga. */}
+          <datalist id="especialidades-alta">
+            {ESPECIALIDADES.map((e) => (
+              <option key={e} value={e} />
+            ))}
+          </datalist>
         </div>
         <div>
           <label htmlFor="email" className="block text-xs font-medium text-muted">

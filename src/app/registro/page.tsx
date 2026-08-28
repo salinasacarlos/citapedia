@@ -1,5 +1,6 @@
 import { FormularioAuth } from '@/components/formulario-auth'
 import { registrar } from '@/lib/auth/actions'
+import { ESPECIALIDADES } from '@/lib/especialidades'
 
 export const metadata = { title: 'Crear cuenta' }
 
@@ -46,6 +47,9 @@ export default async function RegistroPage({
                 label: 'Especialidad',
                 placeholder: 'Pediatría',
                 required: false,
+                // El mismo catálogo que en el perfil y en la consola: es lo
+                // que hace que después se puedan agrupar sin adivinar.
+                sugerencias: ESPECIALIDADES,
               },
             ]),
         {

@@ -17,6 +17,8 @@ type Campo = {
   valorInicial?: string
   /** El correo de una invitación no se puede cambiar: la ata. */
   fijo?: boolean
+  /** Catálogo sugerido, sin cerrar el campo: se puede escribir otra cosa. */
+  sugerencias?: readonly string[]
 }
 
 export function FormularioAuth({
@@ -76,17 +78,27 @@ export function FormularioAuth({
                 />
               </div>
             ) : (
-              <input
-                id={campo.name}
-                name={campo.name}
-                type={campo.type ?? 'text'}
-                required={campo.required ?? true}
-                readOnly={campo.fijo}
-                autoComplete={campo.autoComplete}
-                placeholder={campo.placeholder}
-                defaultValue={estado.valores?.[campo.name] ?? campo.valorInicial}
-                className="campo mt-1.5"
-              />
+              <>
+                <input
+                  id={campo.name}
+                  name={campo.name}
+                  type={campo.type ?? 'text'}
+                  required={campo.required ?? true}
+                  readOnly={campo.fijo}
+                  autoComplete={campo.autoComplete}
+                  placeholder={campo.placeholder}
+                  list={campo.sugerencias ? `sug-${campo.name}` : undefined}
+                  defaultValue={estado.valores?.[campo.name] ?? campo.valorInicial}
+                  className="campo mt-1.5"
+                />
+                {campo.sugerencias && (
+                  <datalist id={`sug-${campo.name}`}>
+                    {campo.sugerencias.map((o) => (
+                      <option key={o} value={o} />
+                    ))}
+                  </datalist>
+                )}
+              </>
             )}
             {campo.ayuda && <p className="mt-1 text-xs text-muted">{campo.ayuda}</p>}
           </div>
