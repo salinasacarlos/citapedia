@@ -537,6 +537,19 @@ El token se genera con `randomBytes(32)`: la liga es la credencial.
 `miembros_del_consultorio()` expone los correos de `auth.users`, pero solo de
 los consultorios de los que quien pregunta ya es miembro.
 
+## Un error no es un "no existe"
+
+Las lecturas públicas tiraban el `error` de Supabase y se quedaban con `data`,
+así que una llave rota o la base caída se veía **idéntica** a que el
+consultorio no existiera: un 404 limpio, sin nada en los logs. Pasó de verdad
+—la página de un médico dejó de abrir y el sitio no marcó ningún error— y es
+la peor forma de fallar, porque nadie se entera.
+
+Ahora las consultas de `cargarPaginaPublica` y de `/cita/[token]` revientan si
+la consulta falla. 404 significa "no hay fila"; 500 significa "no pude
+preguntar". Y una lista que falla no puede pasar por lista vacía: sin horario
+la página diría "no hay huecos", que es una mentira con cara de dato.
+
 ## Redirecciones
 
 `next` solo acepta rutas internas (`/…`, y nunca `//…`). Sin ese filtro, el

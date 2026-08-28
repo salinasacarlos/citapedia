@@ -73,7 +73,10 @@ export default async function CitaPage({
   const { token } = await params
   const supabase = await createClient()
 
-  const { data } = await supabase.rpc('ver_cita', { p_token: token })
+  const { data, error } = await supabase.rpc('ver_cita', { p_token: token })
+  // Un fallo de consulta no puede terminar en "no encontramos esta cita": al
+  // paciente le diría que su cita se esfumó cuando lo que se cayó es la base.
+  if (error) throw new Error(`No se pudo leer la cita: ${error.message}`)
   const cita = (data as Vista[] | null)?.[0]
 
   if (!cita) {
