@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { exigirConsultorio } from '@/lib/consultorio'
 import { enviarCorreo } from '@/lib/correo/enviar'
 import { armarCitaAceptada } from '@/lib/correo/cita-aceptada'
+import { armarCitaRechazada } from '@/lib/correo/cita-rechazada'
 import { correoParaAvisar } from '@/lib/correo/recordatorio'
 import type { AppointmentStatus } from '@/lib/database.types'
 import { horaLocalAInstante } from '@/lib/slots'
@@ -235,8 +236,71 @@ export async function aceptarCita(
   return redirect(`/admin/solicitudes?aceptada=${cita.access_token}&correo=${correo}`)
 }
 
-export async function rechazarCita(_estado: Resultado, datos: FormData) {
-  return cambiarEstado(String(datos.get('id')), 'rejected')
+/**
+ * Rechazar también hay que avisarlo. Del otro lado hay alguien esperando una
+ * respuesta que, sin correo, nunca llega: la solicitud simplemente desaparece
+ * de la lista del consultorio y el paciente se queda esperando.
+ *
+ * Al médico no se le avisa de nada: si tiene asistente, enterarse de cada
+ * solicitud es justo el ruido que tener asistente vino a quitarle.
+ */
+export async function rechazarCita(_estado: Resultado, datos: FormData): Promise<Resultado> {
+  const id = String(datos.get('id'))
+  const resultado = await cambiarEstado(id, 'rejected')
+  if (resultado.error) return resultado
+
+  const supabase = await createClient()
+  const { data: cita } = await supabase
+    .from('appointments')
+    .select(
+      `access_token, starts_at,
+       patients(name, email, is_minor, tutor_name, tutor_email, phone, tutor_phone),
+       professionals(name, slug, timezone, phone)`,
+    )
+    .eq('id', id)
+    .maybeSingle<{
+      access_token: string
+      starts_at: string
+      patients: {
+        name: string
+        email: string | null
+        is_minor: boolean | null
+        tutor_name: string | null
+        tutor_email: string | null
+        phone: string | null
+        tutor_phone: string | null
+      } | null
+      professionals: { name: string; slug: string; timezone: string; phone: string | null } | null
+    }>()
+
+  if (!cita?.patients || !cita.professionals) return redirect('/admin/solicitudes')
+
+  const destinatario = correoParaAvisar(cita.patients)
+  const sitio = process.env.NEXT_PUBLIC_SITE_URL ?? ''
+
+  // El correo es un extra: la cita ya quedó rechazada pase lo que pase.
+  let correo: 'enviado' | 'sin-correo' | 'falla' = 'sin-correo'
+  if (destinatario) {
+    try {
+      const envio = await enviarCorreo(
+        armarCitaRechazada({
+          destinatario,
+          paciente: cita.patients.name,
+          esMenor: Boolean(cita.patients.is_minor),
+          doctor: cita.professionals.name,
+          telefono: cita.professionals.phone,
+          inicio: cita.starts_at,
+          zona: cita.professionals.timezone,
+          pagina: `${sitio}/${cita.professionals.slug}`,
+        }),
+      )
+      correo = envio.ok ? 'enviado' : 'falla'
+    } catch {
+      correo = 'falla'
+    }
+  }
+
+  return redirect(`/admin/solicitudes?rechazada=${cita.access_token}&correo=${correo}`)
 }
 
 export async function marcarCompletada(_estado: Resultado, datos: FormData) {

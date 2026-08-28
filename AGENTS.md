@@ -236,6 +236,19 @@ el dueño de la cuenta de Resend** — la liga a mano sigue siendo el camino rea
 El correo no lleva más que la liga. Ni contraseña temporal ni datos del equipo:
 quien lo recibe todavía no es miembro de nada.
 
+## El no también se avisa
+
+Rechazar una solicitud le manda correo al paciente. Sin eso, la solicitud
+desaparece de la lista del consultorio y el paciente se queda esperando una
+respuesta que nunca llega.
+
+- El correo **no inventa un motivo**: casi nunca se captura, y uno inventado
+  sería peor que ninguno. Ofrece lo único útil, que son otros horarios.
+- El asunto no dice "rechazada": es lo que se lee en la bandeja antes de abrir.
+- **Al médico no se le avisa de nada**, ni de solicitudes nuevas. Si tiene
+  asistente, enterarse de cada una es justo el ruido que tener asistente vino
+  a quitarle.
+
 ## El cron de recordatorios
 
 `GET /api/recordatorios`, disparado por el cron de Vercel una vez al día
@@ -296,9 +309,10 @@ hace el camino inverso.
 marcador a la mitad y dejar el asterisco crudo a la vista, así que
 `cerrarMarcadores` cierra lo que quedó abierto antes de renderizar.
 
-La especialidad va con `datalist`: lista sugerida, no catálogo cerrado. Sirve
-para que quien encuentre la suya la escriba igual que los demás y después se
-puedan agrupar sin adivinar.
+La especialidad va con `datalist` en los **tres** lugares donde se captura —el
+perfil, el registro y el alta desde la consola—: lista sugerida, no catálogo
+cerrado. Si solo estuviera en uno, los otros dos seguirían generando las
+variantes que esto vino a evitar.
 
 ## Responsive
 

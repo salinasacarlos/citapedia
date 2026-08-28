@@ -61,7 +61,15 @@ export default async function SolicitudesPage({
 
   // La cita recién aceptada viaja por la URL: la lista ya no la contiene
   // (dejó de estar `requested`) y su liga se necesita justo en ese momento.
-  const tokenAceptada = typeof params.aceptada === 'string' ? params.aceptada : null
+  // Aceptar y rechazar usan el mismo aviso: en los dos casos la solicitud sale
+  // de la lista y hay que decirle algo al paciente.
+  const tokenAceptada =
+    typeof params.aceptada === 'string'
+      ? params.aceptada
+      : typeof params.rechazada === 'string'
+        ? params.rechazada
+        : null
+  const fueRechazo = typeof params.rechazada === 'string'
   const { data: aceptada } = tokenAceptada
     ? await supabase
         .from('appointments')
@@ -134,6 +142,7 @@ export default async function SolicitudesPage({
 
       {aceptada?.patients && (
         <CitaAceptada
+          rechazada={fueRechazo}
           paciente={aceptada.patients.name}
           liga={`${sitio}/cita/${aceptada.access_token}`}
           telefono={contactoParaConfirmar(aceptada.patients)?.telefono ?? null}
@@ -144,14 +153,27 @@ export default async function SolicitudesPage({
                 ? 'falla'
                 : 'sin-correo'
           }
-          mensaje={armarMensaje(plantilla, {
-            paciente:
-              contactoParaConfirmar(aceptada.patients)?.nombre ?? aceptada.patients.name,
-            doctor: profesional.name,
-            fecha: fechaLarga(aceptada.starts_at, zona),
-            hora: hora(aceptada.starts_at, zona),
-            liga: `${sitio}/cita/${aceptada.access_token}`,
-          })}
+          mensaje={
+            fueRechazo
+              ? `Hola ${
+                  contactoParaConfirmar(aceptada.patients)?.nombre ??
+                  aceptada.patients.name
+                }, no pudimos tomar la cita del ${fechaLarga(
+                  aceptada.starts_at,
+                  zona,
+                )} a las ${hora(aceptada.starts_at, zona)} con ${
+                  profesional.name
+                }. Puedes elegir otro horario aquí: ${sitio}/${profesional.slug}`
+              : armarMensaje(plantilla, {
+                  paciente:
+                    contactoParaConfirmar(aceptada.patients)?.nombre ??
+                    aceptada.patients.name,
+                  doctor: profesional.name,
+                  fecha: fechaLarga(aceptada.starts_at, zona),
+                  hora: hora(aceptada.starts_at, zona),
+                  liga: `${sitio}/cita/${aceptada.access_token}`,
+                })
+          }
         />
       )}
 
