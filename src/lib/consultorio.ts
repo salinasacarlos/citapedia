@@ -49,8 +49,10 @@ export const obtenerConsultorio = cache(async (): Promise<Consultorio | null> =>
 export async function exigirConsultorio(): Promise<Consultorio> {
   const consultorio = await obtenerConsultorio()
   if (!consultorio) redirect('/sin-acceso')
-  // Suspendido por la plataforma: la sesión sigue siendo válida, así que
-  // mandarlo a /login lo dejaría rebotando. Se le dice qué pasó.
+  // Cerrado por su dueño, o suspendido por la plataforma: en los dos casos la
+  // sesión sigue siendo válida, así que mandarlo a /login lo dejaría
+  // rebotando. Se le dice qué pasó, y son cosas distintas.
+  if (consultorio.profesional.archived_at) redirect('/archivado')
   if (consultorio.profesional.suspended_at) redirect('/suspendido')
   return consultorio
 }

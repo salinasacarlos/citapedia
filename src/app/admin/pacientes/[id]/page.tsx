@@ -130,6 +130,7 @@ export default async function FichaPaciente({
       ? supabase
           .from('consultation_files')
           .select('*')
+          .is('archived_at', null)
           .eq('patient_id', id)
           .order('created_at', { ascending: false })
           .returns<ConsultationFile[]>()

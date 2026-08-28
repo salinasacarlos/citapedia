@@ -42,12 +42,19 @@ export default async function CuentaPage() {
 
       {esDueño && (
         <section className="rounded-marca border border-peligro/30 bg-peligro-suave/40 p-4 sm:p-6">
-          <h2 className="font-semibold text-peligro">Eliminar el consultorio</h2>
+          <h2 className="font-semibold text-peligro">Cerrar el consultorio</h2>
           <p className="mt-1 text-sm text-muted">
-            Se borran tu página pública, tu horario, todas tus citas y{' '}
-            <strong className="font-semibold">el expediente de cada paciente</strong>:
-            sus datos, alergias, padecimientos y notas de consulta. Esto no se puede
-            deshacer.
+            Tu página pública deja de existir, tu agenda deja de recibir citas y tu
+            equipo pierde el acceso.
+          </p>
+          {/* Decir la verdad completa: no se borra, y el médico tiene derecho a
+              saber que sus expedientes siguen existiendo. */}
+          <p className="mt-2 text-sm text-muted">
+            <strong className="font-semibold text-foreground">
+              Los expedientes no se borran.
+            </strong>{' '}
+            La norma pide conservarlos cinco años, así que quedan guardados por si un
+            paciente los pide. Escríbenos si necesitas recuperarlos o volver a abrir.
           </p>
           <div className="mt-4">
             <EliminarConsultorio slug={profesional.slug} />

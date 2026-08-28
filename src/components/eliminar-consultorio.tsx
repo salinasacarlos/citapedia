@@ -18,7 +18,7 @@ export function EliminarConsultorio({ slug }: { slug: string }) {
         onClick={() => setAbierto(true)}
         className="boton border border-peligro px-4 py-2 text-sm text-peligro hover:bg-peligro-suave"
       >
-        Eliminar mi consultorio
+        Cerrar mi consultorio
       </button>
     )
   }
@@ -49,7 +49,7 @@ export function EliminarConsultorio({ slug }: { slug: string }) {
           disabled={pendiente || texto !== slug}
           className="boton border border-peligro px-4 py-2 text-sm text-peligro hover:bg-peligro-suave disabled:opacity-40"
         >
-          {pendiente ? 'Eliminando…' : 'Eliminar para siempre'}
+          {pendiente ? 'Cerrando…' : 'Cerrar el consultorio'}
         </button>
         <button
           type="button"

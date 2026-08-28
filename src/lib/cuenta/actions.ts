@@ -46,25 +46,36 @@ export async function cambiarContrasena(
   return { ok: 'Contraseña actualizada.' }
 }
 
+/**
+ * Cierra el consultorio archivándolo, no borrándolo.
+ *
+ * Antes hacía `delete` y la cascada se llevaba pacientes, citas, expedientes,
+ * notas y estudios. La norma del expediente clínico pide conservarlo cinco
+ * años: para el médico el efecto es el mismo —deja de funcionar y su página
+ * desaparece— pero los datos siguen ahí por si alguien los reclama.
+ */
 export async function eliminarConsultorio(
   _estado: ResultadoCuenta,
   datos: FormData,
 ): Promise<ResultadoCuenta> {
   const { profesional, esDueño } = await exigirConsultorio()
-  if (!esDueño) return { error: 'Solo el dueño del consultorio puede eliminarlo.' }
+  if (!esDueño) return { error: 'Solo el dueño del consultorio puede cerrarlo.' }
 
   // Escribir el slug es la confirmación: un "¿estás seguro?" se acepta por
-  // reflejo, y esto borra la agenda completa sin vuelta atrás.
+  // reflejo, y esto apaga la agenda completa.
   const confirmacion = String(datos.get('confirmacion') ?? '').trim()
   if (confirmacion !== profesional.slug) {
     return { error: `Escribe exactamente “${profesional.slug}” para confirmar.` }
   }
 
   const supabase = await createClient()
-  const { error } = await supabase.from('professionals').delete().eq('id', profesional.id)
-  if (error) return { error: error.message }
+  const { error } = await supabase.rpc('archivar_consultorio', {
+    p_id: profesional.id,
+    p_motivo: String(datos.get('motivo') ?? '').trim() || null,
+  })
+  if (error) return { error: error.message.replace(/^.*?:\s*/, '') }
 
   await supabase.auth.signOut()
   revalidatePath('/', 'layout')
-  redirect('/?consultorio=eliminado')
+  redirect('/?consultorio=archivado')
 }

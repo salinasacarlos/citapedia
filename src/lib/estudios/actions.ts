@@ -106,12 +106,14 @@ export async function borrarEstudio(datos: FormData): Promise<void> {
 
   if (!estudio) return
 
-  // La fila primero: si el borrado del archivo falla, no queda un renglón
-  // apuntando a algo que ya no está.
-  const { error } = await supabase.from('consultation_files').delete().eq('id', id)
+  // Se archiva, no se borra: un estudio es tan del expediente como una nota, y
+  // la norma pide conservarlo. Deja de verse, pero sigue ahí y el archivo se
+  // queda en su lugar.
+  const { error } = await supabase
+    .from('consultation_files')
+    .update({ archived_at: new Date().toISOString() })
+    .eq('id', id)
   if (error) return
-
-  await supabase.storage.from(BUCKET).remove([estudio.path])
 
   revalidatePath(`/admin/pacientes/${estudio.patient_id}`)
   if (estudio.appointment_id) revalidatePath(`/admin/consulta/${estudio.appointment_id}`)
