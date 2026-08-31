@@ -125,3 +125,63 @@ export async function crearConsultorio(
     liga: `${sitio}/auth/confirm?token_hash=${token}&type=recovery&next=%2Fdefinir-contrasena`,
   }
 }
+
+/**
+ * Vuelve a armar la liga de acceso de alguien del equipo.
+ *
+ * La del alta se genera una sola vez y no se guarda en ningún lado: si vence,
+ * si se quema o si se mandó por el chat equivocado, el médico se queda fuera y
+ * `/recuperar` no lo salva mientras Resend no tenga dominio verificado.
+ *
+ * Va con `es_operador` y no con `es_superadmin`: esta liga deja entrar a una
+ * cuenta ajena, y quien contesta el WhatsApp no tiene por qué poder hacerlo.
+ */
+export async function regenerarAcceso(
+  _estado: ResultadoPlataforma,
+  datos: FormData,
+): Promise<ResultadoPlataforma> {
+  const supabase = await createClient()
+  const { data: operador } = await supabase.rpc('es_operador')
+  if (operador !== true) return { error: 'No autorizado.' }
+
+  const id = String(datos.get('id') ?? '')
+  const email = String(datos.get('email') ?? '').trim().toLowerCase()
+
+  if (!process.env.SUPABASE_SECRET_KEY) {
+    return { error: 'Falta SUPABASE_SECRET_KEY en este entorno.' }
+  }
+
+  // El correo tiene que ser de este consultorio. Sin esta vuelta, la acción
+  // generaría una liga de entrada para cualquier dirección que le dictaran,
+  // incluida la de otro operador.
+  const { data: equipo } = await supabase
+    .rpc('plataforma_equipo', { p_id: id })
+    .returns<{ email: string }[]>()
+  if (!equipo?.some((m) => m.email.toLowerCase() === email)) {
+    return { error: 'Ese correo no es de este consultorio.' }
+  }
+
+  const admin = createAdminClient()
+  const { data: enlace, error } = await admin.auth.admin.generateLink({
+    type: 'recovery',
+    email,
+  })
+  const token = enlace?.properties?.hashed_token
+  if (error || !token) {
+    return { error: error?.message ?? 'No se pudo generar la liga.' }
+  }
+
+  await supabase.rpc('plataforma_anotar', {
+    p_action: 'liga',
+    p_target: id,
+    p_detail: email,
+  })
+
+  revalidatePath(`/plataforma/${id}`)
+
+  const sitio = process.env.NEXT_PUBLIC_SITE_URL ?? ''
+  return {
+    ok: 'Liga nueva lista. La anterior dejó de servir.',
+    liga: `${sitio}/auth/confirm?token_hash=${token}&type=recovery&next=%2Fdefinir-contrasena`,
+  }
+}

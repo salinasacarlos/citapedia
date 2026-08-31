@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { exigirSuperadmin } from '@/lib/plataforma/acceso'
 import { reactivarConsultorio } from '@/lib/plataforma/actions'
 import { SuspenderConsultorio } from '@/components/suspender-consultorio'
+import { LigaDeAcceso } from '@/components/liga-de-acceso'
 import { fechaCorta, hora, relativo } from '@/lib/fechas'
 import type { AppointmentStatus, MemberRole } from '@/lib/database.types'
 
@@ -278,6 +279,7 @@ export default async function FichaConsultorio({
                       ? `entró ${relativo(m.ultimo_ingreso)}`
                       : 'nunca ha entrado'}
                   </p>
+                  {esOperador && <LigaDeAcceso id={c.id} email={m.email} />}
                 </li>
               ))}
             </ul>
