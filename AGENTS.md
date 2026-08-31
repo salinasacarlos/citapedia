@@ -180,6 +180,28 @@ pase por `/auth/confirm`, que ya sabe filtrar destinos.
 `/admin/cuenta`: aquí la credencial es la liga. Pedirle la de ahora a alguien
 que nunca tuvo una no lleva a ningún lado.
 
+### Volver a dar la liga de acceso
+
+La liga del alta se genera una sola vez y no se guarda: vence en una hora, se
+quema al abrirla, y `generateLink` mata la anterior en cuanto se llama otra
+vez. Cuando eso pasaba, la única salida era entrar a Supabase a mano —y
+`/recuperar` no sirve de nada mientras Resend no tenga dominio, porque el
+correo no le llega al médico.
+
+`regenerarAcceso` la vuelve a armar desde la ficha de soporte, junto a cada
+correo del equipo. Dos cosas que la separan del resto de la consola:
+
+- Va con `es_operador`, no con `es_superadmin`. Esta liga deja entrar a una
+  cuenta ajena; quien contesta el WhatsApp no tiene por qué poder hacerlo.
+- El correo se valida contra `plataforma_equipo` del mismo consultorio. Sin esa
+  vuelta, la acción generaría una liga de entrada para cualquier dirección que
+  le dictaran, incluida la de otro operador.
+
+Se muestra en pantalla en vez de mandarse por correo, por la misma razón que la
+invitación: sin dominio verificado el correo no llega, y quien está en la
+llamada la puede pegar donde el médico la espera. Queda anotada en
+`platform_audit` como `liga`.
+
 ### La ficha de soporte
 
 `/plataforma/[id]` responde las preguntas que llegan por WhatsApp. La raya:
@@ -536,6 +558,19 @@ El token se genera con `randomBytes(32)`: la liga es la credencial.
 
 `miembros_del_consultorio()` expone los correos de `auth.users`, pero solo de
 los consultorios de los que quien pregunta ya es miembro.
+
+## Un error no es un "no existe"
+
+Las lecturas públicas tiraban el `error` de Supabase y se quedaban con `data`,
+así que una llave rota o la base caída se veía **idéntica** a que el
+consultorio no existiera: un 404 limpio, sin nada en los logs. Pasó de verdad
+—la página de un médico dejó de abrir y el sitio no marcó ningún error— y es
+la peor forma de fallar, porque nadie se entera.
+
+Ahora las consultas de `cargarPaginaPublica` y de `/cita/[token]` revientan si
+la consulta falla. 404 significa "no hay fila"; 500 significa "no pude
+preguntar". Y una lista que falla no puede pasar por lista vacía: sin horario
+la página diría "no hay huecos", que es una mentira con cara de dato.
 
 ## Redirecciones
 

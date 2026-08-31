@@ -17,36 +17,54 @@ export type PerfilPublico = {
   timezone: string
 }
 
+/**
+ * Una consulta que falla no puede pasar por una lista vacía: sin horario la
+ * página dice "no hay huecos", que es una mentira con cara de dato.
+ */
+function exigir<T>(que: string) {
+  return ({ data, error }: { data: T[] | null; error: { message: string } | null }) => {
+    if (error) throw new Error(`No se pudo leer ${que}: ${error.message}`)
+    return data ?? []
+  }
+}
+
 export async function cargarPaginaPublica(slug: string) {
   const supabase = await createClient()
 
-  const { data: perfil } = await supabase
+  const { data: perfil, error } = await supabase
     .from('public_professionals')
     .select('*')
     .eq('slug', slug)
     .maybeSingle<PerfilPublico>()
 
+  // Si la consulta falla hay que reventar, no devolver null: null significa
+  // "ese consultorio no existe", y con la llave rota la liga de todos los
+  // médicos daría un 404 limpio sin nada en los logs.
+  if (error) throw new Error(`No se pudo leer el consultorio ${slug}: ${error.message}`)
   if (!perfil) return null
 
-  const [{ data: disponibilidad }, { data: bloqueos }, { data: ocupados }] = await Promise.all([
+  const [disponibilidad, bloqueos, ocupados] = await Promise.all([
     supabase
       .from('public_availability')
       .select('weekday, start_time, end_time')
       .eq('professional_id', perfil.id)
-      .returns<Franja[]>(),
+      .returns<Franja[]>()
+      .then(exigir<Franja>('el horario')),
     supabase
       .from('public_time_blocks')
       .select('starts_at, ends_at')
       .eq('professional_id', perfil.id)
-      .returns<Intervalo[]>(),
+      .returns<Intervalo[]>()
+      .then(exigir<Intervalo>('los bloqueos')),
     supabase
       .from('public_busy_slots')
       .select('starts_at, ends_at')
       .eq('professional_id', perfil.id)
-      .returns<Intervalo[]>(),
+      .returns<Intervalo[]>()
+      .then(exigir<Intervalo>('las citas ocupadas')),
   ])
 
-  return { perfil, disponibilidad: disponibilidad ?? [], bloqueos: bloqueos ?? [], ocupados: ocupados ?? [] }
+  return { perfil, disponibilidad, bloqueos, ocupados }
 }
 
 export function huecosDe(
