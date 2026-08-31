@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { enviarCorreo } from '@/lib/correo/enviar'
 import { armarRecuperacion } from '@/lib/correo/recuperar'
 import { anotarFalloDeCorreo } from '@/lib/correo/anotar-fallo'
+import { problemaDelSitio } from '@/lib/sitio'
 
 export type ResultadoRecuperar = { error?: string; listo?: boolean }
 
@@ -33,6 +34,15 @@ export async function pedirRecuperacion(
 
   if (!process.env.SUPABASE_SECRET_KEY) {
     return { error: 'Falta configurar el envío en este entorno.' }
+  }
+
+  // Aquí nadie va a leer un error: la respuesta es siempre la misma para no
+  // delatar qué cuentas existen. Con el sitio mal puesto la liga no serviría,
+  // así que se anota como falla de correo y no se quema el token del usuario.
+  const problema = problemaDelSitio()
+  if (problema) {
+    await anotarFalloDeCorreo('recuperacion', problema)
+    return { listo: true }
   }
 
   const admin = createAdminClient()

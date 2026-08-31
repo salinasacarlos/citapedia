@@ -1,5 +1,6 @@
 'use server'
 
+import { problemaDelSitio } from '@/lib/sitio'
 import { randomBytes } from 'node:crypto'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
@@ -31,8 +32,9 @@ async function mandarInvitacion(
   consultorio: string,
   token: string,
 ): Promise<string | undefined> {
+  const problema = problemaDelSitio()
+  if (problema) return `${problema} Mientras tanto, comparte la liga tú.`
   const sitio = process.env.NEXT_PUBLIC_SITE_URL
-  if (!sitio) return 'No hay dirección del sitio configurada; comparte la liga tú.'
 
   try {
     const envio = await enviarCorreo(

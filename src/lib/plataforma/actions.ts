@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { problemaDelSitio } from '@/lib/sitio'
 
 export type ResultadoPlataforma = {
   error?: string
@@ -120,6 +121,11 @@ export async function crearConsultorio(
     }
   }
 
+  const problema = problemaDelSitio()
+  if (problema) {
+    return { ok: `Consultorio creado para ${nombre}.`, error: problema }
+  }
+
   return {
     ok: `Consultorio creado para ${nombre}.`,
     liga: `${sitio}/auth/confirm?token_hash=${token}&type=recovery&next=%2Fdefinir-contrasena`,
@@ -160,6 +166,11 @@ export async function regenerarAcceso(
   if (!process.env.SUPABASE_SECRET_KEY) {
     return { error: 'Falta SUPABASE_SECRET_KEY en este entorno.' }
   }
+
+  // Antes de generar: `generateLink` mata la liga anterior en cuanto se llama,
+  // así que descubrirlo después dejaría al médico peor que como estaba.
+  const problema = problemaDelSitio()
+  if (problema) return { error: problema }
 
   const admin = createAdminClient()
   const { data: enlace, error } = await admin.auth.admin.generateLink({
