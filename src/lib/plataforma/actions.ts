@@ -147,10 +147,6 @@ export async function regenerarAcceso(
   const id = String(datos.get('id') ?? '')
   const email = String(datos.get('email') ?? '').trim().toLowerCase()
 
-  if (!process.env.SUPABASE_SECRET_KEY) {
-    return { error: 'Falta SUPABASE_SECRET_KEY en este entorno.' }
-  }
-
   // El correo tiene que ser de este consultorio. Sin esta vuelta, la acción
   // generaría una liga de entrada para cualquier dirección que le dictaran,
   // incluida la de otro operador.
@@ -159,6 +155,10 @@ export async function regenerarAcceso(
     .returns<{ email: string }[]>()
   if (!equipo?.some((m) => m.email.toLowerCase() === email)) {
     return { error: 'Ese correo no es de este consultorio.' }
+  }
+
+  if (!process.env.SUPABASE_SECRET_KEY) {
+    return { error: 'Falta SUPABASE_SECRET_KEY en este entorno.' }
   }
 
   const admin = createAdminClient()
