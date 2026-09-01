@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { marcarLigaUsada } from '@/lib/acceso/ligas'
 
 export type ResultadoDefinir = { error?: string }
 
@@ -33,6 +34,9 @@ export async function definirContrasena(
 
   const { error } = await supabase.auth.updateUser({ password: contrasena })
   if (error) return { error: error.message }
+
+  // Hasta aquí la liga seguía viva: es este paso, y no abrirla, lo que la gasta.
+  await marcarLigaUsada(user.id)
 
   revalidatePath('/', 'layout')
   redirect('/admin')

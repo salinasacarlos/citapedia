@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { problemaDelSitio } from '@/lib/sitio'
+import { crearLigaDeAcceso, VIGENCIA_HORAS } from '@/lib/acceso/ligas'
 
 export type ResultadoPlataforma = {
   error?: string
@@ -106,29 +107,25 @@ export async function crearConsultorio(
     p_detail: `${nombre} · ${email}`,
   })
 
-  // La liga se arma con el token, no con el `action_link` de Supabase: así
-  // pasa por nuestra propia ruta de confirmación, que ya sabe filtrar destinos.
-  const sitio = process.env.NEXT_PUBLIC_SITE_URL ?? ''
-  const { data: enlace } = await admin.auth.admin.generateLink({ type: 'recovery', email })
-  const token = enlace?.properties?.hashed_token
-
   revalidatePath('/plataforma')
-
-  if (!token) {
-    return {
-      ok: `Consultorio creado para ${nombre}.`,
-      error: 'No se pudo generar la liga de acceso; genera una desde Supabase.',
-    }
-  }
 
   const problema = problemaDelSitio()
   if (problema) {
     return { ok: `Consultorio creado para ${nombre}.`, error: problema }
   }
 
+  const { token, error: errorLiga } = await crearLigaDeAcceso(creado.user.id, email)
+  if (!token) {
+    return {
+      ok: `Consultorio creado para ${nombre}.`,
+      error: errorLiga ?? 'No se pudo generar la liga de acceso.',
+    }
+  }
+
+  const sitio = process.env.NEXT_PUBLIC_SITE_URL ?? ''
   return {
-    ok: `Consultorio creado para ${nombre}.`,
-    liga: `${sitio}/auth/confirm?token_hash=${token}&type=recovery&next=%2Fdefinir-contrasena`,
+    ok: `Consultorio creado para ${nombre}. La liga dura ${VIGENCIA_HORAS} horas.`,
+    liga: `${sitio}/acceso/${token}`,
   }
 }
 
@@ -167,20 +164,22 @@ export async function regenerarAcceso(
     return { error: 'Falta SUPABASE_SECRET_KEY en este entorno.' }
   }
 
-  // Antes de generar: `generateLink` mata la liga anterior en cuanto se llama,
-  // así que descubrirlo después dejaría al médico peor que como estaba.
+  // Antes de generar: la liga nueva mata a la anterior en cuanto se crea, así
+  // que descubrirlo después dejaría al médico peor que como estaba.
   const problema = problemaDelSitio()
   if (problema) return { error: problema }
 
-  const admin = createAdminClient()
-  const { data: enlace, error } = await admin.auth.admin.generateLink({
-    type: 'recovery',
-    email,
+  // Quién es el dueño de ese correo lo contesta la base, que además vuelve a
+  // revisar que sea de este consultorio.
+  const { data: userId } = await supabase.rpc('plataforma_usuario_del_equipo', {
+    p_id: id,
+    p_email: email,
   })
-  const token = enlace?.properties?.hashed_token
-  if (error || !token) {
-    return { error: error?.message ?? 'No se pudo generar la liga.' }
-  }
+  if (!userId) return { error: 'Ese correo no tiene cuenta en este consultorio.' }
+
+  const { data: quien } = await supabase.auth.getUser()
+  const { token, error } = await crearLigaDeAcceso(userId, email, quien.user?.id)
+  if (!token) return { error: error ?? 'No se pudo generar la liga.' }
 
   await supabase.rpc('plataforma_anotar', {
     p_action: 'liga',
@@ -192,7 +191,7 @@ export async function regenerarAcceso(
 
   const sitio = process.env.NEXT_PUBLIC_SITE_URL ?? ''
   return {
-    ok: 'Liga nueva lista. La anterior dejó de servir.',
-    liga: `${sitio}/auth/confirm?token_hash=${token}&type=recovery&next=%2Fdefinir-contrasena`,
+    ok: `Liga nueva lista, dura ${VIGENCIA_HORAS} horas. La anterior dejó de servir.`,
+    liga: `${sitio}/acceso/${token}`,
   }
 }

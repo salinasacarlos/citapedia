@@ -257,6 +257,17 @@ export type Database = {
         reason: string
         created_at: string | null
       }>
+      /** Ligas para poner la contraseña por primera vez. Solo la llave de servicio. */
+      access_grants: Table<{
+        id: string
+        user_id: string
+        email: string
+        token: string
+        created_by: string | null
+        created_at: string
+        expires_at: string
+        used_at: string | null
+      }>
       appointments: Table<Appointment>
       reminder_settings: Table<ReminderSettings>
     }
@@ -359,6 +370,10 @@ export type Database = {
         Returns: { kind: string; reason: string; cuantos: number; ultimo: string }[]
       }
       es_operador: { Args: Record<string, never>; Returns: boolean }
+      plataforma_usuario_del_equipo: {
+        Args: { p_id: string; p_email: string }
+        Returns: string | null
+      }
       plataforma_operadores: {
         Args: Record<string, never>
         Returns: { email: string; rol: PlatformRole; note: string | null; desde: string }[]
