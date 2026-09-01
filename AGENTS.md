@@ -70,6 +70,23 @@ como `citapedia.com`, que todavía no está conectado: la pantalla le daba a la
 recepcionista una dirección que no abre. El día que exista el dominio oficial
 se cambia la variable y se mueven los dos lados juntos.
 
+### Una variable mal puesta no se ve al ponerla
+
+`NEXT_PUBLIC_SITE_URL` quedó una vez con la URL de **Supabase**. Las ligas se
+arman pegándola con la ruta, así que la de acceso de un médico lo mandaba a la
+base de datos, que contesta "No API key found in request" — un mensaje que no
+menciona nada de esto. No se notó al guardar la variable: se notó días después,
+con el médico al teléfono sin poder entrar.
+
+`problemaDelSitio()` la revisa —vacía, sin `https://`, o apuntando a
+`*.supabase.co`— y las acciones que reparten ligas se niegan con ese texto en
+vez de entregar una liga rota. En `regenerarAcceso` va **antes** de generar:
+`generateLink` mata la anterior en cuanto se llama, así que descubrirlo después
+dejaría al médico peor que como estaba. En `/recuperar`, donde nadie lee
+errores a propósito, se anota en `email_failures`.
+
+`npm run test:sitio` cubre los valores que ya se colaron de verdad.
+
 ## Fotos
 
 Las fotos de perfil van a Supabase Storage, bucket `fotos-perfil`, en la ruta
