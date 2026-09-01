@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
 
 /**
- * Un subconjunto mínimo de Markdown: **negritas**, *cursivas*, listas con
- * viñeta y listas numeradas.
+ * Un subconjunto mínimo de Markdown: **negritas**, *cursivas*, ~~tachado~~,
+ * [ligas](https://…), citas con `>`, listas con viñeta y listas numeradas.
  *
  * Es el formato en el que se GUARDA. La edición es WYSIWYG, pero lo que llega
  * a la base es texto plano: así lo que el médico escribe termina en nodos de
@@ -29,10 +29,49 @@ function sinMarcadoresVacios(texto: string): string {
   )
 }
 
+/**
+ * Solo http y https se convierten en liga.
+ *
+ * Lo escribe un médico en su perfil, pero el perfil lo lee cualquiera: un
+ * `javascript:` aquí sería un clic ejecutable en la página pública. Lo que no
+ * pasa el filtro se muestra como texto, que es lo honesto — no se traga ni se
+ * pinta como algo en lo que se puede confiar.
+ */
+function ligaSegura(url: string): string | null {
+  try {
+    const u = new URL(url.trim())
+    return u.protocol === 'https:' || u.protocol === 'http:' ? u.href : null
+  } catch {
+    return null
+  }
+}
+
+/** Ligas primero: su texto puede traer asteriscos que no son formato. */
+const PARTES = /(\[[^\]]+\]\([^)\s]+\)|\*\*[^*]+\*\*|~~[^~]+~~|\*[^*]+\*)/g
+
 function conFormato(linea: string, clave: string): ReactNode {
-  const partes = linea.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g).filter(Boolean)
+  const partes = linea.split(PARTES).filter(Boolean)
 
   return partes.map((parte, i) => {
+    const liga = parte.match(/^\[([^\]]+)\]\(([^)\s]+)\)$/)
+    if (liga) {
+      const href = ligaSegura(liga[2])
+      if (!href) return liga[1]
+      return (
+        <a
+          key={`${clave}-${i}`}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer nofollow"
+          className="text-acento underline underline-offset-2"
+        >
+          {liga[1]}
+        </a>
+      )
+    }
+    if (parte.startsWith('~~') && parte.endsWith('~~') && parte.length > 4) {
+      return <s key={`${clave}-${i}`}>{parte.slice(2, -2)}</s>
+    }
     if (parte.startsWith('**') && parte.endsWith('**') && parte.length > 4) {
       return (
         <strong key={`${clave}-${i}`} className="font-semibold text-foreground">
@@ -47,7 +86,7 @@ function conFormato(linea: string, clave: string): ReactNode {
   })
 }
 
-type Bloque = { tipo: 'p' | 'ul' | 'ol'; lineas: string[] }
+type Bloque = { tipo: 'p' | 'ul' | 'ol' | 'cita'; lineas: string[] }
 
 /** Agrupa las líneas en párrafos y listas, que es todo lo que hay. */
 function enBloques(texto: string): Bloque[] {
@@ -57,8 +96,9 @@ function enBloques(texto: string): Bloque[] {
   for (const linea of sinMarcadoresVacios(texto).split('\n')) {
     const vineta = linea.match(/^\s*[-*•]\s+(.*)$/)
     const numerada = linea.match(/^\s*\d+[.)]\s+(.*)$/)
-    const tipo: Bloque['tipo'] = vineta ? 'ul' : numerada ? 'ol' : 'p'
-    const contenido = vineta?.[1] ?? numerada?.[1] ?? linea
+    const cita = linea.match(/^\s*>\s?(.*)$/)
+    const tipo: Bloque['tipo'] = vineta ? 'ul' : numerada ? 'ol' : cita ? 'cita' : 'p'
+    const contenido = vineta?.[1] ?? numerada?.[1] ?? cita?.[1] ?? linea
 
     if (tipo === 'p' && linea.trim() === '') {
       actual = null
@@ -90,6 +130,15 @@ export function TextoRico({ texto, className }: { texto: string; className?: str
             </p>
           )
         }
+        if (b.tipo === 'cita') {
+          return (
+            <blockquote key={i} className="border-l-2 border-border pl-3 text-muted italic">
+              {b.lineas.map((l, j) => (
+                <p key={j}>{conFormato(l, `${i}-${j}`)}</p>
+              ))}
+            </blockquote>
+          )
+        }
         const Lista = b.tipo === 'ul' ? 'ul' : 'ol'
         return (
           <Lista
@@ -107,12 +156,22 @@ export function TextoRico({ texto, className }: { texto: string; className?: str
 }
 
 function escapar(t: string) {
-  return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  return t
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    // El texto ahora también entra en un atributo (el href de una liga).
+    .replace(/"/g, '&quot;')
 }
 
 function conFormatoHtml(linea: string): string {
   return escapar(linea)
+    .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (entero, texto, url) => {
+      const href = ligaSegura(url)
+      return href ? `<a href="${escapar(href)}">${texto}</a>` : entero
+    })
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/~~([^~]+)~~/g, '<s>$1</s>')
     .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>')
 }
 
@@ -131,6 +190,10 @@ export function aHtml(texto: string): string {
     .map((b) => {
       if (b.tipo === 'p') {
         return b.lineas.map((l) => `<p>${conFormatoHtml(l) || '<br>'}</p>`).join('')
+      }
+      if (b.tipo === 'cita') {
+        const parrafos = b.lineas.map((l) => `<p>${conFormatoHtml(l) || '<br>'}</p>`).join('')
+        return `<blockquote>${parrafos}</blockquote>`
       }
       const etiqueta = b.tipo === 'ul' ? 'ul' : 'ol'
       const items = b.lineas.map((l) => `<li>${conFormatoHtml(l)}</li>`).join('')

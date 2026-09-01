@@ -15,7 +15,8 @@
     "test:slots": "tsx scripts/verify-slots.ts",
     "test:correo": "tsx scripts/verify-correo.ts",
     "test:sitio": "tsx scripts/verify-sitio.ts",
-    "test": "npm run db:verify && npm run test:slots && npm run test:correo && npm run test:sitio",
+    "test:texto": "tsx scripts/verify-texto.tsx",
+    "test": "npm run db:verify && npm run test:slots && npm run test:correo && npm run test:sitio && npm run test:texto",
     "demo:sembrar": "supabase db query --linked -f supabase/fixtures/demo-consultorio.sql",
     "demo:limpiar": "supabase db query --linked -f supabase/fixtures/demo-limpiar.sql"
   },
