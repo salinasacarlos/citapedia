@@ -46,8 +46,8 @@ export default async function DefinirContrasenaPage() {
           <>
             <h1 className="text-xl font-bold text-ink">Esta liga ya no sirve</h1>
             <p className="mt-2 text-sm text-muted">
-              Las ligas de acceso vencen y solo se pueden usar una vez. Pide otra a
-              quien te dio de alta.
+              Las ligas duran 48 horas y dejan de servir en cuanto se pone la
+              contraseña. Pide otra a quien te dio de alta.
             </p>
           </>
         )}

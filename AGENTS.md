@@ -219,6 +219,28 @@ invitación: sin dominio verificado el correo no llega, y quien está en la
 llamada la puede pegar donde el médico la espera. Queda anotada en
 `platform_audit` como `liga`.
 
+### La liga no se gasta con abrirla
+
+La primera versión mandaba la liga de recuperación de Supabase, y esa **se
+quema al abrirla**: quien la abría, miraba la pantalla y se iba a pensar una
+contraseña, volvía a una liga muerta sin haber cambiado nada. Y duraba una
+hora, que no alcanza cuando se manda por WhatsApp a alguien que está en
+consulta.
+
+La liga ahora es nuestra (`access_grants`, ruta `/acceso/[token]`), así que
+nosotros decidimos cuándo muere: **48 horas, se puede abrir las veces que haga
+falta, y se marca usada al PONER la contraseña**, no al abrirla.
+
+- El token de Supabase se pide dentro de `/acceso/[token]`, en el servidor, y
+  se canjea ahí mismo. Nunca sale al navegador y sigue siendo de un solo uso;
+  lo que se repite es armarlo.
+- Crear una liga nueva mata las anteriores sin usar. Si convivieran, la que
+  quedó en un chat de hace tres días seguiría entrando.
+- `access_grants` **no tiene políticas**: guarda credenciales de entrada y solo
+  la toca el servidor con la llave de servicio, igual que `platform_admins`.
+- `plataforma_usuario_del_equipo` traduce correo a usuario y revalida, en la
+  base, que sea de ese consultorio.
+
 ### La ficha de soporte
 
 `/plataforma/[id]` responde las preguntas que llegan por WhatsApp. La raya:
