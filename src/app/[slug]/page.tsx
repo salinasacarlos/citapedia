@@ -4,6 +4,7 @@ import { cargarPaginaPublica, huecosDe } from '@/lib/publico/datos'
 import { Reservar } from '@/components/reservar'
 import { Marca } from '@/components/marca'
 import { TextoExpandible } from '@/components/texto-expandible'
+import { enTextoPlano } from '@/lib/texto-rico'
 import { nombreDePila } from '@/lib/fechas'
 
 export const dynamic = 'force-dynamic'
@@ -16,11 +17,28 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!datos) return { title: 'Consultorio no encontrado' }
 
   const { perfil } = datos
+  const titulo = `${perfil.name}${perfil.specialty ? ` · ${perfil.specialty}` : ''}`
+  // La bio está en Markdown: sin aplanarla, la vista previa de WhatsApp sale
+  // con los asteriscos crudos, que es justo lo que hace parecer spam una liga.
+  const descripcion = perfil.bio
+    ? enTextoPlano(perfil.bio)
+    : `Agenda tu cita con ${perfil.name} en CitaPedia.`
+
   return {
-    title: `${perfil.name}${perfil.specialty ? ` · ${perfil.specialty}` : ''}`,
-    description:
-      perfil.bio?.slice(0, 155) ??
-      `Agenda tu cita con ${perfil.name} en CitaPedia.`,
+    title: titulo,
+    description: descripcion,
+    alternates: { canonical: `/${slug}` },
+    openGraph: {
+      type: 'profile',
+      // El título de OG lleva la marca porque ahí no hay plantilla que la
+      // agregue, al revés que el `<title>` de la pestaña.
+      title: `${titulo} · CitaPedia`,
+      description: descripcion,
+      url: `/${slug}`,
+      siteName: 'CitaPedia',
+      locale: 'es_MX',
+    },
+    twitter: { card: 'summary_large_image', title: titulo, description: descripcion },
   }
 }
 

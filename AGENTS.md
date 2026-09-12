@@ -87,6 +87,23 @@ errores a propósito, se anota en `email_failures`.
 
 `npm run test:sitio` cubre los valores que ya se colaron de verdad.
 
+## La liga que se comparte
+
+El médico manda su liga por WhatsApp, y una liga sin vista previa se ve como
+las que uno no abre. `opengraph-image.tsx` dibuja la tarjeta: foto —o la
+inicial, porque casi nadie sube foto el primer día—, nombre, especialidad, un
+resumen de la bio y el dominio.
+
+- La descripción pasa por `enTextoPlano`: la bio es Markdown y sin aplanarla
+  la vista previa decía "egresado de la **UNAM**", con los asteriscos crudos.
+- `metadataBase` sale de `NEXT_PUBLIC_SITE_URL`. WhatsApp no resuelve rutas
+  relativas: sin esa base, la imagen no carga.
+- Satori (el que dibuja la imagen) **exige `display: flex` en cualquier div con
+  más de un hijo**, y `{dominio}/{slug}` son tres nodos. Se arma la cadena
+  antes de meterla al div.
+- El dominio se enseña sin `www.` (`dominioPublico`): el apex redirige solo y
+  es más corto de dictar en el mostrador.
+
 ## Fotos
 
 Las fotos de perfil van a Supabase Storage, bucket `fotos-perfil`, en la ruta
