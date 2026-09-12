@@ -28,6 +28,7 @@ type Fila = {
   professionals: {
     name: string
     slug: string
+    email: string | null
     timezone: string
     clinic_address: string | null
     phone: string | null
@@ -78,7 +79,7 @@ export async function GET(request: Request) {
     .select(
       `id, access_token, starts_at, status, professional_id,
        patients(name, email, is_minor, tutor_name, tutor_email),
-       professionals(name, slug, timezone, clinic_address, phone)`,
+       professionals(name, slug, email, timezone, clinic_address, phone)`,
     )
     .eq('status', 'confirmed')
     .is('reminder_sent_at', null)
@@ -160,7 +161,10 @@ export async function GET(request: Request) {
       liga: `${sitio}/cita/${cita.access_token}`,
     })
 
-    const envio = await enviarCorreo(correo)
+    const envio = await enviarCorreo({
+      ...correo,
+      responder: cita.professionals.email,
+    })
 
     if (!envio.ok) {
       // No se marca: si Resend falló, mañana se vuelve a intentar. Un
@@ -204,7 +208,7 @@ type FilaAviso = {
     tutor_name: string | null
     tutor_email: string | null
   } | null
-  professionals: { name: string; slug: string } | null
+  professionals: { name: string; slug: string; email: string | null } | null
 }
 
 /**
@@ -223,7 +227,7 @@ async function mandarAvisos(supabase: ReturnType<typeof createAdminClient>) {
     .select(
       `id, titulo, mensaje,
        patients(name, email, is_minor, tutor_name, tutor_email),
-       professionals(name, slug)`,
+       professionals(name, slug, email)`,
     )
     .eq('status', 'pendiente')
     .lte('due_on', hoy)
@@ -242,8 +246,9 @@ async function mandarAvisos(supabase: ReturnType<typeof createAdminClient>) {
     // pierda si esperamos.
     if (!destinatario) continue
 
-    const envio = await enviarCorreo(
-      armarAviso({
+    const envio = await enviarCorreo({
+      responder: aviso.professionals.email,
+      ...armarAviso({
         destinatario,
         paciente: aviso.patients.name,
         esMenor: Boolean(aviso.patients.is_minor),
@@ -252,7 +257,7 @@ async function mandarAvisos(supabase: ReturnType<typeof createAdminClient>) {
         mensaje: aviso.mensaje,
         pagina: `${sitio}/${aviso.professionals.slug}`,
       }),
-    )
+    })
 
     if (!envio.ok) {
       fallidos++

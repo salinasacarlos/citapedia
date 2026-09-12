@@ -182,7 +182,7 @@ export async function aceptarCita(
     .select(
       `access_token, starts_at,
        patients(name, email, is_minor, tutor_name, tutor_email),
-       professionals(name, timezone, clinic_address, phone)`,
+       professionals(name, email, timezone, clinic_address, phone)`,
     )
     .eq('id', id)
     .maybeSingle<{
@@ -197,6 +197,7 @@ export async function aceptarCita(
       } | null
       professionals: {
         name: string
+        email: string | null
         timezone: string
         clinic_address: string | null
         phone: string | null
@@ -214,8 +215,9 @@ export async function aceptarCita(
   let correo: 'enviado' | 'sin-correo' | 'falla' = 'sin-correo'
   if (destinatario && cita.professionals) {
     try {
-      const envio = await enviarCorreo(
-        armarCitaAceptada({
+      const envio = await enviarCorreo({
+        responder: cita.professionals.email,
+        ...armarCitaAceptada({
           destinatario,
           paciente: cita.patients!.name,
           esMenor: Boolean(cita.patients!.is_minor),
@@ -226,7 +228,7 @@ export async function aceptarCita(
           zona: cita.professionals.timezone,
           liga,
         }),
-      )
+      })
       correo = envio.ok ? 'enviado' : 'falla'
     } catch {
       correo = 'falla'
@@ -255,7 +257,7 @@ export async function rechazarCita(_estado: Resultado, datos: FormData): Promise
     .select(
       `access_token, starts_at,
        patients(name, email, is_minor, tutor_name, tutor_email, phone, tutor_phone),
-       professionals(name, slug, timezone, phone)`,
+       professionals(name, slug, email, timezone, phone)`,
     )
     .eq('id', id)
     .maybeSingle<{
@@ -270,7 +272,13 @@ export async function rechazarCita(_estado: Resultado, datos: FormData): Promise
         phone: string | null
         tutor_phone: string | null
       } | null
-      professionals: { name: string; slug: string; timezone: string; phone: string | null } | null
+      professionals: {
+        name: string
+        slug: string
+        email: string | null
+        timezone: string
+        phone: string | null
+      } | null
     }>()
 
   if (!cita?.patients || !cita.professionals) return redirect('/admin/solicitudes')
@@ -282,8 +290,9 @@ export async function rechazarCita(_estado: Resultado, datos: FormData): Promise
   let correo: 'enviado' | 'sin-correo' | 'falla' = 'sin-correo'
   if (destinatario) {
     try {
-      const envio = await enviarCorreo(
-        armarCitaRechazada({
+      const envio = await enviarCorreo({
+        responder: cita.professionals.email,
+        ...armarCitaRechazada({
           destinatario,
           paciente: cita.patients.name,
           esMenor: Boolean(cita.patients.is_minor),
@@ -293,7 +302,7 @@ export async function rechazarCita(_estado: Resultado, datos: FormData): Promise
           zona: cita.professionals.timezone,
           pagina: `${sitio}/${cita.professionals.slug}`,
         }),
-      )
+      })
       correo = envio.ok ? 'enviado' : 'falla'
     } catch {
       correo = 'falla'

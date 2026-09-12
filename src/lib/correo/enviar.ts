@@ -12,6 +12,19 @@ export type Correo = {
   asunto: string
   html: string
   texto: string
+  /**
+   * A dónde va la respuesta del paciente.
+   *
+   * El remitente es una dirección del dominio que nadie lee. Un paciente que
+   * contesta "no voy a poder llegar" está hablándole a su consultorio, no a
+   * CitaPedia, y sin esto su mensaje se pierde en el vacío.
+   *
+   * **El de recuperar contraseña no lo lleva**: ese correo no saluda por su
+   * nombre ni menciona el consultorio, porque quien lo pidió puede no ser el
+   * dueño de la cuenta. Poner ahí la dirección del consultorio contaría justo
+   * lo que se calla.
+   */
+  responder?: string | null
 }
 
 export type ResultadoEnvio = { ok: true; id: string } | { ok: false; error: string }
@@ -60,6 +73,7 @@ export async function enviarCorreo(correo: Correo): Promise<ResultadoEnvio> {
       subject: correo.asunto,
       html: correo.html,
       text: correo.texto,
+      ...(correo.responder ? { reply_to: [correo.responder] } : {}),
     }),
   })
 

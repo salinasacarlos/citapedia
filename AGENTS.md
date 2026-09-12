@@ -387,8 +387,16 @@ recibe**, no el del paciente — a la cita de un menor se le escribe a su tutor,
 y poner ahí al paciente saludaba al equivocado. De quién es la cita se dice
 aparte, en el recuadro.
 
-Sin dominio verificado en Resend, `onboarding@resend.dev` solo puede escribirle
-al dueño de la cuenta. Sirve para probar; para producción hace falta el dominio.
+El remitente sale de `RESEND_FROM` y es una dirección del dominio que **nadie
+lee**. Por eso los correos al paciente llevan `reply_to` con el correo del
+consultorio: quien contesta "no voy a poder llegar" le está hablando a su
+médico, no a CitaPedia, y sin eso su mensaje se pierde. Lo llevan la cita
+aceptada, la rechazada, el recordatorio, el aviso programado y la invitación.
+
+**El de recuperar contraseña no lo lleva, a propósito.** Ese correo no saluda
+por su nombre ni menciona el consultorio, porque quien pidió recuperar puede no
+ser el dueño de la cuenta; poner ahí la dirección del consultorio contaría justo
+lo que se está callando.
 
 ## La invitación por correo
 

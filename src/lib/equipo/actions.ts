@@ -31,20 +31,22 @@ async function mandarInvitacion(
   email: string,
   consultorio: string,
   token: string,
+  responder?: string | null,
 ): Promise<string | undefined> {
   const problema = problemaDelSitio()
   if (problema) return `${problema} Mientras tanto, comparte la liga tú.`
   const sitio = process.env.NEXT_PUBLIC_SITE_URL
 
   try {
-    const envio = await enviarCorreo(
-      armarInvitacion({
+    const envio = await enviarCorreo({
+      responder,
+      ...armarInvitacion({
         para: email,
         consultorio,
         liga: `${sitio}/invitacion/${token}`,
         dias: VIGENCIA_DIAS,
       }),
-    )
+    })
     if (!envio.ok) return `No se pudo mandar el correo (${envio.error}). Pásale la liga tú.`
   } catch {
     return 'No se pudo mandar el correo. Pásale la liga tú.'
@@ -90,7 +92,7 @@ export async function invitarAsistente(
 
   if (error) return { error: traducir(error.message) }
 
-  const avisoEnvio = await mandarInvitacion(email, profesional.name, token)
+  const avisoEnvio = await mandarInvitacion(email, profesional.name, token, profesional.email)
 
   revalidatePath('/admin/equipo')
   return {
@@ -129,7 +131,7 @@ export async function regenerarInvitacion(
 
   if (error) return { error: traducir(error.message) }
 
-  const avisoEnvio = await mandarInvitacion(email, profesional.name, token)
+  const avisoEnvio = await mandarInvitacion(email, profesional.name, token, profesional.email)
 
   revalidatePath('/admin/equipo')
   return {
