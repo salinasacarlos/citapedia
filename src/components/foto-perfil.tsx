@@ -3,6 +3,9 @@
 import { useActionState, useRef, useState } from 'react'
 import { quitarFoto, subirFoto, type Resultado } from '@/lib/admin/actions'
 
+/** El mismo tope que revisa el servidor, para avisar sin subir nada. */
+const MAX_FOTO = 5 * 1024 * 1024
+
 export function FotoPerfil({
   fotoActual,
   nombre,
@@ -12,6 +15,7 @@ export function FotoPerfil({
 }) {
   const [estado, formAction, pendiente] = useActionState<Resultado, FormData>(subirFoto, {})
   const [vistaPrevia, setVistaPrevia] = useState<string | null>(null)
+  const [pesada, setPesada] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
 
@@ -47,6 +51,18 @@ export function FotoPerfil({
             onChange={(e) => {
               const archivo = e.target.files?.[0]
               if (!archivo) return
+
+              // Se revisa aquí y no solo en el servidor: mandar ocho megas
+              // por una red de consultorio para que del otro lado digan que
+              // no, es esperar un minuto para nada.
+              if (archivo.size > MAX_FOTO) {
+                const mb = (archivo.size / 1024 / 1024).toFixed(1)
+                setPesada(`La foto pesa ${mb} MB y el máximo son 5 MB.`)
+                e.target.value = ''
+                return
+              }
+
+              setPesada(null)
               // Se ve de inmediato mientras sube, sin esperar al servidor.
               setVistaPrevia(URL.createObjectURL(archivo))
               formRef.current?.requestSubmit()
@@ -78,7 +94,12 @@ export function FotoPerfil({
 
         <p className="mt-2 text-xs text-muted">JPG, PNG o WebP. Máximo 5 MB.</p>
 
-        {estado.error && (
+        {pesada && (
+          <p role="alert" className="mt-2 text-sm text-peligro">
+            {pesada}
+          </p>
+        )}
+        {!pesada && estado.error && (
           <p role="alert" className="mt-2 text-sm text-peligro">
             {estado.error}
           </p>
