@@ -370,6 +370,7 @@ export type Database = {
         Returns: { kind: string; reason: string; cuantos: number; ultimo: string }[]
       }
       es_operador: { Args: Record<string, never>; Returns: boolean }
+      correo_registrado: { Args: { p_email: string }; Returns: boolean }
       plataforma_usuario_del_equipo: {
         Args: { p_id: string; p_email: string }
         Returns: string | null

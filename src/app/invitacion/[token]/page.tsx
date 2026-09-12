@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { Marca } from '@/components/marca'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { AceptarInvitacion } from '@/components/aceptar-invitacion'
 import type { MemberRole } from '@/lib/database.types'
 
@@ -74,6 +75,24 @@ export default async function InvitacionPage({
 
   const destino = `/invitacion/${token}`
 
+  // Si ese correo ya tiene cuenta, el botón grande no puede decir "Crear mi
+  // cuenta": quien le picaba chocaba con "ese correo ya tiene cuenta" y se
+  // quedaba sin salida, que es lo último que quieres en el primer minuto de
+  // alguien en el sistema. La pregunta la hace el servidor y solo sobre el
+  // correo que ya venía en la invitación; si no se puede, se ofrecen los dos
+  // como antes.
+  let yaTieneCuenta = false
+  if (!user) {
+    try {
+      const { data } = await createAdminClient().rpc('correo_registrado', {
+        p_email: invitacion.email,
+      })
+      yaTieneCuenta = data === true
+    } catch {
+      yaTieneCuenta = false
+    }
+  }
+
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-4 py-12 sm:px-6">
       <div className="flex justify-center">
@@ -110,18 +129,26 @@ export default async function InvitacionPage({
           )
         ) : (
           <div className="mt-5 space-y-2">
-            <Link
-              href={`/registro?next=${encodeURIComponent(destino)}&email=${encodeURIComponent(invitacion.email)}&asistente=1`}
-              className="boton boton-primario w-full"
-            >
-              Crear mi cuenta
-            </Link>
+            {yaTieneCuenta && (
+              <p className="text-sm text-muted">
+                Ese correo ya tiene una cuenta en CitaPedia. Entra con ella y la
+                invitación se acepta enseguida.
+              </p>
+            )}
             <Link
               href={`/login?next=${encodeURIComponent(destino)}`}
-              className="boton boton-suave w-full"
+              className={`w-full boton ${yaTieneCuenta ? 'boton-primario' : 'boton-suave'}`}
             >
-              Ya tengo cuenta
+              {yaTieneCuenta ? 'Entrar y aceptar' : 'Ya tengo cuenta'}
             </Link>
+            {!yaTieneCuenta && (
+              <Link
+                href={`/registro?next=${encodeURIComponent(destino)}&email=${encodeURIComponent(invitacion.email)}&asistente=1`}
+                className="boton boton-primario w-full"
+              >
+                Crear mi cuenta
+              </Link>
+            )}
           </div>
         )}
       </div>

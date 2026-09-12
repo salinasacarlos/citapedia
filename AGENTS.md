@@ -653,6 +653,17 @@ no un detalle.
 
 El token se genera con `randomBytes(32)`: la liga es la credencial.
 
+Si ese correo **ya tiene cuenta**, la pantalla ofrece "Entrar y aceptar" en vez
+de "Crear mi cuenta". Antes el botón grande decía crear, y quien ya tenía
+cuenta chocaba con "Ese correo ya tiene cuenta. Entra en su lugar" — cierto,
+pero sin salida, y en el primer minuto de alguien en el sistema.
+
+`correo_registrado` contesta eso y se concede **solo a `service_role`**: saber
+si una dirección tiene cuenta es justo lo que una pantalla pública no debe
+poder preguntar a voluntad. La pregunta la hace el servidor, y solo sobre el
+correo que ya venía escrito en una invitación válida. Si la llave de servicio
+no está, se ofrecen los dos botones como antes.
+
 `miembros_del_consultorio()` expone los correos de `auth.users`, pero solo de
 los consultorios de los que quien pregunta ya es miembro.
 
