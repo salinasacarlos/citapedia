@@ -10,6 +10,7 @@ import { EstadoVacio } from '@/components/estado-vacio'
 import { Filtros } from '@/components/filtros'
 import { VistaAgenda } from '@/components/vista-agenda'
 import { hayFiltros, leerFiltros } from '@/lib/filtros'
+import { ventanaPorCerrar } from '@/lib/fechas'
 import { duracion, fechaCorta, fechaLarga, hora } from '@/lib/fechas'
 import type { Patient } from '@/lib/database.types'
 
@@ -125,9 +126,7 @@ export default async function AgendaPage({
   const { profesional, esDueño } = await exigirConsultorio()
   const supabase = await createClient()
   const zona = profesional.timezone
-  const ahora = new Date().toISOString()
-  // Más atrás que esto ya es historial, no pendiente de cerrar.
-  const hace30Dias = new Date(Date.now() - 30 * 86_400_000).toISOString()
+  const { ahora, desde: hace30Dias } = ventanaPorCerrar()
 
   const [{ data: confirmadas }, { count: porRevisar }, { count: franjas }] = await Promise.all([
     (filtros.q

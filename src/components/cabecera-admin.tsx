@@ -84,15 +84,21 @@ export function CabeceraAdmin({
   const ruta = usePathname()
   const [abierto, setAbierto] = useState(false)
   const [cuenta, setCuenta] = useState(false)
+  const [rutaDelMenu, setRutaDelMenu] = useState(ruta)
   const zonaCuenta = useRef<HTMLDivElement>(null)
 
   const etiquetaRol = rol === 'owner' ? 'Dueño del consultorio' : 'Asistente'
 
   // Navegar cierra el menú: si no, queda tapando la pantalla a la que llegaste.
-  useEffect(() => {
+  //
+  // Se ajusta durante el render y no en un efecto: con el efecto, React pinta
+  // una vez con el menú todavía abierto sobre la pantalla nueva y lo cierra en
+  // la siguiente pasada, que es el parpadeo que se alcanza a ver.
+  if (ruta !== rutaDelMenu) {
+    setRutaDelMenu(ruta)
     setAbierto(false)
     setCuenta(false)
-  }, [ruta])
+  }
 
   useEffect(() => {
     function alPresionar(e: KeyboardEvent) {

@@ -167,3 +167,19 @@ export function fechaSuelta(fecha: string | null): string | null {
     timeZone: 'UTC',
   }).format(new Date(`${fecha}T12:00:00Z`))
 }
+
+/**
+ * La ventana de "por cerrar": desde hace 30 días hasta ahora.
+ *
+ * Vive aquí y no dentro de la página porque el linter de React marca `Date.now`
+ * como impuro en el cuerpo de un componente. En un Server Component que corre
+ * una vez por petición no es un problema real, pero darle nombre al concepto
+ * sirve igual: más atrás de 30 días ya es historial, no un pendiente.
+ */
+export function ventanaPorCerrar() {
+  const ahora = Date.now()
+  return {
+    ahora: new Date(ahora).toISOString(),
+    desde: new Date(ahora - 30 * 86_400_000).toISOString(),
+  }
+}
