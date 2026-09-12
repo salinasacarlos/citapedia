@@ -1,0 +1,43 @@
+# Lo que antes corría solo en la máquina de quien programaba, y solo si se
+# acordaba. Ahora producción tiene un consultorio de verdad usándola: un merge
+# que rompa la agenda se nota en la sala de espera, no en una terminal.
+#
+# No necesita secretos. El build no toca Supabase —todas las páginas con datos
+# son dinámicas— y las pruebas del esquema corren contra PGlite, un Postgres
+# en WASM, sin Docker y sin base remota.
+name: Revisión
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  revisar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # La misma que usa Vercel, para que un fallo de aquí signifique algo allá.
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # En este orden a propósito: lo que falla más rápido va primero, para no
+      # esperar un build de un minuto por un punto y coma.
+      - name: Lint
+        run: npm run lint
+
+      - name: Tipos
+        run: npx tsc --noEmit
+
+      - name: Pruebas
+        run: npm test
+
+      - name: Build
+        run: npm run build
