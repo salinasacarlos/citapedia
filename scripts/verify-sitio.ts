@@ -4,12 +4,13 @@
 import { problemaDelSitio, dominioPublico } from '../src/lib/sitio'
 
 const casos: [string | undefined, boolean][] = [
+  ['https://www.citapedia.com', false],
   ['https://citapedia.vercel.app', false],
   ['https://citapedia.com', false],
   ['http://localhost:3000', false],
   ['https://dhmqhmzjbvqfoosdkzcm.supabase.co', true],
   ['dhmqhmzjbvqfoosdkzcm.supabase.co', true],
-  ['citapedia.vercel.app', true],
+  ['www.citapedia.com', true],
   ['', true],
   [undefined, true],
 ]
@@ -26,7 +27,7 @@ for (const [valor, debeFallar] of casos) {
   )
 }
 
-process.env.NEXT_PUBLIC_SITE_URL = 'https://citapedia.vercel.app'
+process.env.NEXT_PUBLIC_SITE_URL = 'https://www.citapedia.com'
 console.log('dominio mostrado:', dominioPublico())
 console.log(fallas === 0 ? '\n✅ Sitio verificado.' : `\n❌ ${fallas} casos mal.`)
 process.exit(fallas === 0 ? 0 : 1)

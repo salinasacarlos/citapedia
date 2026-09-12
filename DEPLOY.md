@@ -23,7 +23,7 @@ En el proyecto de Vercel → Settings → Environment Variables:
 | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | la URL de tu proyecto Supabase |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | la publishable key (`sb_publishable_…`) |
-| `NEXT_PUBLIC_SITE_URL` | **la URL de producción**, p. ej. `https://citapedia.com` |
+| `NEXT_PUBLIC_SITE_URL` | **la URL de producción**. Hoy: `https://www.citapedia.com` |
 
 `NEXT_PUBLIC_SITE_URL` no es decorativa: de ahí sale la liga de confirmación
 que se manda por correo. Si queda en `localhost`, tus usuarios reciben un
@@ -33,8 +33,8 @@ correo con una liga que no lleva a ningún lado.
 
 Dashboard → Authentication → URL Configuration:
 
-- **Site URL**: `https://tu-dominio.com`
-- **Redirect URLs**: agrega `https://tu-dominio.com/**` y, si usas previews,
+- **Site URL**: `https://www.citapedia.com`
+- **Redirect URLs**: `https://www.citapedia.com/**` y, para los previews,
   `https://*-tu-cuenta.vercel.app/**`
 
 Sin esto, Supabase rechaza la redirección después de confirmar el correo.
