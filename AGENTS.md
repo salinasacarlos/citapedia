@@ -111,6 +111,21 @@ resumen de la bio y el dominio.
 - El dominio se enseña sin `www.` (`dominioPublico`): el apex redirige solo y
   es más corto de dictar en el mostrador.
 
+### Las ligas que se comparten
+
+Regla: **lo que sale del admin abre en otra pestaña y se puede copiar.** La
+navegación interna del admin no — abrir Pacientes en una pestaña nueva sería
+molesto, no útil.
+
+Cae en la regla la página pública del médico (el pie del admin, el campo de
+slug en Mi página, la ficha de la consola), la liga de cada cita y WhatsApp.
+Quien las abre está a media tarea y no quiere perder donde estaba; y quien las
+comparte necesita copiarlas, porque dictar por teléfono `citapedia.com/dr-jesus-garcia`
+es cómo se llega a un paciente en una página que no existe.
+
+Se copia la forma **corta**, sin `www.`: es la que se lee en pantalla, y el
+apex redirige con 308 — hasta la vista previa de WhatsApp sigue el redirect.
+
 ## Fotos
 
 Las fotos de perfil van a Supabase Storage, bucket `fotos-perfil`, en la ruta

@@ -1,4 +1,5 @@
 import { dominioPublico } from '@/lib/sitio'
+import { CopiarLiga } from '@/components/copiar-liga'
 import { exigirConsultorio } from '@/lib/consultorio'
 import { guardarPerfil } from '@/lib/admin/actions'
 import { EditorTexto } from '@/components/editor-texto'
@@ -86,10 +87,25 @@ export default async function PerfilPage() {
                 className="min-w-0 flex-1 bg-transparent py-2 text-sm outline-none"
               />
             </div>
-            <p className="mt-1 text-xs text-muted">
-              Minúsculas, números y guiones. Si la cambias, la liga anterior deja de
-              funcionar.
-            </p>
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <p className="text-xs text-muted">
+                Minúsculas, números y guiones. Si la cambias, la liga anterior deja de
+                funcionar.
+              </p>
+              <a
+                href={`https://${dominioPublico()}/${p.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-medium text-acento hover:underline"
+              >
+                Verla
+              </a>
+              <CopiarLiga
+                liga={`https://${dominioPublico()}/${p.slug}`}
+                etiqueta="Copiar"
+                compacto
+              />
+            </div>
           </div>
 
           <CampoTelefono

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { exigirSuperadmin } from '@/lib/plataforma/acceso'
+import { dominioPublico } from '@/lib/sitio'
 import { reactivarConsultorio } from '@/lib/plataforma/actions'
 import { SuspenderConsultorio } from '@/components/suspender-consultorio'
 import { LigaDeAcceso } from '@/components/liga-de-acceso'
@@ -119,9 +120,16 @@ export default async function FichaConsultorio({
             )}
           </h1>
           <p className="mt-1 flex flex-wrap gap-x-2 text-sm text-muted">
-            <Link href={`/${c.slug}`} className="text-acento hover:underline">
+            {/* En otra pestaña: quien la abre está diagnosticando algo y no
+                quiere perder la ficha que estaba mirando. */}
+            <a
+              href={`https://${dominioPublico()}/${c.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-acento hover:underline"
+            >
               /{c.slug}
-            </Link>
+            </a>
             {c.specialty && (
               <>
                 <span aria-hidden>·</span>
