@@ -347,22 +347,33 @@ dos pasaron a agregados (`origenes_consultorio`, `recomendantes_consultorio`,
 
 ## Despliegue
 
-Vercel construye por su cuenta cada push a cualquier rama como Preview, y
-`main` como Production. Con el flujo de rama → PR → merge, eso son dos builds
-por cambio: el Preview de la rama y el Production del merge, del mismo código.
+Vercel construye cada push a cualquier rama como Preview, y `main` como
+Production. Con el flujo de rama → PR → merge, eso son dos builds por cambio.
 
-`vercel.json` cancela los Preview. Dos trampas al tocarlo, las dos ya cobradas:
+Durante meses `vercel.json` cancelaba los Preview: la verificación era en
+localhost y el build de más no compraba nada. **Eso cambió cuando entró el
+primer consultorio de verdad**: hoy cada cambio necesita haber corrido en un
+servidor antes de tocarle la agenda a alguien, y el Preview es la única forma
+de abrirlo sin desplegar a producción. El build de más se paga a gusto.
+
+Si algún día hay que volver a apagarlos, dos trampas ya cobradas:
 
 - En `ignoreCommand`, **salir con 0 cancela** el build y salir con 1 lo deja
   correr, al revés de lo que se espera de un código de salida.
-- La condición pregunta si el entorno **es** preview, no si **no es**
+- La condición tiene que preguntar si el entorno **es** preview, no si **no es**
   producción. Con la forma negada, un `VERCEL_ENV` vacío cancelaba producción
   y el sitio se quedó servido en el build anterior sin que nada marcara error.
-  Así, lo peor que puede pasar es que se construya de más.
 
-El día que la revisión de PRs pida ver la rama corriendo, se quita y se paga
-el build de más — pero mientras la verificación sea en localhost, no compra
-nada.
+## La revisión automática
+
+`.github/workflows/ci.yml` corre lint → tipos → pruebas → build en cada PR y en
+cada push a `main`. Antes eso vivía en la máquina de quien programaba y solo si
+se acordaba.
+
+No necesita secretos, y conviene que siga siendo así: el build no toca Supabase
+—todas las páginas con datos son dinámicas— y el esquema se prueba contra
+PGlite, en WASM. El día que una prueba pida una llave, lo que hay que revisar es
+la prueba.
 
 ## Correo saliente
 
