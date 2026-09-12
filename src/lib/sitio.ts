@@ -1,9 +1,20 @@
 // El dominio que se le enseña al médico sale de la misma variable con la que se
 // arman las ligas que se mandan. Escribirlo a mano dejaba en pantalla una
 // dirección que todavía no existe, y la recepcionista la copiaba tal cual.
+export function baseDelSitio() {
+  return (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.citapedia.com').replace(/\/$/, '')
+}
+
+/**
+ * El dominio como se dicta por teléfono, sin esquema y **sin `www.`**.
+ *
+ * El apex redirige al www, así que `citapedia.com/dr-jesus-garcia` abre igual
+ * y es cuatro caracteres más corto de deletrear en el mostrador.
+ */
 export function dominioPublico() {
-  const sitio = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://citapedia.vercel.app'
-  return sitio.replace(/^https?:\/\//, '').replace(/\/$/, '')
+  return baseDelSitio()
+    .replace(/^https?:\/\//, '')
+    .replace(/^www\./, '')
 }
 
 /**

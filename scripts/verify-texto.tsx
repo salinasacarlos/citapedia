@@ -5,7 +5,7 @@
 // convertirse en algo ejecutable en la página pública.
 
 import { renderToStaticMarkup } from 'react-dom/server'
-import { TextoRico, aHtml } from '../src/lib/texto-rico'
+import { TextoRico, aHtml, enTextoPlano } from '../src/lib/texto-rico'
 
 let fallas = 0
 
@@ -65,6 +65,21 @@ revisar('liga con javascript queda como texto', !aHtml('[y](javascript:alert(1))
 revisar(
   'comillas en el texto no rompen el atributo',
   !aHtml('[a"b](https://ejemplo.mx)').includes('"a"b"'),
+)
+
+console.log('\nEn plano, para la vista previa de WhatsApp')
+revisar('los asteriscos no se ven', enTextoPlano('de la **UNAM**') === 'de la UNAM')
+revisar('el tachado tampoco', enTextoPlano('~~no~~ sí') === 'no sí')
+revisar('la liga aporta su texto, no su dirección', enTextoPlano('[mi sitio](https://x.mx)') === 'mi sitio')
+revisar('las viñetas se aplanan', enTextoPlano('- uno\n- dos') === 'uno dos')
+revisar('la cita también', enTextoPlano('> algo') === 'algo')
+revisar('el CRLF no deja renglones pegados', !enTextoPlano('uno\r\ndos').includes('unodos'))
+revisar(
+  'corta sin partir palabras y avisa con puntos suspensivos',
+  (() => {
+    const r = enTextoPlano('palabra '.repeat(40), 40)
+    return r.length <= 40 && r.endsWith('…') && !r.includes('pala ')
+  })(),
 )
 
 console.log(fallas === 0 ? '\n✅ Texto verificado.' : `\n❌ ${fallas} fallas.`)

@@ -201,3 +201,29 @@ export function aHtml(texto: string): string {
     })
     .join('')
 }
+
+/**
+ * El mismo texto, plano, para donde no hay formato posible: la descripción que
+ * WhatsApp enseña al compartir la liga, o el asunto de un correo.
+ *
+ * Sin esto la vista previa decía "Pediatra egresado de la **UNAM**" con los
+ * asteriscos a la vista, que es justo lo que hace que una liga parezca spam.
+ */
+export function enTextoPlano(texto: string, maximo = 155): string {
+  const plano = sinMarcadoresVacios(texto)
+    // La liga aporta su texto, no su dirección.
+    .replace(/\[([^\]]+)\]\([^)\s]+\)/g, '$1')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/~~([^~]+)~~/g, '$1')
+    .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '$1')
+    // Viñetas, numerales y citas: el marcador se va, el renglón se queda.
+    .replace(/^\s*([-*•]|\d+[.)]|>)\s+/gm, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  if (plano.length <= maximo) return plano
+  // Se corta en un espacio para no partir una palabra a la mitad.
+  const corte = plano.slice(0, maximo - 1)
+  const espacio = corte.lastIndexOf(' ')
+  return `${(espacio > maximo * 0.6 ? corte.slice(0, espacio) : corte).trimEnd()}…`
+}
