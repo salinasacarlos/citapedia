@@ -61,14 +61,21 @@ esté el archivo oficial va a `public/` y se cambia ahí.
   (SECURITY DEFINER), que es donde vive la validación de verdad. `src/lib/slots.ts`
   solo decide qué ofrecer en pantalla; si los dos difieren, manda la función.
 
-## El dominio en pantalla
+## El dominio
 
-El dominio que se le muestra al médico —el pie del admin y el prefijo del campo
-de slug— sale de `dominioPublico()`, que lee `NEXT_PUBLIC_SITE_URL`, la misma
-variable con la que se arman las ligas de los correos. Estaba escrito a mano
-como `citapedia.com`, que todavía no está conectado: la pantalla le daba a la
-recepcionista una dirección que no abre. El día que exista el dominio oficial
-se cambia la variable y se mueven los dos lados juntos.
+El oficial es **`https://www.citapedia.com`**, conectado el 12 de septiembre de
+2026; el apex redirige al www con 308. `citapedia.vercel.app` sigue sirviendo
+—Vercel no lo quita— pero **no se usa en ningún lado**: ni en código, ni en
+respaldos, ni en las pruebas.
+
+Todo sale de `NEXT_PUBLIC_SITE_URL` a través de `src/lib/sitio.ts`:
+
+- `baseDelSitio()` da la dirección completa, y es el **único** respaldo que
+  queda. El cron tenía el suyo propio apuntando al vercel.app, que es como un
+  dominio viejo sobrevive a su jubilación: escondido en un `??` que solo se
+  nota el día que la variable falta.
+- `dominioPublico()` la muestra sin esquema y **sin `www.`** — `citapedia.com/dr-x`
+  es lo que se dicta en el mostrador, y el apex redirige solo.
 
 ### Una variable mal puesta no se ve al ponerla
 

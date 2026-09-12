@@ -1,3 +1,4 @@
+import { baseDelSitio } from '@/lib/sitio'
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { enviarCorreo } from '@/lib/correo/enviar'
@@ -116,7 +117,7 @@ export async function GET(request: Request) {
     >()
 
   const porMedico = new Map((ajustes ?? []).map((a) => [a.professional_id, a]))
-  const sitio = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://citapedia.vercel.app'
+  const sitio = baseDelSitio()
 
   let enviados = 0
   let sinCorreo = 0
@@ -290,7 +291,7 @@ async function prueba(destino: string) {
     zona: 'America/Mexico_City',
     plantilla:
       'Hola {paciente}, te recordamos tu cita con {doctor} el {fecha} a las {hora}.',
-    liga: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://citapedia.vercel.app'}/cita/prueba`,
+    liga: `${baseDelSitio()}/cita/prueba`,
   })
 
   const envio = await enviarCorreo(correo)

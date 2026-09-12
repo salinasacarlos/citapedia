@@ -77,7 +77,7 @@ const adulto = armarRecordatorio({
   inicio: '2026-09-01T16:00:00Z', // 10:00 en CDMX
   zona: MX,
   plantilla: PLANTILLA,
-  liga: 'https://citapedia.vercel.app/cita/abc123',
+  liga: 'https://www.citapedia.com/cita/abc123',
 })
 
 check('va al correo del paciente', adulto.para === 'carlos@example.com')
@@ -88,8 +88,8 @@ check(
   adulto.texto.split('\n').find((l) => l.includes('10:00')) ?? 'no aparece',
 )
 check('saluda por su nombre de pila, una sola vez', adulto.texto.startsWith('Hola Carlos,'))
-check('la liga va completa', adulto.texto.includes('https://citapedia.vercel.app/cita/abc123'))
-check('la liga también va en el HTML', adulto.html.includes('href="https://citapedia.vercel.app/cita/abc123"'))
+check('la liga va completa', adulto.texto.includes('https://www.citapedia.com/cita/abc123'))
+check('la liga también va en el HTML', adulto.html.includes('href="https://www.citapedia.com/cita/abc123"'))
 check('trae la dirección del consultorio', adulto.texto.includes('Av. Universidad 900'))
 check(
   'no queda ningún hueco de plantilla sin rellenar',
@@ -108,7 +108,7 @@ const menor = armarRecordatorio({
   inicio: '2026-09-01T16:00:00Z',
   zona: MX,
   plantilla: PLANTILLA,
-  liga: 'https://citapedia.vercel.app/cita/xyz',
+  liga: 'https://www.citapedia.com/cita/xyz',
 })
 
 check('le llega al tutor', menor.para === 'adriana@example.com')
@@ -139,7 +139,7 @@ const conComillas = armarRecordatorio({
   inicio: '2026-09-01T16:00:00Z',
   zona: MX,
   plantilla: PLANTILLA,
-  liga: 'https://citapedia.vercel.app/cita/x',
+  liga: 'https://www.citapedia.com/cita/x',
 })
 check(
   'el HTML escapa lo que escribió el paciente',
@@ -157,7 +157,7 @@ const tokio = armarRecordatorio({
   inicio: '2026-09-01T16:00:00Z',
   zona: 'Asia/Tokyo',
   plantilla: PLANTILLA,
-  liga: 'https://citapedia.vercel.app/cita/x',
+  liga: 'https://www.citapedia.com/cita/x',
 })
 check(
   'otra zona horaria da otra hora, no la del servidor',
@@ -170,14 +170,14 @@ console.log('\nLa invitación al asistente')
 const invita = armarInvitacion({
   para: 'asistente@example.com',
   consultorio: 'Dr. Ernesto Peña',
-  liga: 'https://citapedia.vercel.app/invitacion/tok123',
+  liga: 'https://www.citapedia.com/invitacion/tok123',
   dias: 7,
 })
 
 check('va al correo invitado', invita.para === 'asistente@example.com')
 check('el asunto nombra al consultorio', invita.asunto.includes('Dr. Ernesto Peña'))
 check('la liga va completa en el texto', invita.texto.includes('/invitacion/tok123'))
-check('y en el HTML', invita.html.includes('href="https://citapedia.vercel.app/invitacion/tok123"'))
+check('y en el HTML', invita.html.includes('href="https://www.citapedia.com/invitacion/tok123"'))
 check('dice cuánto dura', invita.texto.includes('7 días'))
 check(
   'avisa que el expediente no se comparte',
@@ -209,7 +209,7 @@ const aceptada = armarCitaAceptada({
   telefono: '+52 55 8899 1122',
   inicio: '2026-09-01T16:00:00Z',
   zona: MX,
-  liga: 'https://citapedia.vercel.app/cita/tok',
+  liga: 'https://www.citapedia.com/cita/tok',
 })
 
 check('le llega al tutor', aceptada.para === 'adriana@example.com')
@@ -217,7 +217,7 @@ check('lo saluda a él', aceptada.texto.startsWith('Hola Adriana,'))
 check('pero dice de quién es la cita', aceptada.texto.includes('La cita de Ximena Robles'))
 check('la hora va en la zona del consultorio', aceptada.texto.includes('10:00 a.m.'))
 check('pide confirmar, que es a lo que viene', aceptada.html.includes('Confirmar que voy a ir'))
-check('lleva la liga', aceptada.html.includes('href="https://citapedia.vercel.app/cita/tok"'))
+check('lleva la liga', aceptada.html.includes('href="https://www.citapedia.com/cita/tok"'))
 check(
   'y dice que desde ahí también se mueve o se cancela',
   aceptada.html.includes('moverla o avisarnos'),
@@ -247,7 +247,7 @@ const rechazada = armarCitaRechazada({
   telefono: '+52 55 8899 1122',
   inicio: '2026-09-01T16:00:00Z',
   zona: MX,
-  pagina: 'https://citapedia.vercel.app/dr-ernesto-pena',
+  pagina: 'https://www.citapedia.com/dr-ernesto-pena',
 })
 
 check('le llega a quien pidió la cita', rechazada.para === 'adriana@example.com')
@@ -256,7 +256,7 @@ check('con su fecha y hora', rechazada.texto.includes('10:00 a.m.'))
 check(
   'ofrece otros horarios, que es lo único útil',
   rechazada.html.includes('Ver otros horarios') &&
-    rechazada.html.includes('href="https://citapedia.vercel.app/dr-ernesto-pena"'),
+    rechazada.html.includes('href="https://www.citapedia.com/dr-ernesto-pena"'),
 )
 check('y el teléfono del consultorio', rechazada.texto.includes('+52 55 8899 1122'))
 check(
@@ -273,7 +273,7 @@ console.log('\nLa liga para volver a entrar')
 
 const recupera = armarRecuperacion({
   para: 'medico@example.com',
-  liga: 'https://citapedia.vercel.app/auth/confirm?token_hash=abc&type=recovery',
+  liga: 'https://www.citapedia.com/auth/confirm?token_hash=abc&type=recovery',
   minutos: 60,
 })
 
