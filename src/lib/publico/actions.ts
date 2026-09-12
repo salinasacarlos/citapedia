@@ -1,6 +1,11 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { enviarCorreo } from '@/lib/correo/enviar'
+import { armarSolicitudRecibida } from '@/lib/correo/solicitud-recibida'
+import { anotarFalloDeCorreo } from '@/lib/correo/anotar-fallo'
+import { problemaDelSitio } from '@/lib/sitio'
 
 export type EstadoReserva = {
   error?: string
@@ -71,7 +76,71 @@ export async function solicitarCita(
     return { error: limpio || 'No pudimos registrar tu solicitud.', valores }
   }
 
+  if (email) {
+    await avisarQueLlegó({
+      correo: email,
+      quienAgenda: paraOtro ? tutor : nombre,
+      paciente: nombre,
+      esMenor: paraOtro,
+      slug,
+      inicio,
+      token: String(token),
+    })
+  }
+
   return { confirmada: { cuando, medico, token: String(token) } }
+}
+
+/**
+ * El acuse de que la solicitud llegó.
+ *
+ * **Nunca puede tumbar la reserva**: la cita ya quedó pedida, y un problema de
+ * Resend no puede convertirse en "no pudimos registrar tu solicitud" para
+ * alguien que sí la registró. Por eso va envuelto y lo peor que hace es
+ * anotarse en `email_failures`.
+ *
+ * Va con la llave de servicio porque quien reserva no tiene sesión y el correo
+ * del consultorio —el que se usa para que la respuesta le llegue a alguien— no
+ * está en la vista pública, a propósito.
+ */
+async function avisarQueLlegó(d: {
+  correo: string
+  quienAgenda: string
+  paciente: string
+  esMenor: boolean
+  slug: string
+  inicio: string
+  token: string
+}) {
+  try {
+    if (problemaDelSitio()) return
+
+    const admin = createAdminClient()
+    const { data: consultorio } = await admin
+      .from('professionals')
+      .select('name, email, timezone')
+      .eq('slug', d.slug)
+      .maybeSingle<{ name: string; email: string | null; timezone: string }>()
+
+    if (!consultorio) return
+
+    const envio = await enviarCorreo({
+      responder: consultorio.email,
+      ...armarSolicitudRecibida({
+        destinatario: { nombre: d.quienAgenda, correo: d.correo },
+        paciente: d.paciente,
+        esMenor: d.esMenor,
+        doctor: consultorio.name,
+        inicio: d.inicio,
+        zona: consultorio.timezone,
+        liga: `${process.env.NEXT_PUBLIC_SITE_URL}/cita/${d.token}`,
+      }),
+    })
+
+    if (!envio.ok) await anotarFalloDeCorreo('solicitud', envio.error)
+  } catch (err) {
+    await anotarFalloDeCorreo('solicitud', String(err).slice(0, 200))
+  }
 }
 
 export type EstadoDeclaracion = { error?: string; ok?: boolean }

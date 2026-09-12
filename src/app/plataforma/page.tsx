@@ -27,6 +27,14 @@ type Consultorio = {
 
 type FalloDeCorreo = { kind: string; reason: string; cuantos: number; ultimo: string }
 
+/** Los `kind` son claves internas; en pantalla van con el nombre de siempre. */
+const ETIQUETA_CORREO: Record<string, string> = {
+  recordatorio: 'recordatorio',
+  recuperacion: 'recuperación',
+  aviso: 'aviso programado',
+  solicitud: 'acuse de solicitud',
+}
+
 type Resumen = {
   consultorios: number
   activos: number
@@ -109,8 +117,13 @@ export default async function Plataforma() {
 
       {/*
         Los correos que fallan en pantalla ya los ve la recepcionista. Estos
-        son los dos que nadie mira: el cron de madrugada y la recuperación de
-        contraseña, que se calla a propósito.
+        son los que nadie mira: el cron de madrugada, la recuperación de
+        contraseña —que se calla a propósito— y el acuse de la solicitud.
+
+        Cada renglón dice CUÁNDO fue la última vez. Sin esa fecha, un problema
+        ya resuelto —"no hay dominio verificado", después de verificarlo— se
+        sigue leyendo como si estuviera pasando ahora, y una alerta que miente
+        deja de mirarse.
       */}
       {fallos && fallos.length > 0 && (
         <section className="mb-8 rounded-marca border border-alerta/30 bg-alerta-suave px-4 py-4 sm:px-5">
@@ -121,9 +134,10 @@ export default async function Plataforma() {
             {fallos.map((f) => (
               <li key={f.kind + f.reason} className="flex flex-wrap gap-x-2">
                 <span className="font-medium text-ink">
-                  {f.cuantos} de {f.kind === 'recordatorio' ? 'recordatorio' : 'recuperación'}
+                  {f.cuantos} de {ETIQUETA_CORREO[f.kind] ?? f.kind}
                 </span>
                 <span className="text-muted">· {f.reason}</span>
+                <span className="text-muted">· último {relativo(f.ultimo)}</span>
               </li>
             ))}
           </ul>
