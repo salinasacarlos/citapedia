@@ -61,7 +61,10 @@ async function main() {
       $fn$;
     create role anon;
     create role authenticated;
-    grant usage on schema public, auth, storage to anon, authenticated;
+    -- La llave de servicio entra como este rol. Existe aquí para que las
+    -- funciones concedidas solo a él se puedan crear igual que en Supabase.
+    create role service_role;
+    grant usage on schema public, auth, storage to anon, authenticated, service_role;
     grant select, insert, update, delete on storage.objects to authenticated;
     grant select on storage.objects to anon;
     grant execute on function auth.uid() to anon, authenticated;
