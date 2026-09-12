@@ -112,6 +112,15 @@ ve en la página del médico) pero escribir está restringido por políticas sob
 `storage.objects`: cada consultorio solo toca su carpeta. Límites de tamaño y
 tipo están en el propio bucket, no solo en la app.
 
+**El cuerpo de una Server Action son 1 MB por defecto**, y la foto admite 5.
+Una foto de celular pesa dos o tres, así que Next rechazaba la petición
+*antes* de entrar a la acción: el médico veía una pantalla de error con un
+código (`…@E394`, que es un 413 disfrazado) en lugar del mensaje de tamaño.
+`next.config.ts` sube el límite a 6 MB —un poco arriba del tope real, para que
+quien decida sea nuestra validación y no el framework— y el componente revisa
+el peso **antes de subir**: mandar ocho megas por la red del consultorio para
+que del otro lado digan que no es esperar un minuto para nada.
+
 `subirFoto` borra el archivo anterior al reemplazarlo, y borra el nuevo si la
 actualización del perfil falla — para no dejar huérfanos en ninguna dirección.
 `photo_url` ya no se edita como texto: lo maneja solo esa acción.
