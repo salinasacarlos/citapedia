@@ -8,7 +8,16 @@ import { useState } from 'react'
  * también se dicta, se manda por correo o se pega en otro chat. Copiarla tiene
  * que ser posible sin pasar por el botón de WhatsApp.
  */
-export function CopiarLiga({ liga }: { liga: string }) {
+export function CopiarLiga({
+  liga,
+  etiqueta = 'Copiar liga',
+  compacto = false,
+}: {
+  liga: string
+  etiqueta?: string
+  /** Para cuando va pegado a un texto y no como acción principal. */
+  compacto?: boolean
+}) {
   const [copiada, setCopiada] = useState(false)
 
   return (
@@ -24,10 +33,14 @@ export function CopiarLiga({ liga }: { liga: string }) {
           window.prompt('Copia la liga de la cita:', liga)
         }
       }}
-      className="boton boton-suave px-3 py-1.5 text-xs"
+      className={
+        compacto
+          ? 'rounded px-1.5 py-0.5 text-xs font-medium text-acento transition hover:bg-surface-2'
+          : 'boton boton-suave px-3 py-1.5 text-xs'
+      }
       title={liga}
     >
-      {copiada ? 'Liga copiada ✓' : 'Copiar liga'}
+      {copiada ? 'Copiada ✓' : etiqueta}
     </button>
   )
 }

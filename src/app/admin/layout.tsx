@@ -1,5 +1,5 @@
-import Link from 'next/link'
 import { dominioPublico } from '@/lib/sitio'
+import { CopiarLiga } from '@/components/copiar-liga'
 import { exigirConsultorio } from '@/lib/consultorio'
 import { createClient } from '@/lib/supabase/server'
 import { CabeceraAdmin } from '@/components/cabecera-admin'
@@ -10,6 +10,9 @@ export default async function AdminLayout({
   children: React.ReactNode
 }) {
   const { profesional, rol } = await exigirConsultorio()
+  // La corta, sin `www.`: es la que el médico lee en pantalla y la que dicta.
+  // El apex redirige al www con 308, así que abre igual.
+  const ligaPublica = `https://${dominioPublico()}/${profesional.slug}`
   const supabase = await createClient()
 
   // Solo las que todavía se pueden aceptar: una solicitud cuyo horario ya pasó
@@ -32,11 +35,23 @@ export default async function AdminLayout({
 
       <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-10">{children}</main>
 
-      <footer className="mx-auto max-w-5xl px-4 pb-10 text-xs break-all text-muted sm:px-6">
-        Tu página pública:{' '}
-        <Link href={`/${profesional.slug}`} className="font-medium text-acento hover:underline">
+      {/*
+        La liga que el médico más comparte. Abre en otra pestaña porque quien
+        la revisa está a media tarea en el admin y no quiere perderla, y trae
+        su botón de copiar: dictarla por teléfono o escribirla a mano es cómo
+        se llega a un paciente en una página que no existe.
+      */}
+      <footer className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-2 gap-y-1 px-4 pb-10 text-xs text-muted sm:px-6">
+        <span>Tu página pública:</span>
+        <a
+          href={ligaPublica}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium break-all text-acento hover:underline"
+        >
           {dominioPublico()}/{profesional.slug}
-        </Link>
+        </a>
+        <CopiarLiga liga={ligaPublica} etiqueta="Copiar" compacto />
       </footer>
     </div>
   )
