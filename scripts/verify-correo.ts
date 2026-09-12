@@ -8,6 +8,7 @@ import { traducirResend } from '../src/lib/correo/enviar'
 import { armarCitaAceptada } from '../src/lib/correo/cita-aceptada'
 import { armarCitaRechazada } from '../src/lib/correo/cita-rechazada'
 import { armarRecuperacion } from '../src/lib/correo/recuperar'
+import { armarSolicitudRecibida } from '../src/lib/correo/solicitud-recibida'
 
 let fallos = 0
 function check(etiqueta: string, ok: boolean, detalle = '') {
@@ -292,6 +293,42 @@ check(
   'y no revela nada de la cuenta más que la dirección',
   !recupera.html.includes('consultorio') && !/Dr\.|Dra\./.test(recupera.html),
 )
+
+console.log('\nEl acuse de la solicitud')
+
+const acuse = armarSolicitudRecibida({
+  destinatario: { nombre: 'Adriana Robles', correo: 'adriana@example.com' },
+  paciente: 'Ximena Robles',
+  esMenor: true,
+  doctor: 'Dr. Ernesto Peña',
+  inicio: '2026-09-15T16:00:00Z',
+  zona: MX,
+  liga: 'https://www.citapedia.com/cita/abc',
+})
+
+check('saluda a quien agendó, no al paciente', acuse.texto.startsWith('Hola Adriana'))
+check('dice de quién es la cita', acuse.texto.includes('la cita de Ximena Robles'))
+check(
+  'NO dice que esté confirmada: la cita nace pedida, no aceptada',
+  !/confirmad/i.test(acuse.texto) && !/confirmad/i.test(acuse.asunto),
+)
+check(
+  'y avisa que falta que el consultorio la apruebe',
+  acuse.texto.includes('falta que el consultorio la apruebe'),
+)
+check('lleva la liga de la cita', acuse.texto.includes('https://www.citapedia.com/cita/abc'))
+check('el asunto no promete nada', acuse.asunto === 'Recibimos tu solicitud con Dr. Ernesto Peña')
+
+const acuseAdulto = armarSolicitudRecibida({
+  destinatario: { nombre: 'Carlos Salinas', correo: 'carlos@example.com' },
+  paciente: 'Carlos Salinas',
+  esMenor: false,
+  doctor: 'Dr. Ernesto Peña',
+  inicio: '2026-09-15T16:00:00Z',
+  zona: MX,
+  liga: 'https://www.citapedia.com/cita/abc',
+})
+check('a un adulto le habla de "tu cita"', acuseAdulto.texto.includes('tu cita'))
 
 console.log('\nLo que se le dice al médico cuando falla el envío')
 

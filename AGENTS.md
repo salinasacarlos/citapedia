@@ -414,6 +414,26 @@ el dueño de la cuenta de Resend** — la liga a mano sigue siendo el camino rea
 El correo no lleva más que la liga. Ni contraseña temporal ni datos del equipo:
 quien lo recibe todavía no es miembro de nada.
 
+## El acuse de la solicitud
+
+Quien agenda a las once de la noche cerraba la pestaña y no le quedaba nada: ni
+constancia de lo que pidió, ni la liga de su cita, ni idea de que todavía falta
+que el consultorio la apruebe. Al día siguiente no sabía si había mandado algo.
+
+`armarSolicitudRecibida` se lo dice, y **evita con cuidado la palabra
+"confirmada"** —en el asunto y en el cuerpo—: la cita nace `requested` y el
+médico decide. Prometer aquí lo que no está prometido es cómo se llega a que
+alguien se presente un martes a una cita que nadie aceptó. Hay una prueba que
+falla si la palabra se cuela.
+
+El envío va envuelto y **nunca puede tumbar la reserva**: la cita ya quedó
+pedida, y un problema de Resend no puede volverse "no pudimos registrar tu
+solicitud" para alguien que sí la registró. Lo peor que hace es anotarse en
+`email_failures` como `solicitud`.
+
+Va con la llave de servicio porque quien reserva no tiene sesión, y el correo
+del consultorio —el del `reply_to`— no está en la vista pública, a propósito.
+
 ## El no también se avisa
 
 Rechazar una solicitud le manda correo al paciente. Sin eso, la solicitud
@@ -437,7 +457,10 @@ nadie leyendo su respuesta. Si Resend deja de entregar un martes, esos dos
 fallan en silencio hasta que alguien no puede entrar o un paciente no llega.
 
 `email_failures` los recoge y la consola de plataforma los muestra agrupados
-por motivo. **No se guarda el destinatario**: en recuperación la dirección
+por motivo **y con la fecha de la última vez**. Esa fecha no es decoración: sin
+ella, un problema ya resuelto —"no hay dominio verificado", después de haberlo
+verificado— se sigue leyendo como si estuviera pasando ahora, y una alerta que
+miente deja de mirarse. **No se guarda el destinatario**: en recuperación la dirección
 sería una lista de quién tiene cuenta, y en recordatorios es el correo de un
 paciente. Lo accionable es el motivo, que además casi siempre es global — "no
 hay dominio verificado" no se arregla paciente por paciente. Una prueba revisa
