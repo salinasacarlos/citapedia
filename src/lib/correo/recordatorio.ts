@@ -14,7 +14,14 @@ export type DatosRecordatorio = {
   zona: string
   plantilla: string
   liga: string
+  /**
+   * Cuál de los tres toques es. El texto del médico no cambia —es su voz—;
+   * lo que cambia es el asunto y la línea que dice a qué viene este correo.
+   */
+  etapa?: EtapaRecordatorio
 }
+
+export type EtapaRecordatorio = 'semana' | 'vispera' | 'ultimo'
 
 function escapar(t: string) {
   return t
@@ -49,6 +56,26 @@ export function armarRecordatorio(d: DatosRecordatorio): Correo {
   // siempre es el paciente.
   const deQuien = d.esMenor ? `La cita de ${d.paciente}` : 'Tu cita'
 
+  const etapa = d.etapa ?? 'vispera'
+  const lasuya = d.esMenor ? `la cita de ${d.paciente}` : 'tu cita'
+
+  // La semana previa sirve para pedir el día en el trabajo; la víspera para
+  // no olvidarla; el último, solo para quien no ha dicho si viene. Tres
+  // motivos distintos, y el correo tiene que decir cuál es el suyo.
+  const remate =
+    etapa === 'semana'
+      ? 'Falta una semana. Si ese día ya no te queda, muévela desde aquí y el lugar se libera para alguien más.'
+      : etapa === 'ultimo'
+        ? '¿Nos confirmas que vienes? Con un clic basta, y si no puedes, también se avisa desde ahí.'
+        : 'Si no puedes venir, avísanos desde ahí. Nos ayuda a darle el lugar a alguien más.'
+
+  const asunto =
+    etapa === 'semana'
+      ? `La próxima semana es ${lasuya} con ${d.doctor}`
+      : etapa === 'ultimo'
+        ? `¿Vienes hoy a ${lasuya} con ${d.doctor}?`
+        : `Recordatorio: ${d.esMenor ? `cita de ${d.paciente}` : 'tu cita'} el ${fecha}`
+
   const texto = [
     cuerpo,
     '',
@@ -56,6 +83,7 @@ export function armarRecordatorio(d: DatosRecordatorio): Correo {
     d.direccion ? `Dirección: ${d.direccion}` : null,
     d.telefono ? `Teléfono del consultorio: ${d.telefono}` : null,
     '',
+    remate,
     `Confirma, muévela o avisa si no puedes venir: ${d.liga}`,
   ]
     .filter((l) => l !== null)
@@ -84,10 +112,10 @@ export function armarRecordatorio(d: DatosRecordatorio): Correo {
       }
 
       <p style="margin:24px 0 0;text-align:center">
-        <a href="${escapar(d.liga)}" style="display:inline-block;background:#12a594;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:999px">Confirmar o mover mi cita</a>
+        <a href="${escapar(d.liga)}" style="display:inline-block;background:#12a594;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:999px">${etapa === 'ultimo' ? 'Sí, ahí estaré' : 'Confirmar o mover mi cita'}</a>
       </p>
       <p style="margin:12px 0 0;font-size:12px;color:#5b6b7c;text-align:center">
-        Si no puedes venir, avísanos desde ahí. Nos ayuda a darle el lugar a alguien más.
+        ${escapar(remate)}
       </p>
     </td></tr>
   </table>
@@ -96,7 +124,7 @@ export function armarRecordatorio(d: DatosRecordatorio): Correo {
 
   return {
     para: d.destinatario.correo,
-    asunto: `Recordatorio: ${d.esMenor ? `cita de ${d.paciente}` : 'tu cita'} el ${fecha}`,
+    asunto,
     html,
     texto,
   }

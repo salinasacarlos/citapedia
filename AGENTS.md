@@ -515,6 +515,37 @@ Vive en `/admin/horario`, que es la página de cómo trabaja el consultorio.
   en cuatro archivos, y con el texto ya editable eso empeora: cambiar el default
   en tres de los cuatro deja a alguien recibiendo una versión que nadie escribió.
 
+### Tres toques, no uno
+
+Un solo correo llega tarde para lo que el paciente tiene que hacer con él:
+pedir el día en el trabajo, o conseguir hueco en la agenda. Y si no reacciona,
+nadie vuelve a insistir.
+
+| | Cita | Aviso programado |
+| --- | --- | --- |
+| Con tiempo | 7 días antes | 7 días antes de vencer |
+| En su momento | la víspera (`hours_before`) | el día que vence |
+| Si no se movió | el día de la cita, **solo si no confirmó** | 7 días después, **solo si no agendó** |
+
+- **Cada etapa tiene su propia marca** (`reminder_early_sent_at`,
+  `reminder_sent_at`, `reminder_final_sent_at`; `early_sent_at`, `sent_at`,
+  `followup_sent_at`) y no un contador: así se sabe cuál salió y cuándo, y una
+  etapa que falle no arrastra a las demás.
+- **El último jalón exige que la víspera haya salido hace más de 12 horas.**
+  Sin eso, la misma corrida mandaría los dos con minutos de diferencia.
+- **La anticipación configurada (`hours_before`) manda solo en la víspera.** Las
+  otras dos tienen su momento propio y no son negociables.
+- **`tiene_cita_por_venir` decide el seguimiento.** Insistirle a quien ya hizo
+  caso es como se pierde la confianza en un canal: la siguiente vez ya no lo
+  abre. Cuando ya agendó, el aviso se marca igual —para no volver a mirarlo—
+  pero no se manda nada.
+- **Solo el toque del día vencido cierra el aviso** (`status = 'enviado'`). Los
+  otros dos son acompañamiento; cerrarlos antes lo sacaría de la lista que
+  trabaja la recepcionista cuando todavía no ha pasado nada.
+- El texto del médico es el mismo en las tres: es su voz. Lo que cambia es el
+  asunto y la línea que dice a qué viene ese correo — tres motivos distintos
+  merecen tres encabezados distintos.
+
 ## El cron de recordatorios
 
 `GET /api/recordatorios`, disparado por el cron de Vercel una vez al día

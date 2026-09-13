@@ -200,6 +200,10 @@ export type Appointment = {
   confirmation_sent_at: string | null
   /** Cuándo salió el recordatorio automático por correo. */
   reminder_sent_at: string | null
+  /** La semana previa. */
+  reminder_early_sent_at: string | null
+  /** El último jalón, solo si no confirmó. */
+  reminder_final_sent_at: string | null
   /** Credencial de la liga que el paciente recibe por WhatsApp. */
   access_token: string
   /** Cuándo el paciente dijo que sí viene. */
@@ -250,6 +254,8 @@ export type Database = {
         sent_at: string | null
         created_by: string | null
         created_at: string | null
+              early_sent_at: string | null
+        followup_sent_at: string | null
       }>
       email_failures: Table<{
         id: string
@@ -380,6 +386,7 @@ export type Database = {
       }
       es_operador: { Args: Record<string, never>; Returns: boolean }
       correo_registrado: { Args: { p_email: string }; Returns: boolean }
+      tiene_cita_por_venir: { Args: { p_paciente: string }; Returns: boolean }
       fecha_de_plantilla: {
         Args: { p_plantilla: string; p_paciente: string }
         Returns: string | null

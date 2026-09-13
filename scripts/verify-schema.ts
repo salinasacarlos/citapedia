@@ -1429,6 +1429,49 @@ async function main() {
   }
   check('la base no acepta un estado fuera del catálogo', estadoInventado)
 
+  // Insistir solo a quien no se movió.
+  console.log('\nSaber si ya agendó')
+
+  const yaSinCita = await como<{ b: boolean }>(
+    drA,
+    `select tiene_cita_por_venir($1) as b`,
+    [pacAviso],
+  )
+  check('sin cita por venir contesta que no', yaSinCita.rows[0].b === false)
+
+  await como(
+    drA,
+    `insert into appointments (professional_id, patient_id, starts_at, ends_at, status)
+     values ($1, $2, now() + interval '3 days', now() + interval '3 days 30 minutes', 'confirmed')`,
+    [proA2, pacAviso],
+  )
+  const yaConCita = await como<{ b: boolean }>(
+    drA,
+    `select tiene_cita_por_venir($1) as b`,
+    [pacAviso],
+  )
+  check('con una cita agendada contesta que sí, y ya no se le insiste', yaConCita.rows[0].b === true)
+
+  // Una cita vieja no es una razón para dejar de avisarle a alguien.
+  const pacientePasado = (
+    await db.query<{ id: string }>(
+      `insert into patients (professional_id, name) values ($1, 'Solo Citas Viejas') returning id`,
+      [proA2],
+    )
+  ).rows[0].id
+  await db.query(
+    `insert into appointments (professional_id, patient_id, starts_at, ends_at, status)
+     values ($1, $2, now() - interval '30 days', now() - interval '30 days' + interval '30 minutes', 'completed')`,
+    [proA2, pacientePasado],
+  )
+
+  const soloFuturas = await como<{ b: boolean }>(
+    drA,
+    `select tiene_cita_por_venir($1) as b`,
+    [pacientePasado],
+  )
+  check('una cita que ya pasó no cuenta como agendada', soloFuturas.rows[0].b === false)
+
   // Fase 4: la plantilla guarda la REGLA de la fecha, no la fecha.
   console.log('\nPlantillas de aviso')
 
