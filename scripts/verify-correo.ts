@@ -3,6 +3,7 @@
  *   npm run test:correo
  */
 import { armarRecordatorio, correoParaAvisar } from '../src/lib/correo/recordatorio'
+import { armarAviso } from '../src/lib/correo/aviso'
 import { armarInvitacion } from '../src/lib/correo/invitacion'
 import { traducirResend } from '../src/lib/correo/enviar'
 import { armarCitaAceptada } from '../src/lib/correo/cita-aceptada'
@@ -298,6 +299,72 @@ check(
 check(
   'y no revela nada de la cuenta más que la dirección',
   !recupera.html.includes('consultorio') && !/Dr\.|Dra\./.test(recupera.html),
+)
+
+console.log('\nLos tres toques del recordatorio')
+
+const base = {
+  destinatario: { nombre: 'Adriana Robles', correo: 'a@example.com' },
+  paciente: 'Ximena Robles',
+  esMenor: true,
+  doctor: 'Dr. Ernesto Peña',
+  direccion: null,
+  telefono: null,
+  inicio: '2026-09-15T16:00:00Z',
+  zona: MX,
+  plantilla: PLANTILLA,
+  liga: 'https://www.citapedia.com/cita/tok',
+}
+
+const semana = armarRecordatorio({ ...base, etapa: 'semana' })
+const vispera = armarRecordatorio({ ...base, etapa: 'vispera' })
+const ultimo = armarRecordatorio({ ...base, etapa: 'ultimo' })
+
+check('el de la semana dice que falta una semana', semana.texto.includes('Falta una semana'))
+check('y su asunto no dice "recordatorio"', !/recordatorio/i.test(semana.asunto))
+check('el de la víspera conserva el asunto de siempre', vispera.asunto.startsWith('Recordatorio:'))
+check('el último pregunta si viene', /\?/.test(ultimo.asunto) && ultimo.texto.includes('confirmas'))
+check('y su botón es de confirmar', ultimo.html.includes('Sí, ahí estaré'))
+check(
+  'los tres llevan la liga de la cita',
+  [semana, vispera, ultimo].every((c) => c.texto.includes('https://www.citapedia.com/cita/tok')),
+)
+check(
+  'los tres respetan el texto del médico',
+  [semana, vispera, ultimo].every((c) => c.texto.includes('te recordamos tu cita')),
+)
+
+console.log('\nLos tres toques del aviso')
+
+const avisoBase = {
+  destinatario: { nombre: 'Adriana Robles', correo: 'a@example.com' },
+  paciente: 'Ximena Robles',
+  esMenor: true,
+  doctor: 'Dr. Ernesto Peña',
+  titulo: 'Vacunas de los 6 meses',
+  mensaje: 'Le toca su siguiente dosis.',
+  pagina: 'https://www.citapedia.com/dr-ernesto-pena',
+}
+
+const avisoSemana = armarAviso({ ...avisoBase, etapa: 'semana' })
+const avisoHoy = armarAviso({ ...avisoBase, etapa: 'hoy' })
+const avisoSeguimiento = armarAviso({ ...avisoBase, etapa: 'seguimiento' })
+
+check('el de la semana dice que todavía hay tiempo', avisoSemana.texto.includes('Faltan unos días'))
+check('el seguimiento reconoce que ya se dijo antes', avisoSeguimiento.texto.includes('se te pasó'))
+check('y su asunto ofrece ayuda', avisoSeguimiento.asunto.startsWith('¿Te ayudamos a agendar?'))
+check('el de hoy conserva el asunto de siempre', avisoHoy.asunto.includes('Vacunas de los 6 meses'))
+check(
+  'los tres llevan la página para agendar',
+  [avisoSemana, avisoHoy, avisoSeguimiento].every((c) =>
+    c.texto.includes('https://www.citapedia.com/dr-ernesto-pena'),
+  ),
+)
+check(
+  'los tres dicen lo que escribió el médico, sin inventar contexto clínico',
+  [avisoSemana, avisoHoy, avisoSeguimiento].every((c) =>
+    c.texto.includes('Le toca su siguiente dosis.'),
+  ),
 )
 
 console.log('\nLa plantilla que edita el médico')

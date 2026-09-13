@@ -3,10 +3,14 @@ import { baseDelSitio } from '@/lib/sitio'
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { enviarCorreo } from '@/lib/correo/enviar'
-import { armarRecordatorio, correoParaAvisar } from '@/lib/correo/recordatorio'
+import {
+  armarRecordatorio,
+  correoParaAvisar,
+  type EtapaRecordatorio,
+} from '@/lib/correo/recordatorio'
 import { anotarFalloDeCorreo } from '@/lib/correo/anotar-fallo'
-import { armarAviso } from '@/lib/correo/aviso'
-import type { AppointmentStatus } from '@/lib/database.types'
+import { armarAviso, type EtapaAviso } from '@/lib/correo/aviso'
+import type { Appointment, AppointmentStatus } from '@/lib/database.types'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -73,42 +77,84 @@ export async function GET(request: Request) {
   }
 
   const supabase = createAdminClient()
-  const ahora = new Date()
-  const limite = new Date(ahora.getTime() + VENTANA_HORAS * 3600_000)
 
-  const { data, error } = await supabase
+  const citas = {
+    semana: await mandarEtapaDeCitas(supabase, 'semana'),
+    vispera: await mandarEtapaDeCitas(supabase, 'vispera'),
+    ultimo: await mandarEtapaDeCitas(supabase, 'ultimo'),
+  }
+
+  return NextResponse.json({
+    citas,
+    avisos: await mandarAvisos(supabase),
+  })
+}
+
+type Conteo = { revisadas: number; enviados: number; sin_correo: number; fallidos: number }
+
+/** Qué columna marca cada etapa como ya mandada. */
+const MARCA = {
+  semana: 'reminder_early_sent_at',
+  vispera: 'reminder_sent_at',
+  ultimo: 'reminder_final_sent_at',
+} as const satisfies Record<EtapaRecordatorio, keyof Appointment>
+
+/** La marca como objeto tipado: un `[clave]` calculado no lo acepta el tipo. */
+function yaSalio(etapa: EtapaRecordatorio) {
+  const cuando = new Date().toISOString()
+  return etapa === 'semana'
+    ? { reminder_early_sent_at: cuando }
+    : etapa === 'vispera'
+      ? { reminder_sent_at: cuando }
+      : { reminder_final_sent_at: cuando }
+}
+
+/**
+ * Un toque de recordatorio, para todas las citas a las que les toca.
+ *
+ * Las tres etapas comparten el envío y se distinguen solo en a quién buscan:
+ * por eso la consulta se arma aquí y no hay tres copias del mismo bucle.
+ */
+async function mandarEtapaDeCitas(
+  supabase: ReturnType<typeof createAdminClient>,
+  etapa: EtapaRecordatorio,
+): Promise<Conteo> {
+  const ahora = new Date()
+  const enHoras = (h: number) => new Date(ahora.getTime() + h * 3600_000).toISOString()
+
+  let consulta = supabase
     .from('appointments')
     .select(
-      `id, access_token, starts_at, status, professional_id,
+      `id, access_token, starts_at, status, professional_id, reminder_sent_at,
        patients(name, email, is_minor, tutor_name, tutor_email),
        professionals(name, slug, email, timezone, clinic_address, phone)`,
     )
     .eq('status', 'confirmed')
-    .is('reminder_sent_at', null)
+    .is(MARCA[etapa], null)
     .gte('starts_at', ahora.toISOString())
-    .lte('starts_at', limite.toISOString())
-    .order('starts_at')
-    .returns<Fila[]>()
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  if (etapa === 'semana') {
+    // Todo lo que caiga dentro de la semana y no haya recibido este toque. Si
+    // una cita se agenda con cuatro días, igual lo recibe: vale más avisar
+    // tarde que no avisar.
+    consulta = consulta.lte('starts_at', enHoras(24 * 7))
+  } else if (etapa === 'vispera') {
+    consulta = consulta.lte('starts_at', enHoras(VENTANA_HORAS))
+  } else {
+    // El último jalón es solo para quien no ha dicho si viene, y nunca en la
+    // misma corrida que la víspera: se exige que ese ya haya salido ayer, o
+    // el paciente recibiría dos correos con minutos de diferencia.
+    consulta = consulta
+      .lte('starts_at', enHoras(VENTANA_HORAS))
+      .is('patient_confirmed_at', null)
+      .lt('reminder_sent_at', enHoras(-12))
   }
 
+  const { data } = await consulta.order('starts_at').returns<Fila[]>()
   const citas = data ?? []
-  // Los avisos van aunque no haya una sola cita que recordar: cuelgan del
-  // paciente, no de la agenda. Salir antes de mandarlos hacía que en un día sin
-  // citas no saliera ninguno, y en silencio.
-  if (citas.length === 0) {
-    return NextResponse.json({
-      revisadas: 0,
-      enviados: 0,
-      sin_correo: 0,
-      fallidos: 0,
-      avisos: await mandarAvisos(supabase),
-    })
-  }
+  const conteo: Conteo = { revisadas: citas.length, enviados: 0, sin_correo: 0, fallidos: 0 }
+  if (citas.length === 0) return conteo
 
-  // Cada consultorio decide con cuánta anticipación avisa.
   const { data: ajustes } = await supabase
     .from('reminder_settings')
     .select('professional_id, hours_before, message_template')
@@ -120,30 +166,27 @@ export async function GET(request: Request) {
   const porMedico = new Map((ajustes ?? []).map((a) => [a.professional_id, a]))
   const sitio = baseDelSitio()
 
-  let enviados = 0
-  let sinCorreo = 0
-  let fallidos = 0
-  const errores: string[] = []
-
   for (const cita of citas) {
     const ajuste = porMedico.get(cita.professional_id)
-    // Sin configuración explícita, un día antes: es lo que trae la tabla por
-    // defecto y lo que espera quien nunca abrió esa pantalla.
-    const horas = Math.max(...(ajuste?.hours_before?.length ? ajuste.hours_before : [24]))
-    const faltan = (new Date(cita.starts_at).getTime() - ahora.getTime()) / 3600_000
 
-    // Todavía no toca: se recogerá en una corrida siguiente.
-    if (faltan > horas) continue
+    // La anticipación que configura el médico manda solo en la víspera: las
+    // otras dos etapas tienen su propio momento y no son negociables.
+    if (etapa === 'vispera') {
+      const horas = Math.max(...(ajuste?.hours_before?.length ? ajuste.hours_before : [24]))
+      const faltan = (new Date(cita.starts_at).getTime() - ahora.getTime()) / 3600_000
+      if (faltan > horas) continue
+    }
+
     if (!cita.patients || !cita.professionals) continue
 
     const destinatario = correoParaAvisar(cita.patients)
     if (!destinatario) {
       // Sin correo no hay nada que mandar, pero tampoco hay que reintentarlo
       // mañana: se marca para que no se quede atorada en cada corrida.
-      sinCorreo++
+      conteo.sin_correo++
       await supabase
         .from('appointments')
-        .update({ reminder_sent_at: new Date().toISOString() })
+        .update(yaSalio(etapa))
         .eq('id', cita.id)
       continue
     }
@@ -159,18 +202,15 @@ export async function GET(request: Request) {
       zona: cita.professionals.timezone,
       plantilla: conLiga(ajuste?.message_template ?? PLANTILLA_POR_DEFECTO),
       liga: `${sitio}/cita/${cita.access_token}`,
+      etapa,
     })
 
-    const envio = await enviarCorreo({
-      ...correo,
-      responder: cita.professionals.email,
-    })
+    const envio = await enviarCorreo({ ...correo, responder: cita.professionals.email })
 
     if (!envio.ok) {
       // No se marca: si Resend falló, mañana se vuelve a intentar. Un
       // recordatorio repetido molesta; uno que nunca sale, cuesta la cita.
-      fallidos++
-      if (errores.length < 5) errores.push(envio.error)
+      conteo.fallidos++
       // Este cron corre de madrugada y nadie lee su respuesta: sin dejar
       // constancia, que los recordatorios dejen de salir es invisible hasta
       // que un paciente no llega.
@@ -180,25 +220,17 @@ export async function GET(request: Request) {
 
     await supabase
       .from('appointments')
-      .update({ reminder_sent_at: new Date().toISOString() })
+      .update(yaSalio(etapa))
       .eq('id', cita.id)
-    enviados++
+    conteo.enviados++
   }
 
-  const avisos = await mandarAvisos(supabase)
-
-  return NextResponse.json({
-    revisadas: citas.length,
-    enviados,
-    sin_correo: sinCorreo,
-    fallidos,
-    avisos,
-    ...(errores.length ? { errores } : {}),
-  })
+  return conteo
 }
 
 type FilaAviso = {
   id: string
+  patient_id: string
   titulo: string
   mensaje: string | null
   patients: {
@@ -219,26 +251,84 @@ type FilaAviso = {
  * en silencio.
  */
 async function mandarAvisos(supabase: ReturnType<typeof createAdminClient>) {
-  const hoy = new Date().toISOString().slice(0, 10)
-  const sitio = process.env.NEXT_PUBLIC_SITE_URL ?? ''
+  return {
+    semana: await mandarEtapaDeAvisos(supabase, 'semana'),
+    hoy: await mandarEtapaDeAvisos(supabase, 'hoy'),
+    seguimiento: await mandarEtapaDeAvisos(supabase, 'seguimiento'),
+  }
+}
 
-  const { data } = await supabase
+function enDias(dias: number) {
+  const d = new Date()
+  d.setDate(d.getDate() + dias)
+  return d.toISOString().slice(0, 10)
+}
+
+/**
+ * Un toque de aviso programado.
+ *
+ * - `semana`: cae dentro de los próximos siete días. Sirve para agendar con
+ *   calma, que es justo lo que no se puede hacer el mismo día.
+ * - `hoy`: vence hoy o ya venció. Es el que existía.
+ * - `seguimiento`: una semana después del anterior, y **solo si el paciente
+ *   no agendó nada**. Insistirle a quien ya hizo caso es como se pierde la
+ *   confianza en un canal: la siguiente vez ya no lo abre.
+ */
+async function mandarEtapaDeAvisos(
+  supabase: ReturnType<typeof createAdminClient>,
+  etapa: EtapaAviso,
+) {
+  const sitio = baseDelSitio()
+
+  let consulta = supabase
     .from('patient_alerts')
     .select(
-      `id, titulo, mensaje,
+      `id, titulo, mensaje, patient_id,
        patients(name, email, is_minor, tutor_name, tutor_email),
        professionals(name, slug, email)`,
     )
-    .eq('status', 'pendiente')
-    .lte('due_on', hoy)
     .limit(200)
-    .returns<FilaAviso[]>()
+
+  if (etapa === 'semana') {
+    consulta = consulta
+      .eq('status', 'pendiente')
+      .is('early_sent_at', null)
+      .gt('due_on', enDias(0))
+      .lte('due_on', enDias(7))
+  } else if (etapa === 'hoy') {
+    consulta = consulta.eq('status', 'pendiente').lte('due_on', enDias(0))
+  } else {
+    consulta = consulta
+      .eq('status', 'enviado')
+      .is('followup_sent_at', null)
+      .lte('sent_at', `${enDias(-7)}T23:59:59Z`)
+  }
+
+  const { data } = await consulta.returns<FilaAviso[]>()
 
   let enviados = 0
   let fallidos = 0
+  let ya_agendaron = 0
 
   for (const aviso of data ?? []) {
     if (!aviso.patients || !aviso.professionals) continue
+
+    // El seguimiento existe para quien no se movió. Preguntarlo aquí y no al
+    // armar la lista es a propósito: la respuesta cambia entre una corrida y
+    // otra, y el aviso se queda disponible por si vuelve a hacer falta.
+    if (etapa === 'seguimiento') {
+      const { data: yaTiene } = await supabase.rpc('tiene_cita_por_venir', {
+        p_paciente: aviso.patient_id,
+      })
+      if (yaTiene === true) {
+        ya_agendaron++
+        await supabase
+          .from('patient_alerts')
+          .update({ followup_sent_at: new Date().toISOString() })
+          .eq('id', aviso.id)
+        continue
+      }
+    }
 
     const destinatario = correoParaAvisar(aviso.patients)
     // Sin correo no se marca: sigue en la lista para que alguien lo mande por
@@ -256,6 +346,7 @@ async function mandarAvisos(supabase: ReturnType<typeof createAdminClient>) {
         titulo: aviso.titulo,
         mensaje: aviso.mensaje,
         pagina: `${sitio}/${aviso.professionals.slug}`,
+        etapa,
       }),
     })
 
@@ -265,14 +356,23 @@ async function mandarAvisos(supabase: ReturnType<typeof createAdminClient>) {
       continue
     }
 
+    // Solo el toque del día vencido cierra el aviso: los otros dos son
+    // acompañamiento, y cerrarlos antes lo sacaría de la lista que trabaja la
+    // recepcionista cuando todavía no ha pasado nada.
     await supabase
       .from('patient_alerts')
-      .update({ status: 'enviado', sent_at: new Date().toISOString() })
+      .update(
+        etapa === 'semana'
+          ? { early_sent_at: new Date().toISOString() }
+          : etapa === 'hoy'
+            ? { status: 'enviado', sent_at: new Date().toISOString() }
+            : { followup_sent_at: new Date().toISOString() },
+      )
       .eq('id', aviso.id)
     enviados++
   }
 
-  return { enviados, fallidos }
+  return { enviados, fallidos, ...(etapa === 'seguimiento' ? { ya_agendaron } : {}) }
 }
 
 /** Un recordatorio de muestra, con datos inventados y sin tocar la base. */
