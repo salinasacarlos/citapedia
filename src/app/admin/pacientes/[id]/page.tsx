@@ -9,7 +9,7 @@ import { edad, fechaCorta, fechaSuelta, hora } from '@/lib/fechas'
 import { describirOrigen } from '@/lib/origen'
 import { RegistrarConsulta } from '@/components/registrar-consulta'
 import { AvisosDelPaciente, type Aviso } from '@/components/avisos-del-paciente'
-import type { PlantillaAviso } from '@/components/plantillas-de-aviso'
+import type { PlantillaAplicable } from '@/components/avisos-del-paciente'
 import { DescargarExpediente } from '@/components/descargar-expediente'
 import type {
   AppointmentStatus,
@@ -147,25 +147,13 @@ export default async function FichaPaciente({
       .eq('status', 'pendiente')
       .order('due_on')
       .returns<Aviso[]>(),
+    // Una sola consulta contesta las tres preguntas —cuándo caería, si ya está
+    // programada y con cuántos pacientes se usa— y ya viene ordenada por lo
+    // accionable. Antes era una consulta por plantilla.
     supabase
-      .from('alert_templates')
-      .select('id, titulo, mensaje, base, offset_meses')
-      .order('created_at')
-      .returns<PlantillaAviso[]>(),
+      .rpc('plantillas_para_paciente', { p_paciente: id })
+      .returns<PlantillaAplicable[]>(),
   ])
-
-  // La fecha de cada plantilla la calcula la base, no esta pantalla: es la
-  // misma cuenta que usa el guardado, y dos copias de una cuenta de fechas
-  // terminan discrepando. Son pocas plantillas; la claridad vale la consulta.
-  const aplicables = await Promise.all(
-    (plantillas ?? []).map(async (p) => {
-      const { data: cuando } = await supabase.rpc('fecha_de_plantilla', {
-        p_plantilla: p.id,
-        p_paciente: id,
-      })
-      return { ...p, cuando: cuando ?? null }
-    }),
-  )
 
   // El bucket es privado: cada archivo se abre con una liga firmada que vence.
   const estudios: EstudioVisible[] = await Promise.all(
@@ -452,7 +440,7 @@ export default async function FichaPaciente({
           <AvisosDelPaciente
             pacienteId={paciente.id}
             avisos={avisos ?? []}
-            plantillas={aplicables}
+            plantillas={plantillas ?? []}
           />
         </div>
 
