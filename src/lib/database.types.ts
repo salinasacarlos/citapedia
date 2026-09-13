@@ -258,6 +258,15 @@ export type Database = {
         created_at: string | null
       }>
       /** Ligas para poner la contraseña por primera vez. Solo la llave de servicio. */
+      alert_templates: Table<{
+        id: string
+        professional_id: string
+        titulo: string
+        mensaje: string | null
+        base: string
+        offset_meses: number
+        created_at: string | null
+      }>
       access_grants: Table<{
         id: string
         user_id: string
@@ -371,6 +380,14 @@ export type Database = {
       }
       es_operador: { Args: Record<string, never>; Returns: boolean }
       correo_registrado: { Args: { p_email: string }; Returns: boolean }
+      fecha_de_plantilla: {
+        Args: { p_plantilla: string; p_paciente: string }
+        Returns: string | null
+      }
+      aplicar_plantilla: {
+        Args: { p_plantilla: string; p_paciente: string }
+        Returns: string
+      }
       plataforma_usuario_del_equipo: {
         Args: { p_id: string; p_email: string }
         Returns: string | null
