@@ -1429,6 +1429,96 @@ async function main() {
   }
   check('la base no acepta un estado fuera del catálogo', estadoInventado)
 
+  // Fase 4: la plantilla guarda la REGLA de la fecha, no la fecha.
+  console.log('\nPlantillas de aviso')
+
+  const bebe = (
+    await db.query<{ id: string }>(
+      `insert into patients (professional_id, name, birth_date)
+       values ($1, 'Bebé Reciente', current_date - interval '1 month') returning id`,
+      [proA2],
+    )
+  ).rows[0].id
+
+  const plantilla = (
+    await como<{ id: string }>(
+      drA,
+      `insert into alert_templates (professional_id, titulo, mensaje, base, offset_meses)
+       values ($1, 'Vacunas de los 6 meses', 'Le toca su dosis', 'nacimiento', 6)
+       returning id`,
+      [proA2],
+    )
+  ).rows[0].id
+
+  // Se compara contra la cuenta hecha en la base sobre la fecha de nacimiento
+  // del paciente: si la función usara `current_date` en vez del nacimiento,
+  // esto daría distinto y es justo el error que se quiere cazar.
+  const calculada = await como<{ f: string; esperada: string }>(
+    drA,
+    `select fecha_de_plantilla($1, $2)::text as f,
+            (select (birth_date + interval '6 months')::date::text from patients where id = $2)
+              as esperada`,
+    [plantilla, bebe],
+  )
+  check(
+    'la fecha sale del nacimiento del paciente, no de hoy',
+    calculada.rows[0].f === calculada.rows[0].esperada,
+    `${calculada.rows[0].f} vs ${calculada.rows[0].esperada}`,
+  )
+
+  await como(drA, `select aplicar_plantilla($1, $2)`, [plantilla, bebe])
+  const aplicado = await como<{ n: number; titulo: string }>(
+    drA,
+    `select count(*)::int as n, max(titulo) as titulo
+       from patient_alerts where patient_id = $1`,
+    [bebe],
+  )
+  check('aplicarla crea el aviso con su texto', Number(aplicado.rows[0].n) === 1)
+  check('y con el título de la plantilla', aplicado.rows[0].titulo === 'Vacunas de los 6 meses')
+
+  // Un niño de cuatro años con "a los 6 meses" daría una fecha de 2022, y el
+  // cron manda todo lo vencido: le llegaría un correo de vacunas mañana.
+  const grande = (
+    await db.query<{ id: string }>(
+      `insert into patients (professional_id, name, birth_date)
+       values ($1, 'Niño Grande', current_date - interval '4 years') returning id`,
+      [proA2],
+    )
+  ).rows[0].id
+
+  let fechaPasada = false
+  try {
+    await como(drA, `select aplicar_plantilla($1, $2)`, [plantilla, grande])
+  } catch (err) {
+    fechaPasada = String(err).includes('ya pasó')
+  }
+  check('una fecha que ya pasó se rechaza, no se manda mañana', fechaPasada)
+
+  // Sin fecha de nacimiento no hay desde dónde contar.
+  const sinFecha = (
+    await db.query<{ id: string }>(
+      `insert into patients (professional_id, name) values ($1, 'Sin Fecha') returning id`,
+      [proA2],
+    )
+  ).rows[0].id
+
+  let sinOrigen = false
+  try {
+    await como(drA, `select aplicar_plantilla($1, $2)`, [plantilla, sinFecha])
+  } catch (err) {
+    sinOrigen = String(err).includes('falta la fecha')
+  }
+  check('sin fecha de nacimiento lo dice, en vez de inventar una', sinOrigen)
+
+  const ajenoNoVePlantillas = await como<{ n: number }>(
+    drB,
+    `select count(*)::int as n from alert_templates`,
+  )
+  check(
+    'las plantillas no se ven desde otro consultorio',
+    Number(ajenoNoVePlantillas.rows[0].n) === 0,
+  )
+
   await db.query(`delete from patients where id = $1`, [pacAviso])
 
   console.log('\nControles pendientes')

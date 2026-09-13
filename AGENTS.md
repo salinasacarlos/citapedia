@@ -775,6 +775,31 @@ en la misma tabla obligaría a inventarle una cita a cada aviso.
   ofrece agendar. Que CitaPedia agregue "es momento de tu vacuna" sería
   afirmar algo médico que nadie revisó.
 
+### Los avisos que se repiten
+
+Fase 4. Un aviso suelto lleva **una fecha**; una plantilla lleva **la regla**
+para calcularla, y ahí está toda la diferencia: "a los 6 meses de nacido" sirve
+para todos los pacientes, "el 15 de marzo" sirve para uno.
+
+`alert_templates` guarda título, mensaje, desde dónde se cuenta (`nacimiento`,
+`ultima_visita`, `hoy`) y cuántos meses. Se administran en `/admin/horario`
+—son del consultorio, no del paciente que uno tenga abierto— y se aplican desde
+la ficha, con la fecha ya calculada a la vista: sin verla, aplicar una es una
+apuesta, porque "a los 6 meses" no dice nada hasta saber que eso cae en marzo.
+
+- **La cuenta vive en la base** (`fecha_de_plantilla`). La necesitan la pantalla
+  y el guardado, y dos copias de una cuenta de fechas terminan discrepando.
+- **Una fecha ya pasada se rechaza.** El cron manda todo lo que vence hoy o
+  antes: aplicarle "a los 6 meses" a un niño de cuatro años le mandaría mañana
+  un correo por unas vacunas que le tocaban en 2022.
+- **Sin fecha de origen lo dice**, en vez de inventar una. A un paciente sin
+  fecha de nacimiento no se le puede calcular "a los 6 meses".
+- `ultima_visita` mira las citas `completed` y no las notas de consulta: las
+  notas son de solo dueño, y esto lo usa el equipo.
+- Las constantes compartidas viven en `avisos/bases.ts`. Un archivo
+  `'use server'` **solo puede exportar funciones async**; una constante ahí
+  truena el build entero.
+
 ## El seguimiento post-consulta
 
 "Te veo en tres meses" se dice en casi todas las consultas y vivía en la

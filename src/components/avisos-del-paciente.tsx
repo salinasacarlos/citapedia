@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from 'react'
 import {
+  aplicarPlantilla,
   cancelarAviso,
   crearAviso,
   marcarAvisoEnviado,
@@ -36,13 +37,28 @@ function enMeses(meses: number) {
  * Es lo que permite "a los seis meses le tocan vacunas" sin inventarle una
  * cita: el aviso cuelga del paciente y su fecha se elige.
  */
+export type PlantillaAplicable = {
+  id: string
+  titulo: string
+  base: string
+  offset_meses: number
+  /** Qué día caería para ESTE paciente. Null si no se puede calcular. */
+  cuando: string | null
+}
+
 export function AvisosDelPaciente({
   pacienteId,
   avisos,
+  plantillas = [],
 }: {
   pacienteId: string
   avisos: Aviso[]
+  plantillas?: PlantillaAplicable[]
 }) {
+  const [estadoPlantilla, aplicarAction] = useActionState<ResultadoAviso, FormData>(
+    aplicarPlantilla,
+    {},
+  )
   const [estado, formAction, pendiente] = useActionState<ResultadoAviso, FormData>(
     crearAviso,
     {},
@@ -72,6 +88,49 @@ export function AvisosDelPaciente({
           </button>
         )}
       </div>
+
+      {/*
+        Las plantillas del consultorio, con la fecha que le tocaría a ESTE
+        paciente ya calculada. Sin la fecha a la vista, aplicar una es una
+        apuesta: "a los 6 meses" no dice nada hasta saber que eso cae en marzo.
+      */}
+      {plantillas.length > 0 && !abierto && (
+        <div className="mb-3">
+          <p className="mb-1.5 text-xs font-medium text-muted">De tus avisos repetidos</p>
+          <div className="flex flex-wrap gap-1.5">
+            {plantillas.map((p) => {
+              const pasada = p.cuando !== null && p.cuando < hoy
+              const motivo = !p.cuando
+                ? 'A este paciente le falta la fecha desde la que se cuenta'
+                : pasada
+                  ? `Esa fecha ya pasó (${fechaSuelta(p.cuando)})`
+                  : undefined
+
+              return (
+                <form key={p.id} action={aplicarAction}>
+                  <input type="hidden" name="patient_id" value={pacienteId} />
+                  <input type="hidden" name="plantilla" value={p.id} />
+                  <button
+                    disabled={Boolean(motivo)}
+                    title={motivo ?? `Se programa para el ${fechaSuelta(p.cuando!)}`}
+                    className="rounded-full border border-border px-2.5 py-1 text-xs transition hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {p.titulo}
+                    {p.cuando && !pasada && (
+                      <span className="ml-1.5 text-muted">{fechaSuelta(p.cuando)}</span>
+                    )}
+                  </button>
+                </form>
+              )
+            })}
+          </div>
+          {estadoPlantilla.error && (
+            <p role="alert" className="mt-1.5 text-xs text-peligro">
+              {estadoPlantilla.error}
+            </p>
+          )}
+        </div>
+      )}
 
       {abierto && (
         <form

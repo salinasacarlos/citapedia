@@ -5,6 +5,7 @@ import { AgregarFranja } from '@/components/agregar-franja'
 import { BotonQuitar } from '@/components/boton-quitar'
 import { Bloqueos, type BloqueoVista } from '@/components/bloqueos'
 import { PlantillaRecordatorio } from '@/components/plantilla-recordatorio'
+import { PlantillasDeAviso, type PlantillaAviso } from '@/components/plantillas-de-aviso'
 import { DIAS, SEMANA, describirBloqueo, horaSuelta } from '@/lib/fechas'
 import type { Availability, TimeBlock } from '@/lib/database.types'
 
@@ -16,8 +17,12 @@ export default async function HorarioPage() {
   const supabase = await createClient()
   const zona = profesional.timezone
 
-  const [{ data: franjasCrudas }, { data: bloqueosCrudos }, { data: ajustes }] =
-    await Promise.all([
+  const [
+    { data: franjasCrudas },
+    { data: bloqueosCrudos },
+    { data: ajustes },
+    { data: plantillas },
+  ] = await Promise.all([
       supabase
         .from('availability')
         .select('id, weekday, start_time, end_time')
@@ -34,6 +39,11 @@ export default async function HorarioPage() {
         .from('reminder_settings')
         .select('message_template')
         .maybeSingle<{ message_template: string | null }>(),
+      supabase
+        .from('alert_templates')
+        .select('id, titulo, mensaje, base, offset_meses')
+        .order('created_at')
+        .returns<PlantillaAviso[]>(),
     ])
 
   const franjas = franjasCrudas ?? []
@@ -97,6 +107,10 @@ export default async function HorarioPage() {
 
       <div className="mt-8">
         <Bloqueos zona={zona} bloqueos={bloqueos} />
+      </div>
+
+      <div className="mt-8">
+        <PlantillasDeAviso plantillas={plantillas ?? []} />
       </div>
 
       <div className="mt-8">
