@@ -7,7 +7,7 @@ import { Filtros } from '@/components/filtros'
 import { CitaAceptada } from '@/components/cita-aceptada'
 import { aplicarFiltros, hayFiltros, leerFiltros } from '@/lib/filtros'
 import { fechaLarga, hora, rangoHorario, relativo } from '@/lib/fechas'
-import { armarMensaje, contactoParaConfirmar } from '@/lib/whatsapp'
+import { PLANTILLA_POR_DEFECTO, armarMensaje, conLiga, contactoParaConfirmar } from '@/lib/whatsapp'
 import type { Patient } from '@/lib/database.types'
 
 export const dynamic = 'force-dynamic'
@@ -92,10 +92,7 @@ export default async function SolicitudesPage({
     .select('message_template')
     .maybeSingle<{ message_template: string | null }>()
 
-  const base =
-    ajustes?.message_template ??
-    'Hola {paciente}, te recordamos tu cita con {doctor} el {fecha} a las {hora}.'
-  const plantilla = base.includes('{liga}') ? base : `${base} Aquí puedes confirmar: {liga}`
+  const plantilla = conLiga(ajustes?.message_template ?? PLANTILLA_POR_DEFECTO)
   const sitio = process.env.NEXT_PUBLIC_SITE_URL ?? ''
 
   const ahora = new Date().toISOString()

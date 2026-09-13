@@ -9,6 +9,12 @@ import { armarCitaAceptada } from '../src/lib/correo/cita-aceptada'
 import { armarCitaRechazada } from '../src/lib/correo/cita-rechazada'
 import { armarRecuperacion } from '../src/lib/correo/recuperar'
 import { armarSolicitudRecibida } from '../src/lib/correo/solicitud-recibida'
+import {
+  armarMensaje,
+  conLiga,
+  PLANTILLA_POR_DEFECTO,
+  variablesDesconocidas,
+} from '../src/lib/whatsapp'
 
 let fallos = 0
 function check(etiqueta: string, ok: boolean, detalle = '') {
@@ -292,6 +298,36 @@ check(
 check(
   'y no revela nada de la cuenta más que la dirección',
   !recupera.html.includes('consultorio') && !/Dr\.|Dra\./.test(recupera.html),
+)
+
+console.log('\nLa plantilla que edita el médico')
+
+check('el default es el de siempre', PLANTILLA_POR_DEFECTO.includes('{paciente}'))
+check(
+  'sin {liga} se le agrega al final',
+  conLiga('Te esperamos el {fecha}.').endsWith('Aquí puedes confirmar: {liga}'),
+)
+check(
+  'con {liga} se respeta dónde la puso',
+  conLiga('Confirma en {liga}, {paciente}.') === 'Confirma en {liga}, {paciente}.',
+)
+check('las variables buenas pasan', variablesDesconocidas(conLiga(PLANTILLA_POR_DEFECTO)).length === 0)
+check(
+  'una variable inventada se detecta antes de guardar',
+  variablesDesconocidas('Hola {nombre}, te esperamos').join() === 'nombre',
+)
+check(
+  'y se detectan todas, sin repetir',
+  variablesDesconocidas('{a} {b} {a} {paciente}').join() === 'a,b',
+)
+check(
+  'el mensaje armado no deja dos puntos al cerrar con la hora',
+  !armarMensaje('Nos vemos a las {hora}.', {
+    paciente: 'x',
+    doctor: 'y',
+    fecha: 'z',
+    hora: '6:30 p.m.',
+  }).includes('..'),
 )
 
 console.log('\nEl acuse de la solicitud')

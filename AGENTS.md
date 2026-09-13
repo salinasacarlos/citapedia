@@ -492,6 +492,29 @@ las columnas para que nadie agregue la dirección de pasada.
 una tabla o en un log la vuelve reutilizable por quien lea cualquiera de los
 dos.
 
+### El médico escribe el recordatorio
+
+Es lo único que el paciente lee del consultorio entre que agenda y que llega, y
+decía lo mismo para todos. Un pediatra que quiere pedir la cartilla de
+vacunación no tenía dónde escribirlo; cambiarlo era entrar por SQL.
+
+Vive en `/admin/horario`, que es la página de cómo trabaja el consultorio.
+
+- **La vista previa no es adorno.** La plantilla está llena de llaves y nadie
+  puede leer `Hola {paciente}` y saber cómo va a sonar. El ejemplo se arma con
+  la misma función que el envío de verdad, así que lo que se ve es lo que sale.
+- **Una variable inventada se manda tal cual**: el paciente recibiría "Hola
+  {nombre}". `variablesDesconocidas` la caza al guardar, que es el último
+  momento en que hay alguien enfrente para corregirla.
+- Es de **equipo**, no solo del dueño: quien redacta los mensajes suele ser
+  quien contesta el teléfono.
+- **No se ofrece la anticipación** (`hours_before`). El cron de Hobby corre una
+  vez al día, así que un selector de horas prometería una precisión que no
+  existe.
+- `PLANTILLA_POR_DEFECTO` y `conLiga` viven en `whatsapp.ts`. Estaban copiadas
+  en cuatro archivos, y con el texto ya editable eso empeora: cambiar el default
+  en tres de los cuatro deja a alguien recibiendo una versión que nadie escribió.
+
 ## El cron de recordatorios
 
 `GET /api/recordatorios`, disparado por el cron de Vercel una vez al día
