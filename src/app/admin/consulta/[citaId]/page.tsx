@@ -5,6 +5,7 @@ import { exigirConsultorio } from '@/lib/consultorio'
 import { FormularioConsulta } from '@/components/nota-consulta'
 import { Estudios, type EstudioVisible } from '@/components/estudios'
 import { HistorialDeNota, type Version } from '@/components/historial-de-nota'
+import { Recetas, type Receta } from '@/components/recetas'
 import { AccionesCita } from '@/components/acciones-cita'
 import { marcarCompletada, marcarNoAsistio } from '@/lib/admin/actions'
 import { edad, fechaCorta, fechaLarga, hora } from '@/lib/fechas'
@@ -89,6 +90,7 @@ export default async function Consulta({
     { data: archivos },
     { data: versiones },
     { count: citasFuturas },
+    { data: recetas },
   ] = await Promise.all([
       supabase
         .from('clinical_records')
@@ -126,6 +128,11 @@ export default async function Consulta({
         .eq('patient_id', cita.patient_id)
         .in('status', ['requested', 'confirmed'])
         .gte('starts_at', new Date().toISOString()),
+      // Lo recetado a este paciente, de lo más reciente hacia atrás: en
+      // consulta la pregunta es qué trae encima hoy.
+      supabase
+        .rpc('recetas_del_paciente', { p_paciente: paciente.id })
+        .returns<Receta[]>(),
     ])
 
   const todas = notas ?? []
@@ -217,6 +224,15 @@ export default async function Consulta({
               yaTieneCita={(citasFuturas ?? 0) > 0}
             />
             <HistorialDeNota versiones={versiones ?? []} zona={zona} />
+
+            <div className="mt-4">
+              <Recetas
+                notaId={nota?.id ?? null}
+                citaId={cita.id}
+                pacienteId={paciente.id}
+                recetas={recetas ?? []}
+              />
+            </div>
           </section>
 
           <section>

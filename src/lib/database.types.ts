@@ -264,6 +264,20 @@ export type Database = {
         created_at: string | null
       }>
       /** Ligas para poner la contraseña por primera vez. Solo la llave de servicio. */
+      consultation_medications: Table<{
+        id: string
+        consultation_note_id: string
+        professional_id: string
+        medicamento: string
+        dosis: string | null
+        frecuencia: string | null
+        duracion: string | null
+        indicaciones: string | null
+        prescribed_by: string | null
+        created_at: string
+        archived_at: string | null
+        archived_reason: string | null
+      }>
       alert_templates: Table<{
         id: string
         professional_id: string
@@ -387,6 +401,19 @@ export type Database = {
       es_operador: { Args: Record<string, never>; Returns: boolean }
       correo_registrado: { Args: { p_email: string }; Returns: boolean }
       tiene_cita_por_venir: { Args: { p_paciente: string }; Returns: boolean }
+      recetas_del_paciente: {
+        Args: { p_paciente: string }
+        Returns: {
+          id: string
+          medicamento: string
+          dosis: string | null
+          frecuencia: string | null
+          duracion: string | null
+          indicaciones: string | null
+          cuando: string
+          retirada: boolean
+        }[]
+      }
       plantillas_para_paciente: {
         Args: { p_paciente: string }
         Returns: {

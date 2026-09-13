@@ -1178,6 +1178,29 @@ que cada versión anterior se guarda antes de perderse, en
   encuentra filas que tocar. Las pruebas verifican el efecto, no esperan una
   excepción que nunca llega.
 
+### Lo recetado, con estructura
+
+`consultation_medications` guarda medicamento, dosis, frecuencia, duración e
+indicaciones. **No reemplaza a `treatment`**, que sigue siendo texto libre: el
+médico escribe ahí lo que quiera y esto es un agregado opcional. Obligar a
+estructurar con el paciente enfrente es cómo un campo deja de llenarse.
+
+Lo que gana es la pregunta que el texto libre no puede contestar: qué se le
+dio, cuánto, y a quién más se le recetó lo mismo.
+
+- **Solo el nombre es obligatorio.** Medio dato sirve más que ninguno.
+- **La fila no se reescribe.** Un trigger rechaza cualquier cambio que no sea
+  el retiro: corregir una receta es retirarla y escribir la correcta, y las dos
+  quedan a la vista. Es la misma exigencia de la NOM-004 que llevó al historial
+  de notas, resuelta aquí sin una segunda tabla — y por eso el mensaje del
+  error lo dice con esas palabras.
+- **Retirar no es borrar.** Suspender un medicamento es un hecho clínico:
+  `archived_at` lo registra y la lista lo muestra tachado, con su fecha.
+- **Solo dueño** (`is_owner`), como la nota: una receta es tan clínica como una
+  alergia.
+
+Falta llevarlo al Excel del expediente y a la ficha del paciente.
+
 **Nada se borra de verdad.** Cerrar el consultorio ya no hace `delete` —la
 cascada se llevaba pacientes, citas, expedientes, notas, estudios y hasta este
 mismo historial—: lo archiva. Para el médico el efecto es el mismo (su agenda
