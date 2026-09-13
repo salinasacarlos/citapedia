@@ -1788,6 +1788,81 @@ async function main() {
   )
   check('el historial no se puede editar', Number(trasIntentarEditar.rows[0].n) === 0)
 
+  // La receta estructurada, con la misma exigencia que la nota.
+  console.log('\nLo recetado')
+
+  // Va en el consultorio de Ana, que es como quien se consulta más abajo: en
+  // el de otro, RLS la escondería con razón y la prueba mediría otra cosa.
+  const pacReceta = (
+    await db.query<{ id: string }>(
+      `insert into patients (professional_id, name) values ($1, 'Paciente Receta') returning id`,
+      [proA2],
+    )
+  ).rows[0].id
+
+  const citaReceta = (
+    await db.query<{ id: string }>(
+      `insert into appointments (professional_id, patient_id, starts_at, ends_at, status)
+       values ($1, $2, now() - interval '2 hours', now() - interval '90 minutes', 'completed')
+       returning id`,
+      [proA2, pacReceta],
+    )
+  ).rows[0].id
+
+  const notaReceta = (
+    await db.query<{ id: string }>(
+      `insert into consultation_notes (appointment_id, patient_id, professional_id, note)
+       values ($1, $2, $3, 'Cuadro respiratorio') returning id`,
+      [citaReceta, pacReceta, proA2],
+    )
+  ).rows[0].id
+
+  const receta = (
+    await db.query<{ id: string }>(
+      `insert into consultation_medications
+         (consultation_note_id, professional_id, medicamento, dosis, frecuencia, duracion)
+       values ($1, $2, 'Amoxicilina', '250 mg', 'cada 8 horas', '7 días') returning id`,
+      [notaReceta, proA2],
+    )
+  ).rows[0].id
+
+  let recetaReescrita = false
+  try {
+    await db.query(`update consultation_medications set dosis = '500 mg' where id = $1`, [receta])
+  } catch (err) {
+    recetaReescrita = String(err).includes('no se corrige encima')
+  }
+  check('una receta no se puede corregir encima', recetaReescrita)
+
+  // Retirarla sí: suspender un medicamento es un hecho clínico que hay que
+  // poder registrar, y es lo único que la fila deja cambiar.
+  await db.query(
+    `update consultation_medications set archived_at = now(), archived_reason = 'reacción'
+      where id = $1`,
+    [receta],
+  )
+  const retirada = await db.query<{ n: number }>(
+    `select count(*)::int as n from consultation_medications
+      where id = $1 and archived_at is not null`,
+    [receta],
+  )
+  check('pero retirarla sí se puede, y la fila se queda', Number(retirada.rows[0].n) === 1)
+
+  const lista = await como<{ medicamento: string; retirada: boolean }>(
+    drA,
+    `select medicamento, retirada from recetas_del_paciente($1)`,
+    [pacReceta],
+  )
+  check('aparece en lo recetado del paciente', lista.rows[0]?.medicamento === 'Amoxicilina')
+  check('marcada como retirada, no escondida', lista.rows[0]?.retirada === true)
+
+  // Es tan clínica como una alergia: el asistente no la ve.
+  const asistenteNoVeRecetas = await como<{ n: number }>(
+    invitado,
+    `select count(*)::int as n from consultation_medications`,
+  )
+  check('el asistente no ve lo recetado', Number(asistenteNoVeRecetas.rows[0].n) === 0)
+
   const antesDeBorrar = await db.query<{ n: number }>(
     `select count(*)::int as n from consultation_note_history where appointment_id = $1`,
     [citaNota],
