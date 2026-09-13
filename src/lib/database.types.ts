@@ -387,6 +387,19 @@ export type Database = {
       es_operador: { Args: Record<string, never>; Returns: boolean }
       correo_registrado: { Args: { p_email: string }; Returns: boolean }
       tiene_cita_por_venir: { Args: { p_paciente: string }; Returns: boolean }
+      plantillas_para_paciente: {
+        Args: { p_paciente: string }
+        Returns: {
+          id: string
+          titulo: string
+          mensaje: string | null
+          base: string
+          offset_meses: number
+          cuando: string | null
+          ya_programado: boolean
+          usos: number
+        }[]
+      }
       fecha_de_plantilla: {
         Args: { p_plantilla: string; p_paciente: string }
         Returns: string | null

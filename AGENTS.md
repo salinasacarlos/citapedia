@@ -831,6 +831,31 @@ apuesta, porque "a los 6 meses" no dice nada hasta saber que eso cae en marzo.
   `'use server'` **solo puede exportar funciones async**; una constante ahí
   truena el build entero.
 
+### Cuáles recomendarle a este paciente
+
+Fase 5. Lo que se recomienda son **las plantillas que el médico ya escribió**,
+nunca un catálogo clínico nuestro: sugerir un esquema de vacunación es una
+afirmación médica y CitaPedia no tiene con qué respaldarla. Ordenar lo que él
+ya decidió, sí.
+
+`plantillas_para_paciente` contesta las tres señales de una vez, y las tres son
+de su propia operación:
+
+- **cuándo caería** para este paciente,
+- **si ya se la programó** —para no duplicarla; sale marcada con ✓ y
+  deshabilitada—,
+- **con cuántos de sus pacientes la usa**, que aparece en el título del botón a
+  partir de tres. No es una recomendación nuestra: es su costumbre, leída de
+  sus propios datos.
+
+El orden es por lo accionable: primero lo que se puede programar hoy, después
+lo ya programado, al final lo que no aplica. Una plantilla sin fecha
+calculable **se sigue ofreciendo**, deshabilitada y con el motivo: sirve para
+decir por qué no se puede, no para esconderla.
+
+Reemplazó una consulta por plantilla desde la ficha. Con tres no se notaba;
+con veinte y una sala llena, sí.
+
 ## El seguimiento post-consulta
 
 "Te veo en tres meses" se dice en casi todas las consultas y vivía en la

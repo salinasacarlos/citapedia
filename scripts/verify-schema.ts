@@ -1553,6 +1553,34 @@ async function main() {
   }
   check('sin fecha de nacimiento lo dice, en vez de inventar una', sinOrigen)
 
+  // Fase 5: qué le cabe a este paciente, ordenado por lo accionable.
+  const sugeridas = await como<{
+    titulo: string
+    cuando: string | null
+    ya_programado: boolean
+    usos: number
+  }>(drA, `select titulo, cuando::text, ya_programado, usos from plantillas_para_paciente($1)`, [
+    bebe,
+  ])
+
+  check('la plantilla aparece entre las del paciente', sugeridas.rows.length === 1)
+  check(
+    'y viene marcada como ya programada, para no duplicarla',
+    sugeridas.rows[0].ya_programado === true,
+  )
+  check('con su fecha calculada', sugeridas.rows[0].cuando !== null)
+  check('y con cuántos pacientes la usan: uno, el que acabamos de aplicar', sugeridas.rows[0].usos === 1)
+
+  // A un paciente sin fecha de nacimiento la plantilla le sale, pero sin fecha
+  // y hasta el final: sirve para decir por qué no se puede, no para esconderla.
+  const paraSinFecha = await como<{ cuando: string | null; ya_programado: boolean }>(
+    drA,
+    `select cuando::text, ya_programado from plantillas_para_paciente($1)`,
+    [sinFecha],
+  )
+  check('a quien le falta la fecha se le ofrece igual, sin fecha', paraSinFecha.rows.length === 1)
+  check('y sin marcarla como programada', paraSinFecha.rows[0].cuando === null)
+
   const ajenoNoVePlantillas = await como<{ n: number }>(
     drB,
     `select count(*)::int as n from alert_templates`,

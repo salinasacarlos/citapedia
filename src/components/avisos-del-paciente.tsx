@@ -40,10 +40,15 @@ function enMeses(meses: number) {
 export type PlantillaAplicable = {
   id: string
   titulo: string
+  mensaje: string | null
   base: string
   offset_meses: number
   /** Qué día caería para ESTE paciente. Null si no se puede calcular. */
   cuando: string | null
+  /** Ya tiene un aviso pendiente con ese título: no hay que duplicarlo. */
+  ya_programado: boolean
+  /** Con cuántos pacientes del consultorio se usa. Lo que el médico ya hace. */
+  usos: number
 }
 
 export function AvisosDelPaciente({
@@ -100,11 +105,13 @@ export function AvisosDelPaciente({
           <div className="flex flex-wrap gap-1.5">
             {plantillas.map((p) => {
               const pasada = p.cuando !== null && p.cuando < hoy
-              const motivo = !p.cuando
-                ? 'A este paciente le falta la fecha desde la que se cuenta'
-                : pasada
-                  ? `Esa fecha ya pasó (${fechaSuelta(p.cuando)})`
-                  : undefined
+              const motivo = p.ya_programado
+                ? 'Este paciente ya lo tiene programado'
+                : !p.cuando
+                  ? 'A este paciente le falta la fecha desde la que se cuenta'
+                  : pasada
+                    ? `Esa fecha ya pasó (${fechaSuelta(p.cuando)})`
+                    : undefined
 
               return (
                 <form key={p.id} action={aplicarAction}>
@@ -112,11 +119,18 @@ export function AvisosDelPaciente({
                   <input type="hidden" name="plantilla" value={p.id} />
                   <button
                     disabled={Boolean(motivo)}
-                    title={motivo ?? `Se programa para el ${fechaSuelta(p.cuando!)}`}
+                    title={
+                      motivo ??
+                      `Se programa para el ${fechaSuelta(p.cuando!)}` +
+                        // Lo que el médico ya hace con sus otros pacientes. No es
+                        // una recomendación clínica nuestra: es su propia costumbre.
+                        (p.usos >= 3 ? `. La usas con ${p.usos} pacientes` : '')
+                    }
                     className="rounded-full border border-border px-2.5 py-1 text-xs transition hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-40"
                   >
+                    {p.ya_programado && <span className="mr-1 text-exito">✓</span>}
                     {p.titulo}
-                    {p.cuando && !pasada && (
+                    {p.cuando && !pasada && !p.ya_programado && (
                       <span className="ml-1.5 text-muted">{fechaSuelta(p.cuando)}</span>
                     )}
                   </button>
