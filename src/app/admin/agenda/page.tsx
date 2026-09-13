@@ -5,7 +5,7 @@ import { marcarCompletada, marcarNoAsistio } from '@/lib/admin/actions'
 import { AccionesCita } from '@/components/acciones-cita'
 import { CancelarCita } from '@/components/cancelar-cita'
 import { ConfirmarAsistencia, type DatosConfirmacion } from '@/components/confirmar-asistencia'
-import { contactoParaConfirmar } from '@/lib/whatsapp'
+import { PLANTILLA_POR_DEFECTO, conLiga, contactoParaConfirmar } from '@/lib/whatsapp'
 import { EstadoVacio } from '@/components/estado-vacio'
 import { Filtros } from '@/components/filtros'
 import { VistaAgenda } from '@/components/vista-agenda'
@@ -166,10 +166,7 @@ export default async function AgendaPage({
 
   // Si el médico no puso {liga} en su plantilla, se agrega al final: es lo que
   // deja al paciente confirmar solo y adelantar sus datos.
-  const base =
-    recordatorios?.message_template ??
-    'Hola {paciente}, te recordamos tu cita con {doctor} el {fecha} a las {hora}.'
-  const plantilla = base.includes('{liga}') ? base : `${base} Aquí puedes confirmar: {liga}`
+  const plantilla = conLiga(recordatorios?.message_template ?? PLANTILLA_POR_DEFECTO)
 
   const sitio = process.env.NEXT_PUBLIC_SITE_URL ?? ''
 

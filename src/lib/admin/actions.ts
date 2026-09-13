@@ -1,5 +1,6 @@
 'use server'
 
+import { VARIABLES, variablesDesconocidas } from '@/lib/whatsapp'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
@@ -570,4 +571,55 @@ export async function ocultarPrimerosPasos(): Promise<void> {
     .eq('id', profesional.id)
 
   revalidatePath('/admin')
+}
+
+const MAX_PLANTILLA = 600
+
+/**
+ * El texto del recordatorio, que hasta ahora solo se cambiaba por SQL.
+ *
+ * Es lo único que el paciente lee del consultorio entre que agenda y que
+ * llega, y decía lo mismo para todos. Un pediatra que quiere pedir la cartilla
+ * de vacunación no tenía dónde escribirlo.
+ *
+ * Es de **equipo** (`is_member`, como la política de la tabla): quien redacta
+ * los mensajes suele ser quien contesta el teléfono.
+ */
+export async function guardarPlantillaRecordatorio(
+  _estado: Resultado,
+  datos: FormData,
+): Promise<Resultado> {
+  const { profesional } = await exigirConsultorio()
+  const plantilla = String(datos.get('plantilla') ?? '').trim()
+
+  if (!plantilla) return { error: 'El recordatorio no puede quedar vacío.' }
+  if (plantilla.length > MAX_PLANTILLA) {
+    return { error: `El texto se pasa por ${plantilla.length - MAX_PLANTILLA} caracteres.` }
+  }
+
+  // Una variable que no existe se manda TAL CUAL al paciente: recibiría
+  // "Hola {nombre}". Se para aquí, que es donde alguien puede corregirla.
+  const desconocidas = variablesDesconocidas(plantilla)
+
+  if (desconocidas.length > 0) {
+    const lista = desconocidas.map((v) => `{${v}}`).join(', ')
+    return {
+      error: `${lista} no se sustituye por nada y le llegaría así al paciente. Usa ${VARIABLES.map((v) => `{${v}}`).join(', ')}.`,
+    }
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('reminder_settings')
+    .upsert(
+      { professional_id: profesional.id, message_template: plantilla },
+      { onConflict: 'professional_id' },
+    )
+
+  if (error) return { error: traducirError(error.message) }
+
+  revalidatePath('/admin/horario')
+  revalidatePath('/admin/agenda')
+  revalidatePath('/admin/solicitudes')
+  return { ok: 'Recordatorio guardado.' }
 }

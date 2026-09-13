@@ -1,3 +1,4 @@
+import { conLiga, PLANTILLA_POR_DEFECTO } from '@/lib/whatsapp'
 import { baseDelSitio } from '@/lib/sitio'
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -156,9 +157,7 @@ export async function GET(request: Request) {
       telefono: cita.professionals.phone,
       inicio: cita.starts_at,
       zona: cita.professionals.timezone,
-      plantilla:
-        ajuste?.message_template ??
-        'Hola {paciente}, te recordamos tu cita con {doctor} el {fecha} a las {hora}.',
+      plantilla: conLiga(ajuste?.message_template ?? PLANTILLA_POR_DEFECTO),
       liga: `${sitio}/cita/${cita.access_token}`,
     })
 
@@ -290,7 +289,7 @@ async function prueba(destino: string) {
     inicio: enUnDia.toISOString(),
     zona: 'America/Mexico_City',
     plantilla:
-      'Hola {paciente}, te recordamos tu cita con {doctor} el {fecha} a las {hora}.',
+      PLANTILLA_POR_DEFECTO,
     liga: `${baseDelSitio()}/cita/prueba`,
   })
 

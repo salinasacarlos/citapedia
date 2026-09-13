@@ -51,6 +51,42 @@ export function numeroParaWhatsApp(
  * Rellena la plantilla del consultorio. Si falta un dato, se quita el hueco
  * en vez de dejar un "{paciente}" a la vista del paciente.
  */
+/**
+ * La plantilla de fábrica, escrita en un solo lugar.
+ *
+ * Estaba copiada en cuatro archivos, y con el médico pudiendo editarla eso se
+ * vuelve peor: cambiar el texto por defecto en tres de los cuatro deja a un
+ * paciente recibiendo una versión que ya nadie escribió.
+ */
+export const PLANTILLA_POR_DEFECTO =
+  'Hola {paciente}, te recordamos tu cita con {doctor} el {fecha} a las {hora}.'
+
+/** Lo que la plantilla sabe sustituir. Lo demás llega literal al paciente. */
+export const VARIABLES = ['paciente', 'doctor', 'fecha', 'hora', 'liga'] as const
+
+/**
+ * Si el médico no puso `{liga}`, se agrega al final: es lo que deja al
+ * paciente confirmar solo y adelantar sus datos.
+ */
+export function conLiga(plantilla: string): string {
+  return plantilla.includes('{liga}')
+    ? plantilla
+    : `${plantilla.trim()} Aquí puedes confirmar: {liga}`
+}
+
+/**
+ * Las llaves que la plantilla NO sabe sustituir.
+ *
+ * Una variable inventada se manda tal cual: el paciente recibe "Hola {nombre}".
+ * Por eso se revisa al guardar y no al enviar — al enviar ya no hay nadie
+ * enfrente que pueda corregirla.
+ */
+export function variablesDesconocidas(plantilla: string): string[] {
+  const usadas = [...plantilla.matchAll(/\{([^}]*)\}/g)].map((m) => m[1].trim())
+  const malas = usadas.filter((v) => !VARIABLES.includes(v as (typeof VARIABLES)[number]))
+  return [...new Set(malas)]
+}
+
 export function armarMensaje(
   plantilla: string,
   datos: { paciente: string; doctor: string; fecha: string; hora: string; liga?: string },
