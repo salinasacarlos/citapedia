@@ -91,6 +91,7 @@ export default async function Consulta({
     { data: versiones },
     { count: citasFuturas },
     { data: recetas },
+    { count: papeles },
   ] = await Promise.all([
       supabase
         .from('clinical_records')
@@ -133,6 +134,9 @@ export default async function Consulta({
       supabase
         .rpc('recetas_del_paciente', { p_paciente: paciente.id })
         .returns<Receta[]>(),
+      supabase
+        .from('prescription_paper')
+        .select('professional_id', { count: 'exact', head: true }),
     ])
 
   const todas = notas ?? []
@@ -231,6 +235,7 @@ export default async function Consulta({
                 citaId={cita.id}
                 pacienteId={paciente.id}
                 recetas={recetas ?? []}
+                hayPapel={(papeles ?? 0) > 0}
               />
             </div>
           </section>

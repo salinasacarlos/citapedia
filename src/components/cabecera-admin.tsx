@@ -12,7 +12,9 @@ const SECCIONES = [
   { href: '/admin/agenda', etiqueta: 'Agenda' },
   { href: '/admin/solicitudes', etiqueta: 'Solicitudes' },
   { href: '/admin/pacientes', etiqueta: 'Pacientes' },
-  { href: '/admin/horario', etiqueta: 'Horario' },
+  // Ya no es solo el horario: ahí viven también los mensajes que salen a los
+  // pacientes y el papel de las recetas. La ruta se queda por las ligas viejas.
+  { href: '/admin/horario', etiqueta: 'Consultorio' },
   { href: '/admin/historial', etiqueta: 'Historial' },
   { href: '/admin/perfil', etiqueta: 'Mi página' },
   { href: '/admin/equipo', etiqueta: 'Equipo' },
