@@ -37,6 +37,17 @@ export type CitaExport = {
   notes: string | null
 }
 
+export type RecetaExport = {
+  patient_id: string
+  medicamento: string
+  dosis: string | null
+  frecuencia: string | null
+  duracion: string | null
+  indicaciones: string | null
+  created_at: string
+  archived_at: string | null
+}
+
 type Datos = {
   consultorio: string
   zona: string
@@ -45,6 +56,7 @@ type Datos = {
   /** Solo llegan si quien exporta es el dueño. */
   expedientes: ClinicalRecord[]
   consultas: ConsultationNote[]
+  recetas: RecetaExport[]
   incluyeClinico: boolean
   /** Qué hojas llevarse. Sin esto, todas. */
   hojas?: string[]
@@ -94,7 +106,7 @@ function encabezados(titulos: string[]) {
 }
 
 export async function construirExpediente(datos: Datos) {
-  const { pacientes, citas, expedientes, consultas, zona, incluyeClinico } = datos
+  const { pacientes, citas, expedientes, consultas, recetas, zona, incluyeClinico } = datos
   const porPaciente = new Map(pacientes.map((p) => [p.id, p]))
   const nombre = (id: string) => porPaciente.get(id)?.name ?? 'Paciente'
   const columnas = (anchos: number[]) => anchos.map((width) => ({ width }))
@@ -169,6 +181,28 @@ export async function construirExpediente(datos: Datos) {
               texto(e.family_history),
               texto(e.habits),
               texto(e.notes),
+            ]),
+          ],
+        },
+        {
+          sheet: 'Recetas',
+          columns: columnas([26, 12, 30, 16, 18, 14, 40, 12]),
+          data: [
+            encabezados([
+              'Paciente', 'Fecha', 'Medicamento', 'Dosis', 'Frecuencia',
+              'Duración', 'Indicaciones', 'Estado',
+            ]),
+            ...recetas.map((r) => [
+              texto(nombre(r.patient_id)),
+              fechaLocal(r.created_at, zona),
+              texto(r.medicamento),
+              texto(r.dosis),
+              texto(r.frecuencia),
+              texto(r.duracion),
+              texto(r.indicaciones),
+              // Las retiradas no se omiten: que un medicamento se haya
+              // suspendido es parte de lo que el expediente tiene que contar.
+              texto(r.archived_at ? 'Retirado' : 'Vigente'),
             ]),
           ],
         },
