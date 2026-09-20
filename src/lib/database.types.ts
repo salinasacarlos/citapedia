@@ -367,6 +367,12 @@ export type Database = {
           note: string | null
           diagnosis: string | null
           treatment: string | null
+          weight_kg: number | null
+          height_cm: number | null
+          temperature_c: number | null
+          blood_pressure: string | null
+          heart_rate: number | null
+          oxygen_saturation: number | null
         }[]
       }
       origenes_consultorio: {

@@ -1173,6 +1173,20 @@ que cada versión anterior se guarda antes de perderse, en
 - Guarda lo que decía **antes**, no lo nuevo: lo nuevo ya está en la nota.
 - Un `update` que no toca nada clínico no genera versión: llenaría el historial
   de renglones idénticos.
+- **Llenar un campo vacío tampoco es corregir.** El médico guarda los signos
+  vitales y después la nota, y en el segundo guardado le salía "Se corrigió 1
+  vez" con el tratamiento tachado como si lo hubiera borrado. No borró nada. La
+  norma pide que lo **asentado** quede íntegro, y un campo vacío no asentó
+  nada. Basta que un campo con contenido cambie para guardar la versión entera;
+  lo que se salta es solo el caso en que todo lo que cambió venía vacío.
+- **En pantalla se listan únicamente los campos que cambiaron**, comparando
+  cada versión contra la que vino después (y la más reciente, contra la nota de
+  hoy). Listar la versión completa señalaba como borrado lo que nadie tocó, y
+  un historial que señala lo que no pasó deja de creerse — junto con los
+  renglones que sí importan.
+- `historial_de_nota` devuelve **también los signos vitales**. Los guardaba
+  pero no los devolvía, así que corregir un peso creaba una versión que en
+  pantalla salía vacía: "se corrigió" y ningún campo debajo.
 - Borrar la nota también deja constancia (`motivo = 'delete'`).
 - Al probarlo: sin política de update, RLS **no lanza error**, simplemente no
   encuentra filas que tocar. Las pruebas verifican el efecto, no esperan una
