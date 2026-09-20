@@ -1272,11 +1272,30 @@ valida nada de eso; pone los medicamentos en el espacio libre.
   parece una receta y no lo es. La ruta contesta 409 y el botón ni aparece.
 - **Dos números en vez de un editor de coordenadas.** Una hoja membretada tiene
   el encabezado arriba, la firma abajo y el centro vacío: con "cuánto respetar
-  arriba" y "cuánto abajo" en milímetros se acomoda cualquier papel, y el
-  médico los mide con una regla sobre su propia hoja.
-- **El papel manda el tamaño.** Si su receta es media carta, la nuestra sale de
-  media carta: se toma del PDF incrustado. Solo cuando sube una imagen se asume
-  carta.
+  arriba" y "cuánto abajo" en milímetros se acomoda cualquier papel.
+- **Los márgenes se miden al subir el papel**, no se suponen. `medirPapel`
+  reduce la hoja a una miniatura en escala de grises y busca desde dónde y
+  hasta dónde hay tinta. Detalles que importan: se ignoran los costados
+  (muchas recetas traen un marco de arriba abajo, y con eso ningún renglón
+  quedaría libre), el fondo es el tono **más común** y no blanco (hay recetas
+  en papel de color), y una mancha suelta en el centro no cuenta como membrete.
+  Si la hoja no se puede medir —toda con tinta, o sin espacio para escribir—
+  devuelve los de siempre y **dice que no pudo**, en vez de inventar un número
+  con cara de certeza.
+- **En PDF solo se mide el caso escaneado**: si la página trae una imagen JPEG,
+  sus bytes dentro del PDF ya son un JPEG y se pueden mirar. Dibujar un PDF
+  vectorial pediría traerse un renderizador entero, y eso no se paga por dos
+  números que el médico corrige en diez segundos.
+- **La muestra es lo que los vuelve ajustables.** `/admin/papel-receta/muestra`
+  imprime una receta de mentiras sobre el papel de verdad: dos milímetros no se
+  evalúan en abstracto, pero de un vistazo se ve si el texto le cae encima al
+  membrete o le pisa la firma — y se ve antes de usarla con un paciente.
+- **El papel manda el tamaño, y nunca se deforma.** De un PDF se toma su tamaño
+  real. De una imagen solo se conoce la proporción, así que se elige el papel
+  que más se le parece —media carta, carta, A5, A4, oficio, y sus versiones
+  horizontales— y se dibuja ajustada y centrada, sin estirar. Antes se forzaba
+  carta: una media carta salía estirada a lo alto y deformada. El logo y la
+  firma de alguien no son relleno.
 - **Lo que no cabe no se encima.** Al llegar al margen de abajo se deja de
   escribir, porque ahí va su firma. Hay una prueba con márgenes imposibles que
   verifica que no se escriba nada en vez de invadir.

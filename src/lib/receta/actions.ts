@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { exigirConsultorio } from '@/lib/consultorio'
+import { medirPapel } from '@/lib/receta/medir'
 
 export type ResultadoPapel = { error?: string; ok?: string }
 
@@ -30,13 +31,19 @@ export async function subirPapelDeReceta(
     return { error: `Pesa ${(archivo.size / 1024 / 1024).toFixed(1)} MB y el máximo son 5 MB.` }
   }
 
+  // Se mira la hoja antes de guardarla: dónde termina el membrete y dónde
+  // empieza la firma. Es la diferencia entre un valor por defecto que nadie
+  // tocó y un número propuesto sobre SU papel, que el médico solo confirma.
+  const bytes = new Uint8Array(await archivo.arrayBuffer())
+  const medido = await medirPapel(bytes, archivo.type)
+
   const supabase = await createClient()
   const extension = archivo.type === 'application/pdf' ? 'pdf' : archivo.type.split('/')[1]
   const ruta = `${profesional.id}/papel-${Date.now()}.${extension}`
 
   const { error: errorSubida } = await supabase.storage
     .from(BUCKET)
-    .upload(ruta, archivo, { contentType: archivo.type, upsert: false })
+    .upload(ruta, bytes, { contentType: archivo.type, upsert: false })
   if (errorSubida) return { error: errorSubida.message }
 
   const { data: anterior } = await supabase
@@ -46,7 +53,14 @@ export async function subirPapelDeReceta(
     .maybeSingle<{ path: string }>()
 
   const { error } = await supabase.from('prescription_paper').upsert(
-    { professional_id: profesional.id, path: ruta, mime: archivo.type, updated_at: new Date().toISOString() },
+    {
+      professional_id: profesional.id,
+      path: ruta,
+      mime: archivo.type,
+      margen_arriba: medido.arriba,
+      margen_abajo: medido.abajo,
+      updated_at: new Date().toISOString(),
+    },
     { onConflict: 'professional_id' },
   )
 
@@ -61,7 +75,11 @@ export async function subirPapelDeReceta(
   }
 
   revalidatePath('/admin/horario')
-  return { ok: 'Papel guardado.' }
+  return {
+    ok: medido.seguro
+      ? `Papel guardado. Medí tu hoja: ${medido.arriba} mm arriba y ${medido.abajo} mm abajo. Revísalo con la muestra.`
+      : 'Papel guardado. No pude medir dónde termina tu membrete, así que puse valores de partida: ajústalos con la muestra.',
+  }
 }
 
 /**
