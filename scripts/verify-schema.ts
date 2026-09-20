@@ -1760,6 +1760,52 @@ async function main() {
   )
   check('un cambio que no toca lo clínico no genera versión', Number(sinRuido.rows[0].n) === 1)
 
+  // Llenar un hueco no es corregir: el médico guarda los signos vitales y
+  // después la nota, y eso le sacaba "Se corrigió 1 vez" con el tratamiento
+  // tachado como si lo hubiera borrado. Va sobre una nota propia, que empiece
+  // de verdad vacía — la de arriba ya trae texto.
+  const citaEnDosPasos = (
+    await db.query<{ id: string }>(
+      `insert into appointments (professional_id, patient_id, starts_at, ends_at, status)
+       values ($1, $2, now() - interval '3 hours', now() - interval '150 minutes', 'completed')
+       returning id`,
+      [proId, pacNota],
+    )
+  ).rows[0].id
+
+  await db.query(
+    `insert into consultation_notes (appointment_id, patient_id, professional_id, treatment)
+     values ($1, $2, $3, '12 kg de arroz')`,
+    [citaEnDosPasos, pacNota, proId],
+  )
+  await db.query(
+    `update consultation_notes set note = 'Sacar radiografías' where appointment_id = $1`,
+    [citaEnDosPasos],
+  )
+  const trasLlenar = await db.query<{ n: number }>(
+    `select count(*)::int as n from consultation_note_history where appointment_id = $1`,
+    [citaEnDosPasos],
+  )
+  check('llenar un campo vacío no cuenta como corrección', Number(trasLlenar.rows[0].n) === 0)
+
+  // Pero pisar algo escrito sí, aunque en el mismo update se llene otro hueco.
+  await db.query(
+    `update consultation_notes
+        set note = 'Sacar radiografías de torso', diagnosis = 'Bronquitis'
+      where appointment_id = $1`,
+    [citaEnDosPasos],
+  )
+  const trasPisar = await db.query<{ n: number; note: string }>(
+    `select count(*)::int as n, max(note) as note
+       from consultation_note_history where appointment_id = $1`,
+    [citaEnDosPasos],
+  )
+  check('pisar algo ya escrito sí guarda la versión', Number(trasPisar.rows[0].n) === 1)
+  check(
+    'y guarda lo que decía antes, no lo nuevo',
+    trasPisar.rows[0].note === 'Sacar radiografías',
+  )
+
   await db.query(`delete from consultation_notes where appointment_id = $1`, [citaNota])
   const trasBorrar = await db.query<{ n: number; motivo: string }>(
     `select count(*)::int as n, max(motivo) as motivo

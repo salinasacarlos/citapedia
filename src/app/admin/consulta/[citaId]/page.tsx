@@ -4,7 +4,11 @@ import { createClient } from '@/lib/supabase/server'
 import { exigirConsultorio } from '@/lib/consultorio'
 import { FormularioConsulta } from '@/components/nota-consulta'
 import { Estudios, type EstudioVisible } from '@/components/estudios'
-import { HistorialDeNota, type Version } from '@/components/historial-de-nota'
+import {
+  HistorialDeNota,
+  type EstadoDeNota,
+  type Version,
+} from '@/components/historial-de-nota'
 import { Recetas, type Receta } from '@/components/recetas'
 import { AccionesCita } from '@/components/acciones-cita'
 import { marcarCompletada, marcarNoAsistio } from '@/lib/admin/actions'
@@ -30,6 +34,21 @@ type CitaConPaciente = {
 }
 
 /** Los signos que sí se midieron, en una línea. */
+/** Solo lo que el historial compara: la nota de hoy, en su misma forma. */
+function estadoDeNota(n: ConsultationNote): EstadoDeNota {
+  return {
+    note: n.note,
+    diagnosis: n.diagnosis,
+    treatment: n.treatment,
+    weight_kg: n.weight_kg,
+    height_cm: n.height_cm,
+    temperature_c: n.temperature_c,
+    blood_pressure: n.blood_pressure,
+    heart_rate: n.heart_rate,
+    oxygen_saturation: n.oxygen_saturation,
+  }
+}
+
 function vitales(n: ConsultationNote): string[] {
   const partes: string[] = []
   if (n.weight_kg) partes.push(`${n.weight_kg} kg`)
@@ -227,7 +246,11 @@ export default async function Consulta({
               nota={nota}
               yaTieneCita={(citasFuturas ?? 0) > 0}
             />
-            <HistorialDeNota versiones={versiones ?? []} zona={zona} />
+            <HistorialDeNota
+              versiones={versiones ?? []}
+              actual={nota ? estadoDeNota(nota) : null}
+              zona={zona}
+            />
 
             <div className="mt-4">
               <Recetas
