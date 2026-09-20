@@ -1199,7 +1199,16 @@ dio, cuánto, y a quién más se le recetó lo mismo.
 - **Solo dueño** (`is_owner`), como la nota: una receta es tan clínica como una
   alergia.
 
-Falta llevarlo al Excel del expediente y a la ficha del paciente.
+En la ficha va en su propia tarjeta, **separada de `clinical_records.medications`**:
+uno es lo que el médico indicó y cuándo, el otro lo que el paciente dice que
+toma. Mezclarlos haría imposible saber quién recetó qué. Ahí solo se lista —
+recetar es un acto de la consulta y su lugar es el workspace.
+
+En el Excel es la hoja **Recetas**, clínica como las otras dos (el asistente ni
+la pide). **Las retiradas no se omiten**, salen marcadas: que un medicamento se
+haya suspendido es parte de lo que el expediente tiene que contar. Se llega por
+`consultation_notes!inner(patient_id)` porque la receta cuelga de la nota, no
+del paciente.
 
 **Nada se borra de verdad.** Cerrar el consultorio ya no hace `delete` —la
 cascada se llevaba pacientes, citas, expedientes, notas, estudios y hasta este

@@ -24,6 +24,12 @@ const HOJAS: Hoja[] = [
     nota: 'Signos vitales, diagnósticos, tratamientos',
     clinica: true,
   },
+  {
+    id: 'Recetas',
+    etiqueta: 'Lo recetado',
+    nota: 'Medicamento, dosis, frecuencia, y si se retiró',
+    clinica: true,
+  },
 ]
 
 /**

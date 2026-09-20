@@ -10,6 +10,8 @@ import { describirOrigen } from '@/lib/origen'
 import { RegistrarConsulta } from '@/components/registrar-consulta'
 import { AvisosDelPaciente, type Aviso } from '@/components/avisos-del-paciente'
 import type { PlantillaAplicable } from '@/components/avisos-del-paciente'
+import { RecetasDelPaciente } from '@/components/recetas-del-paciente'
+import type { Receta } from '@/components/recetas'
 import { DescargarExpediente } from '@/components/descargar-expediente'
 import type {
   AppointmentStatus,
@@ -102,6 +104,7 @@ export default async function FichaPaciente({
     { data: archivos },
     { data: avisos },
     { data: plantillas },
+    { data: recetas },
   ] = await Promise.all([
     supabase
       .from('appointments')
@@ -153,6 +156,10 @@ export default async function FichaPaciente({
     supabase
       .rpc('plantillas_para_paciente', { p_paciente: id })
       .returns<PlantillaAplicable[]>(),
+    // Lo recetado es clínico: al asistente ni se le pide.
+    esDueño
+      ? supabase.rpc('recetas_del_paciente', { p_paciente: id }).returns<Receta[]>()
+      : Promise.resolve({ data: [] as Receta[] }),
   ])
 
   // El bucket es privado: cada archivo se abre con una liga firmada que vence.
@@ -488,6 +495,8 @@ export default async function FichaPaciente({
 
 
 
+
+        {esDueño && <RecetasDelPaciente recetas={recetas ?? []} />}
 
         {esDueño && (
           <section>

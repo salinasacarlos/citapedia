@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { exigirConsultorio } from '@/lib/consultorio'
-import { construirExpediente, nombreArchivo, type CitaExport } from '@/lib/excel/expediente'
+import { construirExpediente, type RecetaExport, nombreArchivo, type CitaExport } from '@/lib/excel/expediente'
 import type { ClinicalRecord, ConsultationNote, Patient } from '@/lib/database.types'
 
 /**
@@ -22,7 +22,7 @@ export async function exportarPacientes(filtroPaciente?: string, hojas?: string[
 
   const ids = pacientes.map((p) => p.id)
 
-  const [{ data: citas }, expedientes, consultas] = await Promise.all([
+  const [{ data: citas }, expedientes, consultas, recetas] = await Promise.all([
     supabase
       .from('appointments')
       .select('id, patient_id, starts_at, ends_at, status, notes')
@@ -44,6 +44,18 @@ export async function exportarPacientes(filtroPaciente?: string, hojas?: string[
           .order('created_at', { ascending: false })
           .returns<ConsultationNote[]>()
       : Promise.resolve({ data: [] as ConsultationNote[] }),
+    // Las recetas cuelgan de la nota, no del paciente, así que se llega por
+    // ahí. Misma regla que lo demás clínico: si no es el dueño, ni se piden.
+    esDueño
+      ? supabase
+          .from('consultation_medications')
+          .select(
+            'medicamento, dosis, frecuencia, duracion, indicaciones, created_at, archived_at, consultation_notes!inner(patient_id)',
+          )
+          .in('consultation_notes.patient_id', ids)
+          .order('created_at', { ascending: false })
+          .returns<(Omit<RecetaExport, 'patient_id'> & { consultation_notes: { patient_id: string } })[]>()
+      : Promise.resolve({ data: [] }),
   ])
 
   const buffer = await construirExpediente({
@@ -53,6 +65,10 @@ export async function exportarPacientes(filtroPaciente?: string, hojas?: string[
     citas: citas ?? [],
     expedientes: expedientes.data ?? [],
     consultas: consultas.data ?? [],
+    recetas: (recetas.data ?? []).map(({ consultation_notes, ...r }) => ({
+      ...r,
+      patient_id: consultation_notes.patient_id,
+    })),
     incluyeClinico: esDueño,
     hojas,
   })
