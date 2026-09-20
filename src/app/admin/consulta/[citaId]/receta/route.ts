@@ -60,8 +60,12 @@ export async function GET(
     )
   }
 
-  if (!medicamentos || medicamentos.length === 0) {
-    return new NextResponse('Esta consulta no tiene medicamentos anotados.', { status: 409 })
+  // Basta con que haya ALGO que decirle al paciente. Exigir medicamentos
+  // estructurados dejaría sin receta al médico que solo quiere escribir sus
+  // indicaciones y mandarlas a imprimir, y estructurar es opcional a propósito.
+  const hayQueImprimir = (medicamentos && medicamentos.length > 0) || Boolean(nota.treatment)
+  if (!hayQueImprimir) {
+    return new NextResponse('Esta consulta no tiene nada que imprimir todavía.', { status: 409 })
   }
 
   const { data: archivo, error } = await supabase.storage
@@ -76,7 +80,7 @@ export async function GET(
     paciente: nota.patients?.name ?? 'Paciente',
     edad: nota.patients?.birth_date ? edad(nota.patients.birth_date) : null,
     fecha: fechaLarga(nota.created_at, profesional.timezone),
-    medicamentos,
+    medicamentos: medicamentos ?? [],
     indicacionesGenerales: nota.treatment,
     papel: {
       bytes: new Uint8Array(await archivo.arrayBuffer()),

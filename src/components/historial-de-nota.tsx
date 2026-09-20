@@ -20,7 +20,7 @@ export type EstadoDeNota = Omit<Version, 'replaced_at' | 'motivo' | 'autor'>
 
 const CAMPOS: { clave: keyof EstadoDeNota; etiqueta: string; unidad?: string }[] = [
   { clave: 'diagnosis', etiqueta: 'Diagnóstico' },
-  { clave: 'treatment', etiqueta: 'Tratamiento' },
+  { clave: 'treatment', etiqueta: 'Indicaciones' },
   { clave: 'note', etiqueta: 'Nota' },
   { clave: 'weight_kg', etiqueta: 'Peso', unidad: 'kg' },
   { clave: 'height_cm', etiqueta: 'Talla', unidad: 'cm' },

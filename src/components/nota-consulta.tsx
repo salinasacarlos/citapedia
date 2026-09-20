@@ -160,15 +160,20 @@ export function FormularioConsulta({
       <div className="mt-3 grid gap-3">
         <div>
           <label htmlFor={`tx-${citaId}`} className="block text-xs text-muted">
-            Tratamiento indicado
+            Indicaciones
           </label>
           <textarea
             id={`tx-${citaId}`}
             name="treatment"
             rows={2}
             defaultValue={nota?.treatment ?? ''}
+            placeholder="Reposo, dieta, curaciones, qué vigilar…"
             className="campo mt-1 resize-y"
           />
+          <p className="mt-1 text-xs text-muted">
+            Lo que tiene que hacer. Lo que tiene que tomar va abajo, en los
+            medicamentos.
+          </p>
         </div>
         <div>
           <label htmlFor={`nota-${citaId}`} className="block text-xs text-muted">

@@ -39,6 +39,7 @@ export function Recetas({
   pacienteId,
   recetas,
   hayPapel = false,
+  indicaciones = null,
 }: {
   notaId: string | null
   citaId: string
@@ -46,8 +47,20 @@ export function Recetas({
   recetas: Receta[]
   /** Sin papel membretado no se imprime: le faltaría la cédula y la firma. */
   hayPapel?: boolean
+  /** Lo guardado en Indicaciones, para ofrecer pasar sus renglones aquí. */
+  indicaciones?: string | null
 }) {
   const [abierto, setAbierto] = useState(false)
+  const [nombre, setNombre] = useState('')
+
+  // Renglones de las indicaciones que todavía no son un medicamento. Es un
+  // traslado, no una lectura: no se adivina dosis ni frecuencia, porque
+  // equivocarse en una dosis por una regla de dedo no es un error de interfaz.
+  const sueltos = (indicaciones ?? '')
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.length > 2)
+    .filter((l) => !recetas.some((r) => r.medicamento.toLowerCase() === l.toLowerCase()))
 
   const vigentes = recetas.filter((r) => !r.retirada)
   const retiradas = recetas.filter((r) => r.retirada)
@@ -62,7 +75,7 @@ export function Recetas({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {vigentes.length > 0 && hayPapel && (
+          {(vigentes.length > 0 || indicaciones) && hayPapel && (
             <a
               href={`/admin/consulta/${citaId}/receta`}
               target="_blank"
@@ -75,7 +88,10 @@ export function Recetas({
           {notaId && !abierto && (
             <button
               type="button"
-              onClick={() => setAbierto(true)}
+              onClick={() => {
+                setNombre('')
+                setAbierto(true)
+              }}
               className="boton boton-suave px-3 py-1 text-xs"
             >
               Agregar
@@ -84,7 +100,30 @@ export function Recetas({
         </div>
       </div>
 
-      {vigentes.length > 0 && !hayPapel && (
+      {notaId && sueltos.length > 0 && !abierto && (
+        <div className="mt-3 rounded-marca border border-border bg-fondo p-3">
+          <p className="text-xs text-muted">
+            ¿Alguno de estos es un medicamento? Pásalo aquí y completa la dosis.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {sueltos.map((linea) => (
+              <button
+                key={linea}
+                type="button"
+                onClick={() => {
+                  setNombre(linea)
+                  setAbierto(true)
+                }}
+                className="rounded-full border border-border px-2.5 py-1 text-xs transition hover:bg-surface-2"
+              >
+                {linea}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {(vigentes.length > 0 || indicaciones) && !hayPapel && (
         <p className="mt-3 text-xs text-muted">
           Para imprimirla necesitas cargar tu papel membretado en{' '}
           <Link href="/admin/horario" className="text-acento hover:underline">
@@ -105,7 +144,10 @@ export function Recetas({
           accion={recetarMedicamento}
           enviar="Agregar"
           className="mt-3 border-b border-border pb-4"
-          onExito={() => setAbierto(false)}
+          onExito={() => {
+            setAbierto(false)
+            setNombre('')
+          }}
         >
           <input type="hidden" name="nota" value={notaId} />
           <input type="hidden" name="cita" value={citaId} />
@@ -117,6 +159,8 @@ export function Recetas({
               required
               maxLength={120}
               placeholder="Medicamento"
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
               className="campo w-full"
             />
             <div className="grid gap-2 sm:grid-cols-3">
