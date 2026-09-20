@@ -17,7 +17,8 @@
     "test:sitio": "tsx scripts/verify-sitio.ts",
     "test:texto": "tsx scripts/verify-texto.tsx",
     "test:receta": "tsx scripts/verify-receta.ts",
-    "test": "npm run db:verify && npm run test:slots && npm run test:correo && npm run test:sitio && npm run test:texto && npm run test:receta",
+    "test:medicion": "tsx scripts/verify-medicion.ts",
+    "test": "npm run db:verify && npm run test:slots && npm run test:correo && npm run test:sitio && npm run test:texto && npm run test:receta && npm run test:medicion",
     "demo:sembrar": "supabase db query --linked -f supabase/fixtures/demo-consultorio.sql",
     "demo:limpiar": "supabase db query --linked -f supabase/fixtures/demo-limpiar.sql"
   },
@@ -28,6 +29,7 @@
     "pdf-lib": "^1.17.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "sharp": "^0.35.4",
     "write-excel-file": "^4.1.1"
   },
   "devDependencies": {

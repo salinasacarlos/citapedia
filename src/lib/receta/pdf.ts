@@ -20,8 +20,38 @@ import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 /** Los milímetros que el médico mide con una regla, en puntos de PDF. */
 const MM = 2.8346
 
-/** Carta, que es lo que usa cualquier papelería en México. */
-const CARTA = { ancho: 612, alto: 792 }
+/**
+ * Los papeles en los que de verdad se imprime una receta, en puntos.
+ *
+ * Una imagen no trae su tamaño de impresión, solo píxeles: lo único que dice
+ * es su **proporción**. Así que se busca el papel cuya proporción se le parezca
+ * más y se usa ese. Forzar carta estiraba una media carta a lo alto y la
+ * dejaba deformada — que es exactamente lo que no puede pasar con el papel de
+ * alguien más.
+ */
+const PAPELES = [
+  { nombre: 'media carta', ancho: 396, alto: 612 },
+  { nombre: 'carta', ancho: 612, alto: 792 },
+  { nombre: 'A5', ancho: 420, alto: 595 },
+  { nombre: 'A4', ancho: 595, alto: 842 },
+  { nombre: 'oficio', ancho: 612, alto: 936 },
+] as const
+
+export function papelQueMasSeParece(anchoPx: number, altoPx: number) {
+  const proporcion = anchoPx / altoPx
+  // También horizontal: hay recetas apaisadas, y una vertical forzada las
+  // rotaría sin que nadie lo pidiera.
+  const candidatos = PAPELES.flatMap((p) => [
+    p,
+    { nombre: `${p.nombre} horizontal`, ancho: p.alto, alto: p.ancho },
+  ])
+
+  return candidatos.reduce((mejor, p) =>
+    Math.abs(p.ancho / p.alto - proporcion) < Math.abs(mejor.ancho / mejor.alto - proporcion)
+      ? p
+      : mejor,
+  )
+}
 
 export type MedicamentoImpreso = {
   medicamento: string
@@ -82,8 +112,22 @@ export async function construirReceta(d: DatosReceta): Promise<Uint8Array> {
       d.papel.mime === 'image/png'
         ? await pdf.embedPng(d.papel.bytes)
         : await pdf.embedJpg(d.papel.bytes)
-    pagina = pdf.addPage([CARTA.ancho, CARTA.alto])
-    pagina.drawImage(imagen, { x: 0, y: 0, width: CARTA.ancho, height: CARTA.alto })
+    const papel = papelQueMasSeParece(imagen.width, imagen.height)
+    pagina = pdf.addPage([papel.ancho, papel.alto])
+
+    // Se ajusta al papel **sin deformar**, y se centra. Si la proporción no
+    // coincide al milímetro —un escaneo casi nunca coincide— quedan unas
+    // franjas blancas mínimas. Es infinitamente preferible a estirarle el
+    // membrete a alguien: su logo y su firma son suyos, no un relleno.
+    const escala = Math.min(papel.ancho / imagen.width, papel.alto / imagen.height)
+    const ancho = imagen.width * escala
+    const alto = imagen.height * escala
+    pagina.drawImage(imagen, {
+      x: (papel.ancho - ancho) / 2,
+      y: (papel.alto - alto) / 2,
+      width: ancho,
+      height: alto,
+    })
   }
 
   const { width: ancho, height: alto } = pagina.getSize()

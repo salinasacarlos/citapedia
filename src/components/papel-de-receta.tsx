@@ -59,15 +59,28 @@ export function PapelDeReceta({ papel }: { papel: PapelDeRecetaGuardado | null }
 
       {papel && (
         <div className="mt-5 border-t border-border pt-4">
-          <p className="text-xs text-muted">
-            Cargado el {new Date(papel.updated_at).toLocaleDateString('es-MX')} ·{' '}
-            {papel.mime === 'application/pdf' ? 'PDF' : 'Imagen'}
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-muted">
+              Cargado el {new Date(papel.updated_at).toLocaleDateString('es-MX')} ·{' '}
+              {papel.mime === 'application/pdf' ? 'PDF' : 'Imagen'}
+            </p>
+            {/* La muestra es lo que vuelve ajustables los dos números: dos
+                milímetros no se evalúan en abstracto, pero sí se ve si el texto
+                le cae encima al membrete. */}
+            <a
+              href="/admin/papel-receta/muestra"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="boton boton-suave px-3 py-1 text-xs"
+            >
+              Ver una muestra
+            </a>
+          </div>
 
           <p className="mt-3 text-sm text-ink">¿Cuánto espacio hay que respetarle?</p>
           <p className="text-xs text-muted">
-            Mide con una regla tu hoja impresa: hasta dónde llega el encabezado, y
-            desde dónde empieza lo de abajo. Ahí es donde va tu firma.
+            Los medimos sobre tu hoja al subirla. Abre la muestra: si el texto le
+            cae encima a tu membrete o le pisa la firma, corrígelos aquí.
           </p>
 
           <form ref={formRef} className="mt-3">

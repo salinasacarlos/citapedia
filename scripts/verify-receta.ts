@@ -5,7 +5,11 @@
 // usa cualquier papelería en México.
 
 import { PDFDocument, PDFRawStream, rgb } from 'pdf-lib'
-import { construirReceta, type MedicamentoImpreso } from '../src/lib/receta/pdf'
+import {
+  construirReceta,
+  papelQueMasSeParece,
+  type MedicamentoImpreso,
+} from '../src/lib/receta/pdf'
 import { writeFileSync } from 'node:fs'
 import { inflateSync } from 'node:zlib'
 
@@ -52,6 +56,23 @@ async function papelDePrueba(ancho = 612, alto = 792) {
   p.drawRectangle({ x: 0, y: 0, width: ancho, height: 110, color: rgb(0.95, 0.95, 0.95) })
   p.drawText('Firma _______________', { x: 40, y: 60, size: 11 })
   return pdf.save()
+}
+
+/** Un PNG liso del tamaño que se pida, para probar proporciones. */
+async function imagenDePrueba(anchoPx: number, altoPx: number) {
+  const doc = await PDFDocument.create()
+  const p = doc.addPage([anchoPx, altoPx])
+  p.drawRectangle({ x: 0, y: 0, width: anchoPx, height: altoPx, color: rgb(1, 1, 1) })
+  // pdf-lib no exporta PNG: se arma el mínimo a mano con la librería de
+  // imágenes que ya trae Next.
+  const { default: sharp } = await import('sharp')
+  return new Uint8Array(
+    await sharp({
+      create: { width: anchoPx, height: altoPx, channels: 3, background: '#ffffff' },
+    })
+      .png()
+      .toBuffer(),
+  )
 }
 
 const MEDICAMENTOS: MedicamentoImpreso[] = [
@@ -167,6 +188,51 @@ async function correr() {
   const textoSolo = await textoDibujado(soloIndicaciones)
   check('sin medicamentos, la receta sale con las indicaciones', textoSolo.includes('Reposo dos'))
   check('y con el nombre del paciente', textoSolo.includes('Ximena Robles'))
+
+  console.log('\nEl papel no se deforma')
+
+  // Una imagen de media carta (5.5 x 8.5 pulgadas a 150 ppp).
+  const mediaCartaPx = await imagenDePrueba(825, 1275)
+  const deImagen = await construirReceta({
+    paciente: 'Ximena Robles',
+    edad: null,
+    fecha: 'martes 15',
+    medicamentos: [MEDICAMENTOS[1]],
+    indicacionesGenerales: null,
+    papel: { bytes: mediaCartaPx, mime: 'image/png', margenArriba: 40, margenAbajo: 30 },
+  })
+  const hoja = (await PDFDocument.load(deImagen)).getPage(0).getSize()
+  check(
+    'una imagen de media carta sale en media carta, no estirada a carta',
+    Math.round(hoja.width) === 396 && Math.round(hoja.height) === 612,
+    `${Math.round(hoja.width)}x${Math.round(hoja.height)}`,
+  )
+
+  check(
+    'la proporción decide el papel, no un valor fijo',
+    papelQueMasSeParece(825, 1275).nombre === 'media carta' &&
+      papelQueMasSeParece(1275, 1650).nombre === 'carta',
+  )
+  check(
+    'una receta apaisada no se rota',
+    papelQueMasSeParece(1275, 825).nombre === 'media carta horizontal',
+  )
+
+  // Una proporción que no es de ningún papel: se acomoda sin deformar.
+  const rara = await construirReceta({
+    paciente: 'Ximena Robles',
+    edad: null,
+    fecha: 'martes 15',
+    medicamentos: [MEDICAMENTOS[1]],
+    indicacionesGenerales: null,
+    papel: {
+      bytes: await imagenDePrueba(1000, 1000),
+      mime: 'image/png',
+      margenArriba: 40,
+      margenAbajo: 30,
+    },
+  })
+  check('una imagen cuadrada tampoco truena', Buffer.from(rara).toString('latin1').startsWith('%PDF'))
 
   const muchos = await construirReceta({
     paciente: 'Paciente Con Muchos',
