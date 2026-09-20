@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState } from 'react'
 import { recetarMedicamento, retirarMedicamento } from '@/lib/recetas/actions'
 import { Formulario } from '@/components/formulario'
@@ -37,11 +38,14 @@ export function Recetas({
   citaId,
   pacienteId,
   recetas,
+  hayPapel = false,
 }: {
   notaId: string | null
   citaId: string
   pacienteId: string
   recetas: Receta[]
+  /** Sin papel membretado no se imprime: le faltaría la cédula y la firma. */
+  hayPapel?: boolean
 }) {
   const [abierto, setAbierto] = useState(false)
 
@@ -57,16 +61,38 @@ export function Recetas({
             Aparte del tratamiento que escribas arriba, con sus datos por separado.
           </p>
         </div>
-        {notaId && !abierto && (
-          <button
-            type="button"
-            onClick={() => setAbierto(true)}
-            className="boton boton-suave px-3 py-1 text-xs"
-          >
-            Agregar
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {vigentes.length > 0 && hayPapel && (
+            <a
+              href={`/admin/consulta/${citaId}/receta`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="boton boton-primario px-3 py-1 text-xs"
+            >
+              Imprimir receta
+            </a>
+          )}
+          {notaId && !abierto && (
+            <button
+              type="button"
+              onClick={() => setAbierto(true)}
+              className="boton boton-suave px-3 py-1 text-xs"
+            >
+              Agregar
+            </button>
+          )}
+        </div>
       </div>
+
+      {vigentes.length > 0 && !hayPapel && (
+        <p className="mt-3 text-xs text-muted">
+          Para imprimirla necesitas cargar tu papel membretado en{' '}
+          <Link href="/admin/horario" className="text-acento hover:underline">
+            Tu consultorio
+          </Link>
+          . Sin él, la hoja no llevaría tu cédula ni tu firma.
+        </p>
+      )}
 
       {!notaId && (
         <p className="mt-3 text-xs text-muted">

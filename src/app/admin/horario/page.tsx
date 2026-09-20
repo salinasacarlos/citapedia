@@ -6,6 +6,7 @@ import { BotonQuitar } from '@/components/boton-quitar'
 import { Bloqueos, type BloqueoVista } from '@/components/bloqueos'
 import { PlantillaRecordatorio } from '@/components/plantilla-recordatorio'
 import { PlantillasDeAviso, type PlantillaAviso } from '@/components/plantillas-de-aviso'
+import { PapelDeReceta, type PapelDeRecetaGuardado } from '@/components/papel-de-receta'
 import { DIAS, SEMANA, describirBloqueo, horaSuelta } from '@/lib/fechas'
 import type { Availability, TimeBlock } from '@/lib/database.types'
 
@@ -13,7 +14,7 @@ export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Horario' }
 
 export default async function HorarioPage() {
-  const { profesional } = await exigirConsultorio()
+  const { profesional, esDueño } = await exigirConsultorio()
   const supabase = await createClient()
   const zona = profesional.timezone
 
@@ -22,6 +23,7 @@ export default async function HorarioPage() {
     { data: bloqueosCrudos },
     { data: ajustes },
     { data: plantillas },
+    { data: papel },
   ] = await Promise.all([
       supabase
         .from('availability')
@@ -44,6 +46,10 @@ export default async function HorarioPage() {
         .select('id, titulo, mensaje, base, offset_meses')
         .order('created_at')
         .returns<PlantillaAviso[]>(),
+      supabase
+        .from('prescription_paper')
+        .select('mime, margen_arriba, margen_abajo, updated_at')
+        .maybeSingle<PapelDeRecetaGuardado>(),
     ])
 
   const franjas = franjasCrudas ?? []
@@ -56,13 +62,21 @@ export default async function HorarioPage() {
   return (
     <>
       <header className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight text-ink">Tu horario</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-ink">Tu consultorio</h1>
         <p className="mt-1 text-sm text-muted">
+          Tu horario, los mensajes que salen a tus pacientes y el papel con el
+          que imprimes tus recetas.
+        </p>
+      </header>
+
+      <section>
+        <h2 className="mb-1 font-semibold text-ink">Tu horario</h2>
+        <p className="mb-3 text-sm text-muted">
           Se repite cada semana. De aquí salen los huecos que ofrece tu página,
           menos las citas confirmadas y los bloqueos. Horas de{' '}
           {zona.split('/').pop()!.replace('_', ' ')}.
         </p>
-      </header>
+      </section>
 
       <div className="grid gap-3 sm:grid-cols-2">
         {SEMANA.map((dia) => {
@@ -112,6 +126,12 @@ export default async function HorarioPage() {
       <div className="mt-8">
         <PlantillasDeAviso plantillas={plantillas ?? []} />
       </div>
+
+      {esDueño && (
+        <div className="mt-8">
+          <PapelDeReceta papel={papel ?? null} />
+        </div>
+      )}
 
       <div className="mt-8">
         <PlantillaRecordatorio

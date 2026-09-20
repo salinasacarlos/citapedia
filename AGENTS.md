@@ -1220,6 +1220,37 @@ archiva, y el archivo se queda en su lugar.
 Archivado y suspendido son cosas distintas con el mismo efecto: uno lo decide
 el médico, el otro la plataforma, y cada uno manda a su propia pantalla.
 
+## La receta impresa
+
+El médico sube **su** papel membretado y CitaPedia escribe encima. No se genera
+un diseño nuestro, y no es pereza: lo que hace válida una receta en México
+—nombre, cédula profesional, domicilio, firma— ya está impreso en su papel, y
+la cédula es justo un dato que nadie más que él puede afirmar. CitaPedia no
+valida nada de eso; pone los medicamentos en el espacio libre.
+
+- **Sin papel cargado no se imprime.** Una hoja en blanco con dos medicamentos
+  parece una receta y no lo es. La ruta contesta 409 y el botón ni aparece.
+- **Dos números en vez de un editor de coordenadas.** Una hoja membretada tiene
+  el encabezado arriba, la firma abajo y el centro vacío: con "cuánto respetar
+  arriba" y "cuánto abajo" en milímetros se acomoda cualquier papel, y el
+  médico los mide con una regla sobre su propia hoja.
+- **El papel manda el tamaño.** Si su receta es media carta, la nuestra sale de
+  media carta: se toma del PDF incrustado. Solo cuando sube una imagen se asume
+  carta.
+- **Lo que no cabe no se encima.** Al llegar al margen de abajo se deja de
+  escribir, porque ahí va su firma. Hay una prueba con márgenes imposibles que
+  verifica que no se escriba nada en vez de invadir.
+- El bucket `papel-receta` es **privado y de solo dueño**: lleva su cédula y
+  muchas veces su firma escaneada. Un asistente que pudiera cambiarlo podría
+  imprimir recetas con otro papel.
+- El PDF sale `inline` y con `no-store`: lo que se quiere es imprimirlo ahí
+  mismo, y lleva datos de salud con nombre.
+
+`pdf-lib` escribe el texto en **hexadecimal** (`<58696D656E61> Tj`, no
+`(Ximena) Tj`) y comprime los flujos. Una prueba que busque el texto en los
+bytes crudos **pasa sin encontrar nada**, que es la peor forma de fallar; así
+empezó `verify-receta` y por eso ahora infla los flujos y decodifica el hex.
+
 ## Estudios y documentos
 
 Bucket `expedientes`, en `{professional_id}/{patient_id}/{timestamp}-{archivo}`,

@@ -264,6 +264,14 @@ export type Database = {
         created_at: string | null
       }>
       /** Ligas para poner la contraseña por primera vez. Solo la llave de servicio. */
+      prescription_paper: Table<{
+        professional_id: string
+        path: string
+        mime: string
+        margen_arriba: number
+        margen_abajo: number
+        updated_at: string
+      }>
       consultation_medications: Table<{
         id: string
         consultation_note_id: string
