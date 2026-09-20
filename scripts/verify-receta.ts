@@ -154,6 +154,20 @@ async function correr() {
     Math.round(medidas.width) === 396 && Math.round(medidas.height) === 612,
   )
 
+  // El médico que no quiere estructurar nada también imprime: la receta se
+  // arma con puras indicaciones, sin un solo medicamento capturado.
+  const soloIndicaciones = await construirReceta({
+    paciente: 'Ximena Robles',
+    edad: null,
+    fecha: 'martes 15 de septiembre de 2026',
+    medicamentos: [],
+    indicacionesGenerales: 'Reposo dos días. Líquidos. Volver si sigue la fiebre.',
+    papel: { bytes: papel, mime: 'application/pdf', margenArriba: 60, margenAbajo: 40 },
+  })
+  const textoSolo = await textoDibujado(soloIndicaciones)
+  check('sin medicamentos, la receta sale con las indicaciones', textoSolo.includes('Reposo dos'))
+  check('y con el nombre del paciente', textoSolo.includes('Ximena Robles'))
+
   const muchos = await construirReceta({
     paciente: 'Paciente Con Muchos',
     edad: null,

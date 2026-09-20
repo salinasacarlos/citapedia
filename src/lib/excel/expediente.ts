@@ -213,7 +213,7 @@ export async function construirExpediente(datos: Datos) {
             encabezados([
               'Paciente', 'Fecha', 'Peso (kg)', 'Talla (cm)', 'Temp. (°C)',
               'Presión arterial', 'Pulso (lpm)', 'Sat. O₂ (%)',
-              'Diagnóstico', 'Tratamiento', 'Nota de consulta',
+              'Diagnóstico', 'Indicaciones', 'Nota de consulta',
             ]),
             ...consultas.map((n) => [
               texto(nombre(n.patient_id)),

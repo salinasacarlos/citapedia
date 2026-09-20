@@ -246,12 +246,8 @@ export default async function Consulta({
               nota={nota}
               yaTieneCita={(citasFuturas ?? 0) > 0}
             />
-            <HistorialDeNota
-              versiones={versiones ?? []}
-              actual={nota ? estadoDeNota(nota) : null}
-              zona={zona}
-            />
-
+            {/* Pegada a la nota y antes del historial: quien acaba de escribir
+                las indicaciones tiene ahí mismo dónde poner los medicamentos. */}
             <div className="mt-4">
               <Recetas
                 notaId={nota?.id ?? null}
@@ -259,8 +255,15 @@ export default async function Consulta({
                 pacienteId={paciente.id}
                 recetas={recetas ?? []}
                 hayPapel={(papeles ?? 0) > 0}
+                indicaciones={nota?.treatment ?? null}
               />
             </div>
+
+            <HistorialDeNota
+              versiones={versiones ?? []}
+              actual={nota ? estadoDeNota(nota) : null}
+              zona={zona}
+            />
           </section>
 
           <section>
@@ -325,7 +328,7 @@ export default async function Consulta({
               )}
               <dl className="mt-2 space-y-1.5">
                 <Dato etiqueta="Diagnóstico" valor={previa.diagnosis} />
-                <Dato etiqueta="Tratamiento" valor={previa.treatment} />
+                <Dato etiqueta="Indicaciones" valor={previa.treatment} />
                 <Dato etiqueta="Nota" valor={previa.note} />
               </dl>
             </div>

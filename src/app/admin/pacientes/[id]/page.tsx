@@ -579,7 +579,7 @@ export default async function FichaPaciente({
                         )}
                         {nota.treatment && (
                           <p className="mt-1 text-sm">
-                            <span className="text-xs text-muted">Tratamiento: </span>
+                            <span className="text-xs text-muted">Indicaciones: </span>
                             {nota.treatment}
                           </p>
                         )}

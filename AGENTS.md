@@ -1192,6 +1192,32 @@ que cada versión anterior se guarda antes de perderse, en
   encuentra filas que tocar. Las pruebas verifican el efecto, no esperan una
   excepción que nunca llega.
 
+### Lo que se toma y lo que se hace
+
+`treatment` se etiquetaba **"Tratamiento indicado"**, y en español médico
+"tratamiento" *es* la receta: el campo invitaba a escribir ahí justo lo que
+`consultation_medications` volvía a pedir estructurado. El médico terminaba
+capturando dos veces, o no capturando una — y la receta impresa podía sacar el
+mismo medicamento dos veces, una en el cuerpo y otra en "Indicaciones".
+
+La regla que ordena las dos: **lo que el paciente toma va en medicamentos; lo
+que el paciente hace va en indicaciones** (reposo, dieta, curaciones, qué
+vigilar).
+
+- La etiqueta ahora dice **"Indicaciones"**. La columna conserva su nombre a
+  propósito: renombrarla arrastraría el historial clínico, su función y el
+  Excel, y lo que confunde no es el nombre de la columna sino lo que el médico
+  lee. Hay un `comment on column` que lo explica.
+- Los medicamentos van **pegados a la nota**, antes del historial: quien acaba
+  de escribir las indicaciones tiene ahí mismo dónde poner lo que receta.
+- **El puente es un traslado, no un lector.** Los renglones de las indicaciones
+  se ofrecen como botones que llenan el *nombre* del medicamento; la dosis y la
+  frecuencia las escribe el médico. Adivinar una dosis con una regla de dedo no
+  es un error de interfaz.
+- **Se puede imprimir sin estructurar nada.** Basta con que haya indicaciones.
+  Exigir medicamentos capturados dejaría sin receta al médico que solo quiere
+  escribir y mandar a imprimir, y estructurar es opcional a propósito.
+
 ### Lo recetado, con estructura
 
 `consultation_medications` guarda medicamento, dosis, frecuencia, duración e
